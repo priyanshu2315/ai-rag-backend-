@@ -30,7 +30,7 @@ export const generateAnswer = async (question) => {
 
   // 4. Send it to Ollama!
   console.log("Asking Ollama...");
-  const answer = await aiService.askOllama(prompt);
+  const answer = await aiService.askLLM(prompt);
 
   return answer;
 };

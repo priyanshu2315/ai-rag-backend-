@@ -1,6 +1,8 @@
 import fs from "fs";
 import { PDFParse } from "pdf-parse";
 import { pipeline } from "@xenova/transformers";
+import Groq from "groq-sdk";
+import "dotenv/config";
 
 // 1. Extract text from the physical file
 export const extractTextFromPDF = async (filepath) => {
@@ -39,7 +41,7 @@ export const getEmbedding = async (text) => {
 
 // export const askOllama = async (prompt) => {
 //   // Ollama runs on port 11434 by default
-  
+
 //   const response = await fetch("http://localhost:11434/api/generate", {
 //     method: "POST",
 //     headers: { "Content-Type": "application/json" },
@@ -55,29 +57,41 @@ export const getEmbedding = async (text) => {
 //   return data.response;
 // };
 
-export const askOllama = async (prompt) => {
-  const response = await fetch(
-    `${process.env.OLLAMA_BASE_URL}/api/generate`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "phi3:mini",
-        prompt,
-        stream: false,
-      }),
-    }
-  );
+// export const askOllama = async (prompt) => {
+//   const response = await fetch(
+//     `${process.env.OLLAMA_BASE_URL}/api/generate`,
+//     {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({
+//         model: "phi3:mini",
+//         prompt,
+//         stream: false,
+//       }),
+//     }
+//   );
 
-  if (!response.ok) {
-    throw new Error(
-      `Ollama request failed: ${response.status} ${response.statusText}`
-    );
-  }
+//   if (!response.ok) {
+//     throw new Error(
+//       `Ollama request failed: ${response.status} ${response.statusText}`
+//     );
+//   }
 
-  const data = await response.json();
+//   const data = await response.json();
 
-  return data.response;
+//   return data.response;
+// };
+
+let groq = new Groq({
+  apiKey: process.env.GROK_API_KEY,
+});
+
+export const askLLM = async (prompt) => {
+  const completion = await groq.chat.completions.create({
+    messages: [{ role: "user", content: prompt }],
+    model: "llama-3.3-70b-versatile",
+  });
+  return completion.choices[0]?.message?.content;
 };

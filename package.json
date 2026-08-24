@@ -17,6 +17,7 @@
     "bullmq": "^6.2.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "groq-sdk": "^1.5.0",
     "ioredis": "^6.0.0",
     "multer": "^2.2.0",
     "pdf-parse": "^2.4.5",
