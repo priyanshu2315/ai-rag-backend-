@@ -37,19 +37,47 @@ export const getEmbedding = async (text) => {
   return Array.from(output.data);
 };
 
+// export const askOllama = async (prompt) => {
+//   // Ollama runs on port 11434 by default
+  
+//   const response = await fetch("http://localhost:11434/api/generate", {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify({
+//       //   model: "qwen2.5:1.5b", // Or whichever model you downloaded via 'ollama run'
+//       model: "phi3:mini", // Or whichever model you downloaded via 'ollama run'
+//       prompt: prompt,
+//       stream: false, // Wait for the full response before returning
+//     }),
+//   });
+
+//   const data = await response.json();
+//   return data.response;
+// };
+
 export const askOllama = async (prompt) => {
-  // Ollama runs on port 11434 by default
-  const response = await fetch("http://localhost:11434/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      //   model: "qwen2.5:1.5b", // Or whichever model you downloaded via 'ollama run'
-      model: "phi3:mini", // Or whichever model you downloaded via 'ollama run'
-      prompt: prompt,
-      stream: false, // Wait for the full response before returning
-    }),
-  });
+  const response = await fetch(
+    `${process.env.OLLAMA_BASE_URL}/api/generate`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "phi3:mini",
+        prompt,
+        stream: false,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Ollama request failed: ${response.status} ${response.statusText}`
+    );
+  }
 
   const data = await response.json();
+
   return data.response;
 };
