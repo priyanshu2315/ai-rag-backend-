@@ -29,7 +29,7 @@ export const generateAnswer = async (question) => {
   `;
 
   // 4. Send it to Ollama!
-  console.log("Asking Ollama...");
+  console.log("Asking llm...");
   const answer = await aiService.askLLM(prompt);
 
   return answer;

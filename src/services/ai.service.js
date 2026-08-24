@@ -88,10 +88,15 @@ let groq = new Groq({
   apiKey: process.env.GROK_API_KEY,
 });
 
+const models = await groq.models.list();
+
+for (const model of models.data) {
+  console.log(model.id);
+}
 export const askLLM = async (prompt) => {
   const completion = await groq.chat.completions.create({
     messages: [{ role: "user", content: prompt }],
-    model: "llama-3.3-70b-versatile",
+    model: "openai/gpt-oss-20b",
   });
   return completion.choices[0]?.message?.content;
 };
