@@ -3,6 +3,7 @@ import { PDFParse } from "pdf-parse";
 import { pipeline } from "@xenova/transformers";
 import Groq from "groq-sdk";
 import "dotenv/config";
+import mammoth from "mammoth";
 
 // 1. Extract text from the physical file
 // export const extractTextFromPDF = async (filepath) => {
