@@ -16,9 +16,19 @@ datasource db {
   extensions = [vector]
 }
 
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String
+  documents Document[]
+  createdAt DateTime   @default(now())
+}
+
 model Document {
   id        String   @id @default(uuid())
   filename  String
+  userId    String   // Connects to the User
+  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   chunks    Chunk[]
 }

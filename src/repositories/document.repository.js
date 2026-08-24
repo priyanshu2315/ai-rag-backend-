@@ -1,9 +1,10 @@
 import prisma from "../config/db.js";
 
-export const createDocument = async (filename) => {
+export const createDocument = async (filename, userId) => {
   return await prisma.document.create({
     data: {
       filename,
+      userId,
     },
   });
 };
@@ -23,4 +24,22 @@ export const findSimilarChunks = async (questionEmbeddingArray, limit = 3) => {
     LIMIT ${limit}  
   `;
   return similarChunks;
+};
+
+export const getDocumentsByUserId = async (userId) => {
+  return await prisma.document.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      filename: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getDocumentById = async (id) => {
+  return await prisma.document.findUnique({
+    where: { id },
+  });
 };

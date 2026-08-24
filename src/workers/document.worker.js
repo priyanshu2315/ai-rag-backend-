@@ -19,12 +19,12 @@ export const startWorker = () => {
   new Worker(
     "document-processing",
     async (job) => {
-      const { documentId, filepath } = job.data;
+      const { documentId, filepath, mimetype } = job.data;
       console.log(`[Job ${job.id}] Started processing document...`);
 
       try {
         // 1. Read the PDF
-        const rawText = await aiService.extractTextFromPDF(filepath);
+        const rawText = await aiService.extractText(filepath, mimetype);
 
         // 2. "Chunking" - split the text by double line breaks (paragraphs)
         // We filter out chunks that are too short to be useful.

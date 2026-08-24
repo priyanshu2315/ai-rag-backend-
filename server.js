@@ -2,6 +2,7 @@ import express from "express";
 import documentRoutes from "./src/routes/document.routes.js";
 import { startWorker } from "./src/workers/document.worker.js";
 import chatRoutes from "./src/routes/chat.routes.js";
+import authRoutes from "./src/routes/auth.routes.js";
 import cors from "cors";
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(express.json());
 // Mount routes
 app.use("/api/documents", documentRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

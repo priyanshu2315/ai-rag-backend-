@@ -1,19 +1,46 @@
-import fs from "fs";
+import fs from "node:fs/promises";
 import { PDFParse } from "pdf-parse";
 import { pipeline } from "@xenova/transformers";
 import Groq from "groq-sdk";
 import "dotenv/config";
 
 // 1. Extract text from the physical file
-export const extractTextFromPDF = async (filepath) => {
-  const dataBuffer = fs.readFileSync(filepath);
-  const parser = new PDFParse({
-    data: dataBuffer,
-  });
-  const data = await parser.getText();
-  await parser.destroy();
+// export const extractTextFromPDF = async (filepath) => {
+//   const dataBuffer = fs.readFileSync(filepath);
+//   const parser = new PDFParse({
+//     data: dataBuffer,
+//   });
+//   const data = await parser.getText();
+//   await parser.destroy();
 
-  return data.text; // Returns all the text from the PDF
+//   return data.text; // Returns all the text from the PDF
+// };
+
+export const extractText = async (filepath, mimetype) => {
+  const buffer = await fs.readFile(filepath);
+
+  // 1. PDF Files
+  if (mimetype === "application/pdf") {
+    const parser = new PDFParse({
+      data: buffer,
+    });
+    const data = await parser.getText();
+    return data.text;
+  }
+  // 2. Word Documents (.docx)
+  if (
+    mimetype ===
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    const data = await mammoth.extractRawText({ buffer });
+    return data.value;
+  }
+  // 3. Plain Text / Markdown (.txt, .md)
+  if (mimetype === "text/plain" || mimetype === "text/markdown") {
+    return buffer.toString("utf-8");
+  }
+
+  throw new Error(`Unsupported file type: ${mimetype}`);
 };
 
 // 2. Generate Vectors

@@ -5,10 +5,12 @@ export const uploadDocument = async (req, res) => {
     if (!req.file) {
       throw new Error("No file uploaded");
     }
-
+    const userId = req.user.id;
     const result = await documentService.processAndSaveDocument(
       req.file.filename,
       req.file.path,
+      req.file.mimetype,
+      userId,
     );
 
     return res.status(202).json({
@@ -28,6 +30,23 @@ export const uploadDocument = async (req, res) => {
 export const listDocuments = async (req, res) => {
   try {
     const documents = await documentService.getAllDocuments();
+    return res.status(200).json({
+      success: true,
+      data: documents,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+export const getMyDocuments = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const documents = await documentService.getUserDocuments(userId);
+
     return res.status(200).json({
       success: true,
       data: documents,
