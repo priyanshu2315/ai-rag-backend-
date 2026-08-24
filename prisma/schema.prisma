@@ -1,0 +1,33 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+
+}
+
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  filename  String
+  createdAt DateTime @default(now())
+  chunks    Chunk[]
+}
+
+model Chunk {
+  id         String   @id @default(uuid())
+  text       String
+  // pgvector magic: a column to store the 384-dimension array from the AI
+  embedding  Unsupported("vector(384)")? 
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+}

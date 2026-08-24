@@ -1,0 +1,42 @@
+version: '3.8'
+services: 
+  postgres: 
+    image: 'pgvector/pgvector:pg16'
+    container_name: 'local_postgres'
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: rag_database
+    ports: 
+      - "5432:5432"
+    volumes: 
+      - pgdata:/var/lib/postgresql/data
+
+  # 2. The Message Queue
+  redis:
+    image: redis:7-alpine
+    container_name: local_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # 3. The Database GUI (New!)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: local_pgadmin
+    restart: always
+    environment:
+      # This is the login you will use to enter the web dashboard
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+    ports:
+      # Maps port 80 inside the container to port 5050 on your browser
+      - "5050:80"
+    # This tells Docker to make sure the database is running before starting the UI
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+    
