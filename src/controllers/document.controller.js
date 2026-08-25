@@ -1,3 +1,4 @@
+import { supabase } from "../config/supabase.js";
 import * as documentService from "../services/document.service.js";
 
 export const uploadDocument = async (req, res) => {
@@ -6,10 +7,21 @@ export const uploadDocument = async (req, res) => {
       throw new Error("No file uploaded");
     }
     const userId = req.user.id;
+    const file = req.file;
+    const storagePath = `${userId}/${Date.now()}-${file.originalname.replace(/\s+/g, "_")}`;
+
+    // 2. Upload the buffer directly to Supabase Storage
+    const { data: storageData, error: storageError } = await supabase.storage
+      .from("documents") // Make sure this bucket exists in Supabase!
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+      });
+    if (storageError)
+      throw new Error(`Supabase upload failed: ${storageError.message}`);
     const result = await documentService.processAndSaveDocument(
-      req.file.filename,
-      req.file.path,
-      req.file.mimetype,
+      file.originalname,
+      storageData.path,
+      file.mimetype,
       userId,
     );
 

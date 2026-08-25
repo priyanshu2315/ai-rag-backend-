@@ -4,6 +4,7 @@ import { pipeline } from "@xenova/transformers";
 import Groq from "groq-sdk";
 import "dotenv/config";
 import mammoth from "mammoth";
+import { supabase } from "../config/supabase.js";
 
 // 1. Extract text from the physical file
 // export const extractTextFromPDF = async (filepath) => {
@@ -18,9 +19,18 @@ import mammoth from "mammoth";
 // };
 
 export const extractText = async (filepath, mimetype) => {
-  const buffer = await fs.readFile(filepath);
+  // const buffer = await fs.readFile(filepath);
+  const { data, error } = await supabase.storage
+    .from("documents")
+    .download(filepath);
+  if (error)
+    throw new Error(`Failed to download from Supabase: ${error.message}`);
+  // 2. Convert the downloaded Blob into a Node.js Buffer
+  const arrayBuffer = await data.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
 
   // 1. PDF Files
+
   if (mimetype === "application/pdf") {
     const parser = new PDFParse({
       data: buffer,
