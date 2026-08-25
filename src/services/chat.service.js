@@ -22,12 +22,14 @@ export const generateAnswer = async ({ question, documentId, userId }) => {
     matchedChunks = await chatRepository.searchSingleDocument(
       documentId,
       vectorStr,
+      question,
     );
   } else {
     // Search across all documents belonging to this user
     matchedChunks = await chatRepository.searchAllUserDocuments(
       userId,
       vectorStr,
+      question,
     );
   }
 
