@@ -134,7 +134,8 @@ for (const model of models.data) {
 export const askLLM = async (prompt) => {
   const completion = await groq.chat.completions.create({
     messages: [{ role: "user", content: prompt }],
-    model: "openai/gpt-oss-20b",
+    model: "openai/gpt-oss-120b",
+    temperature: 0, // ADD THIS: Forces strict, deterministic answers
   });
   return completion.choices[0]?.message?.content;
 };

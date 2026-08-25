@@ -23,6 +23,7 @@ export const generateAnswer = async ({ question, documentId, userId }) => {
       documentId,
       vectorStr,
       question,
+      8,
     );
   } else {
     // Search across all documents belonging to this user
