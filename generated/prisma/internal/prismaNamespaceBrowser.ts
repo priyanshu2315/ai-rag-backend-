@@ -53,7 +53,8 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   Document: 'Document',
-  Chunk: 'Chunk'
+  ParentChunk: 'ParentChunk',
+  ChildChunk: 'ChildChunk'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -92,13 +93,23 @@ export const DocumentScalarFieldEnum = {
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
 
 
-export const ChunkScalarFieldEnum = {
+export const ParentChunkScalarFieldEnum = {
   id: 'id',
   text: 'text',
   documentId: 'documentId'
 } as const
 
-export type ChunkScalarFieldEnum = (typeof ChunkScalarFieldEnum)[keyof typeof ChunkScalarFieldEnum]
+export type ParentChunkScalarFieldEnum = (typeof ParentChunkScalarFieldEnum)[keyof typeof ParentChunkScalarFieldEnum]
+
+
+export const ChildChunkScalarFieldEnum = {
+  id: 'id',
+  text: 'text',
+  parentId: 'parentId',
+  documentId: 'documentId'
+} as const
+
+export type ChildChunkScalarFieldEnum = (typeof ChildChunkScalarFieldEnum)[keyof typeof ChildChunkScalarFieldEnum]
 
 
 export const SortOrder = {

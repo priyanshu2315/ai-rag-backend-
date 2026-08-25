@@ -28,7 +28,12 @@ export type User = Prisma.UserModel
  */
 export type Document = Prisma.DocumentModel
 /**
- * Model Chunk
+ * Model ParentChunk
  * 
  */
-export type Chunk = Prisma.ChunkModel
+export type ParentChunk = Prisma.ParentChunkModel
+/**
+ * Model ChildChunk
+ * 
+ */
+export type ChildChunk = Prisma.ChildChunkModel

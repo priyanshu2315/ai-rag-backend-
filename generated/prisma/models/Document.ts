@@ -175,7 +175,7 @@ export type DocumentWhereInput = {
   userId?: Prisma.StringFilter<"Document"> | string
   createdAt?: Prisma.DateTimeFilter<"Document"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-  chunks?: Prisma.ChunkListRelationFilter
+  parents?: Prisma.ParentChunkListRelationFilter
 }
 
 export type DocumentOrderByWithRelationInput = {
@@ -184,7 +184,7 @@ export type DocumentOrderByWithRelationInput = {
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
-  chunks?: Prisma.ChunkOrderByRelationAggregateInput
+  parents?: Prisma.ParentChunkOrderByRelationAggregateInput
 }
 
 export type DocumentWhereUniqueInput = Prisma.AtLeast<{
@@ -196,7 +196,7 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   userId?: Prisma.StringFilter<"Document"> | string
   createdAt?: Prisma.DateTimeFilter<"Document"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
-  chunks?: Prisma.ChunkListRelationFilter
+  parents?: Prisma.ParentChunkListRelationFilter
 }, "id">
 
 export type DocumentOrderByWithAggregationInput = {
@@ -224,7 +224,7 @@ export type DocumentCreateInput = {
   filename: string
   createdAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
-  chunks?: Prisma.ChunkCreateNestedManyWithoutDocumentInput
+  parents?: Prisma.ParentChunkCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUncheckedCreateInput = {
@@ -232,7 +232,7 @@ export type DocumentUncheckedCreateInput = {
   filename: string
   userId: string
   createdAt?: Date | string
-  chunks?: Prisma.ChunkUncheckedCreateNestedManyWithoutDocumentInput
+  parents?: Prisma.ParentChunkUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUpdateInput = {
@@ -240,7 +240,7 @@ export type DocumentUpdateInput = {
   filename?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
-  chunks?: Prisma.ChunkUpdateManyWithoutDocumentNestedInput
+  parents?: Prisma.ParentChunkUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateInput = {
@@ -248,7 +248,7 @@ export type DocumentUncheckedUpdateInput = {
   filename?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  chunks?: Prisma.ChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  parents?: Prisma.ParentChunkUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentCreateManyInput = {
@@ -349,32 +349,32 @@ export type DocumentUncheckedUpdateManyWithoutUserNestedInput = {
   deleteMany?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
 }
 
-export type DocumentCreateNestedOneWithoutChunksInput = {
-  create?: Prisma.XOR<Prisma.DocumentCreateWithoutChunksInput, Prisma.DocumentUncheckedCreateWithoutChunksInput>
-  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutChunksInput
+export type DocumentCreateNestedOneWithoutParentsInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutParentsInput, Prisma.DocumentUncheckedCreateWithoutParentsInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutParentsInput
   connect?: Prisma.DocumentWhereUniqueInput
 }
 
-export type DocumentUpdateOneRequiredWithoutChunksNestedInput = {
-  create?: Prisma.XOR<Prisma.DocumentCreateWithoutChunksInput, Prisma.DocumentUncheckedCreateWithoutChunksInput>
-  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutChunksInput
-  upsert?: Prisma.DocumentUpsertWithoutChunksInput
+export type DocumentUpdateOneRequiredWithoutParentsNestedInput = {
+  create?: Prisma.XOR<Prisma.DocumentCreateWithoutParentsInput, Prisma.DocumentUncheckedCreateWithoutParentsInput>
+  connectOrCreate?: Prisma.DocumentCreateOrConnectWithoutParentsInput
+  upsert?: Prisma.DocumentUpsertWithoutParentsInput
   connect?: Prisma.DocumentWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutChunksInput, Prisma.DocumentUpdateWithoutChunksInput>, Prisma.DocumentUncheckedUpdateWithoutChunksInput>
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DocumentUpdateToOneWithWhereWithoutParentsInput, Prisma.DocumentUpdateWithoutParentsInput>, Prisma.DocumentUncheckedUpdateWithoutParentsInput>
 }
 
 export type DocumentCreateWithoutUserInput = {
   id?: string
   filename: string
   createdAt?: Date | string
-  chunks?: Prisma.ChunkCreateNestedManyWithoutDocumentInput
+  parents?: Prisma.ParentChunkCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentUncheckedCreateWithoutUserInput = {
   id?: string
   filename: string
   createdAt?: Date | string
-  chunks?: Prisma.ChunkUncheckedCreateNestedManyWithoutDocumentInput
+  parents?: Prisma.ParentChunkUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type DocumentCreateOrConnectWithoutUserInput = {
@@ -413,44 +413,44 @@ export type DocumentScalarWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Document"> | Date | string
 }
 
-export type DocumentCreateWithoutChunksInput = {
+export type DocumentCreateWithoutParentsInput = {
   id?: string
   filename: string
   createdAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
 }
 
-export type DocumentUncheckedCreateWithoutChunksInput = {
+export type DocumentUncheckedCreateWithoutParentsInput = {
   id?: string
   filename: string
   userId: string
   createdAt?: Date | string
 }
 
-export type DocumentCreateOrConnectWithoutChunksInput = {
+export type DocumentCreateOrConnectWithoutParentsInput = {
   where: Prisma.DocumentWhereUniqueInput
-  create: Prisma.XOR<Prisma.DocumentCreateWithoutChunksInput, Prisma.DocumentUncheckedCreateWithoutChunksInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutParentsInput, Prisma.DocumentUncheckedCreateWithoutParentsInput>
 }
 
-export type DocumentUpsertWithoutChunksInput = {
-  update: Prisma.XOR<Prisma.DocumentUpdateWithoutChunksInput, Prisma.DocumentUncheckedUpdateWithoutChunksInput>
-  create: Prisma.XOR<Prisma.DocumentCreateWithoutChunksInput, Prisma.DocumentUncheckedCreateWithoutChunksInput>
+export type DocumentUpsertWithoutParentsInput = {
+  update: Prisma.XOR<Prisma.DocumentUpdateWithoutParentsInput, Prisma.DocumentUncheckedUpdateWithoutParentsInput>
+  create: Prisma.XOR<Prisma.DocumentCreateWithoutParentsInput, Prisma.DocumentUncheckedCreateWithoutParentsInput>
   where?: Prisma.DocumentWhereInput
 }
 
-export type DocumentUpdateToOneWithWhereWithoutChunksInput = {
+export type DocumentUpdateToOneWithWhereWithoutParentsInput = {
   where?: Prisma.DocumentWhereInput
-  data: Prisma.XOR<Prisma.DocumentUpdateWithoutChunksInput, Prisma.DocumentUncheckedUpdateWithoutChunksInput>
+  data: Prisma.XOR<Prisma.DocumentUpdateWithoutParentsInput, Prisma.DocumentUncheckedUpdateWithoutParentsInput>
 }
 
-export type DocumentUpdateWithoutChunksInput = {
+export type DocumentUpdateWithoutParentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
 }
 
-export type DocumentUncheckedUpdateWithoutChunksInput = {
+export type DocumentUncheckedUpdateWithoutParentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -467,14 +467,14 @@ export type DocumentUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  chunks?: Prisma.ChunkUpdateManyWithoutDocumentNestedInput
+  parents?: Prisma.ParentChunkUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  chunks?: Prisma.ChunkUncheckedUpdateManyWithoutDocumentNestedInput
+  parents?: Prisma.ParentChunkUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type DocumentUncheckedUpdateManyWithoutUserInput = {
@@ -489,11 +489,11 @@ export type DocumentUncheckedUpdateManyWithoutUserInput = {
  */
 
 export type DocumentCountOutputType = {
-  chunks: number
+  parents: number
 }
 
 export type DocumentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  chunks?: boolean | DocumentCountOutputTypeCountChunksArgs
+  parents?: boolean | DocumentCountOutputTypeCountParentsArgs
 }
 
 /**
@@ -509,8 +509,8 @@ export type DocumentCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Ext
 /**
  * DocumentCountOutputType without action
  */
-export type DocumentCountOutputTypeCountChunksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.ChunkWhereInput
+export type DocumentCountOutputTypeCountParentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ParentChunkWhereInput
 }
 
 
@@ -520,7 +520,7 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   userId?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
+  parents?: boolean | Prisma.Document$parentsArgs<ExtArgs>
   _count?: boolean | Prisma.DocumentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["document"]>
 
@@ -550,7 +550,7 @@ export type DocumentSelectScalar = {
 export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "filename" | "userId" | "createdAt", ExtArgs["result"]["document"]>
 export type DocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  chunks?: boolean | Prisma.Document$chunksArgs<ExtArgs>
+  parents?: boolean | Prisma.Document$parentsArgs<ExtArgs>
   _count?: boolean | Prisma.DocumentCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type DocumentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -564,7 +564,7 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
   name: "Document"
   objects: {
     user: Prisma.$UserPayload<ExtArgs>
-    chunks: Prisma.$ChunkPayload<ExtArgs>[]
+    parents: Prisma.$ParentChunkPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -966,7 +966,7 @@ readonly fields: DocumentFieldRefs;
 export interface Prisma__DocumentClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-  chunks<T extends Prisma.Document$chunksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$chunksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  parents<T extends Prisma.Document$parentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Document$parentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ParentChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1401,27 +1401,27 @@ export type DocumentDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
 }
 
 /**
- * Document.chunks
+ * Document.parents
  */
-export type Document$chunksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type Document$parentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the Chunk
+   * Select specific fields to fetch from the ParentChunk
    */
-  select?: Prisma.ChunkSelect<ExtArgs> | null
+  select?: Prisma.ParentChunkSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the Chunk
+   * Omit specific fields from the ParentChunk
    */
-  omit?: Prisma.ChunkOmit<ExtArgs> | null
+  omit?: Prisma.ParentChunkOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.ChunkInclude<ExtArgs> | null
-  where?: Prisma.ChunkWhereInput
-  orderBy?: Prisma.ChunkOrderByWithRelationInput | Prisma.ChunkOrderByWithRelationInput[]
-  cursor?: Prisma.ChunkWhereUniqueInput
+  include?: Prisma.ParentChunkInclude<ExtArgs> | null
+  where?: Prisma.ParentChunkWhereInput
+  orderBy?: Prisma.ParentChunkOrderByWithRelationInput | Prisma.ParentChunkOrderByWithRelationInput[]
+  cursor?: Prisma.ParentChunkWhereUniqueInput
   take?: number
   skip?: number
-  distinct?: Prisma.ChunkScalarFieldEnum | Prisma.ChunkScalarFieldEnum[]
+  distinct?: Prisma.ParentChunkScalarFieldEnum | Prisma.ParentChunkScalarFieldEnum[]
 }
 
 /**

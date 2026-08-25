@@ -10,5 +10,6 @@
  */
 export type * from './models/User.ts'
 export type * from './models/Document.ts'
-export type * from './models/Chunk.ts'
+export type * from './models/ParentChunk.ts'
+export type * from './models/ChildChunk.ts'
 export type * from './commonInputTypes.ts'

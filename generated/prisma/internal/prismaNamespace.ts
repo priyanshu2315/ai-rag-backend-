@@ -399,7 +399,8 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 export const ModelName = {
   User: 'User',
   Document: 'Document',
-  Chunk: 'Chunk'
+  ParentChunk: 'ParentChunk',
+  ChildChunk: 'ChildChunk'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -415,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "document" | "chunk"
+    modelProps: "user" | "document" | "parentChunk" | "childChunk"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -567,77 +568,135 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    Chunk: {
-      payload: Prisma.$ChunkPayload<ExtArgs>
-      fields: Prisma.ChunkFieldRefs
+    ParentChunk: {
+      payload: Prisma.$ParentChunkPayload<ExtArgs>
+      fields: Prisma.ParentChunkFieldRefs
       operations: {
         findUnique: {
-          args: Prisma.ChunkFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload> | null
+          args: Prisma.ParentChunkFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload> | null
         }
         findUniqueOrThrow: {
-          args: Prisma.ChunkFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>
+          args: Prisma.ParentChunkFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>
         }
         findFirst: {
-          args: Prisma.ChunkFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload> | null
+          args: Prisma.ParentChunkFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload> | null
         }
         findFirstOrThrow: {
-          args: Prisma.ChunkFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>
+          args: Prisma.ParentChunkFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>
         }
         findMany: {
-          args: Prisma.ChunkFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>[]
+          args: Prisma.ParentChunkFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>[]
         }
         create: {
-          args: Prisma.ChunkCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>
+          args: Prisma.ParentChunkCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>
         }
         createMany: {
-          args: Prisma.ChunkCreateManyArgs<ExtArgs>
+          args: Prisma.ParentChunkCreateManyArgs<ExtArgs>
           result: BatchPayload
         }
         createManyAndReturn: {
-          args: Prisma.ChunkCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>[]
+          args: Prisma.ParentChunkCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>[]
         }
         delete: {
-          args: Prisma.ChunkDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>
+          args: Prisma.ParentChunkDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>
         }
         update: {
-          args: Prisma.ChunkUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>
+          args: Prisma.ParentChunkUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>
         }
         deleteMany: {
-          args: Prisma.ChunkDeleteManyArgs<ExtArgs>
+          args: Prisma.ParentChunkDeleteManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateMany: {
-          args: Prisma.ChunkUpdateManyArgs<ExtArgs>
+          args: Prisma.ParentChunkUpdateManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateManyAndReturn: {
-          args: Prisma.ChunkUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>[]
+          args: Prisma.ParentChunkUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>[]
         }
         upsert: {
-          args: Prisma.ChunkUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChunkPayload>
+          args: Prisma.ParentChunkUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ParentChunkPayload>
         }
         aggregate: {
-          args: Prisma.ChunkAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateChunk>
+          args: Prisma.ParentChunkAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateParentChunk>
         }
         groupBy: {
-          args: Prisma.ChunkGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.ChunkGroupByOutputType>[]
+          args: Prisma.ParentChunkGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ParentChunkGroupByOutputType>[]
         }
         count: {
-          args: Prisma.ChunkCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.ChunkCountAggregateOutputType> | number
+          args: Prisma.ParentChunkCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ParentChunkCountAggregateOutputType> | number
+        }
+      }
+    }
+    ChildChunk: {
+      payload: Prisma.$ChildChunkPayload<ExtArgs>
+      fields: Prisma.ChildChunkFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ChildChunkFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChildChunkPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ChildChunkFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChildChunkPayload>
+        }
+        findFirst: {
+          args: Prisma.ChildChunkFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChildChunkPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ChildChunkFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChildChunkPayload>
+        }
+        findMany: {
+          args: Prisma.ChildChunkFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChildChunkPayload>[]
+        }
+        delete: {
+          args: Prisma.ChildChunkDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChildChunkPayload>
+        }
+        update: {
+          args: Prisma.ChildChunkUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChildChunkPayload>
+        }
+        deleteMany: {
+          args: Prisma.ChildChunkDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ChildChunkUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ChildChunkUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChildChunkPayload>[]
+        }
+        aggregate: {
+          args: Prisma.ChildChunkAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateChildChunk>
+        }
+        groupBy: {
+          args: Prisma.ChildChunkGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ChildChunkGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ChildChunkCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ChildChunkCountAggregateOutputType> | number
         }
       }
     }
@@ -700,13 +759,23 @@ export const DocumentScalarFieldEnum = {
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
 
 
-export const ChunkScalarFieldEnum = {
+export const ParentChunkScalarFieldEnum = {
   id: 'id',
   text: 'text',
   documentId: 'documentId'
 } as const
 
-export type ChunkScalarFieldEnum = (typeof ChunkScalarFieldEnum)[keyof typeof ChunkScalarFieldEnum]
+export type ParentChunkScalarFieldEnum = (typeof ParentChunkScalarFieldEnum)[keyof typeof ParentChunkScalarFieldEnum]
+
+
+export const ChildChunkScalarFieldEnum = {
+  id: 'id',
+  text: 'text',
+  parentId: 'parentId',
+  documentId: 'documentId'
+} as const
+
+export type ChildChunkScalarFieldEnum = (typeof ChildChunkScalarFieldEnum)[keyof typeof ChildChunkScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -925,7 +994,8 @@ export type PrismaClientOptions = PrismaClientOptionsWithAccelerateUrl | PrismaC
 export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
   document?: Prisma.DocumentOmit
-  chunk?: Prisma.ChunkOmit
+  parentChunk?: Prisma.ParentChunkOmit
+  childChunk?: Prisma.ChildChunkOmit
 }
 
 /* Types for Logging */

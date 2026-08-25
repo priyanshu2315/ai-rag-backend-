@@ -36,23 +36,48 @@ export const startWorker = () => {
           `[Job ${job.id}] Extracted ${paragraphs.length} paragraphs. Generating AI vectors...`,
         );
 
-        // 3. Loop through each paragraph, vectorize it, and save it
-        for (const text of paragraphs) {
-          // Get the 384 numbers from Hugging Face
-          const embeddingArray = await aiService.getEmbedding(text);
+        for (const paragraphText of paragraphs) {
+          const parent = await prisma.parentChunk.create({
+            data: {
+              documentId: documentId,
+              text: paragraphText,
+            },
+          });
 
-          // Format the array into a string that PostgreSQL understands: '[0.1, 0.2, ...]'
-          const embeddingString = `[${embeddingArray.join(",")}]`;
-          const chunkId = randomUUID();
+          const sentences = paragraphText
+            .split(/(?<=[.?!])\s+/)
+            .map((s) => s.trim())
+            .filter((s) => s.length > 10);
 
-          // 4. Save to Database
-          // Because pgvector is a special Postgres extension, Prisma requires us
-          // to use a raw SQL query to safely insert the numerical vector array.
-          await prisma.$executeRaw`
-          INSERT INTO "Chunk" (id, text, "documentId", embedding) 
-          VALUES (${chunkId}, ${text}, ${documentId}, ${embeddingString}::vector)
-        `;
+          for (const sentenceText of sentences) {
+            const embeddingArray = await aiService.getEmbedding(sentenceText);
+            const embeddingString = `[${embeddingArray.join(",")}]`;
+            const childId = randomUUID();
+
+            await prisma.$queryRaw`
+            INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding)
+            VALUES (${childId}, ${sentenceText}, ${parent.id}, ${documentId}, ${embeddingString}::vector)
+            `;
+          }
         }
+
+        // // 3. Loop through each paragraph, vectorize it, and save it
+        // for (const text of paragraphs) {
+        //   // Get the 384 numbers from Hugging Face
+        //   const embeddingArray = await aiService.getEmbedding(text);
+
+        //   // Format the array into a string that PostgreSQL understands: '[0.1, 0.2, ...]'
+        //   const embeddingString = `[${embeddingArray.join(",")}]`;
+        //   const chunkId = randomUUID();
+
+        //   // 4. Save to Database
+        //   // Because pgvector is a special Postgres extension, Prisma requires us
+        //   // to use a raw SQL query to safely insert the numerical vector array.
+        //   await prisma.$executeRaw`
+        //   INSERT INTO "Chunk" (id, text, "documentId", embedding)
+        //   VALUES (${chunkId}, ${text}, ${documentId}, ${embeddingString}::vector)
+        // `;
+        // }
 
         console.log(
           `✅ [Job ${job.id}] Finished saving vectors to PostgreSQL!`,

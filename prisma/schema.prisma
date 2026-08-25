@@ -30,14 +30,22 @@ model Document {
   userId    String   // Connects to the User
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
-  chunks    Chunk[]
+  parents   ParentChunk[]
 }
 
-model Chunk {
-  id         String   @id @default(uuid())
-  text       String
-  // pgvector magic: a column to store the 384-dimension array from the AI
-  embedding  Unsupported("vector(384)")? 
+model ParentChunk {
+  id         String       @id @default(uuid())
+  text       String       
   documentId String
-  document   Document @relation(fields: [documentId], references: [id])
+  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  children   ChildChunk[]
+}
+
+model ChildChunk {
+  id         String      @id @default(uuid())
+  text       String      
+  parentId   String
+  parent     ParentChunk @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  documentId String      // Kept for faster SQL filtering
+  embedding  Unsupported("vector(384)")
 }
