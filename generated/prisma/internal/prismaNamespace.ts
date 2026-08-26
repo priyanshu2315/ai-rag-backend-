@@ -752,6 +752,7 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 export const DocumentScalarFieldEnum = {
   id: 'id',
   filename: 'filename',
+  status: 'status',
   userId: 'userId',
   createdAt: 'createdAt'
 } as const

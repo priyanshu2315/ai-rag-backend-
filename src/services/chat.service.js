@@ -39,23 +39,39 @@ export const generateAnswer = async (
 
   // 2. Search Postgres for the top 3 most relevant paragraphs from your PDFs
   const context = matchedChunks.map((chunk) => chunk.text).join("\n\n---\n\n");
-
+  console.log(context, "context");
   if (!context.trim()) {
     return "I could not find any relevant information in your documents to answer this question.";
   }
   // 3. Construct the prompt for Ollama
   // We strictly tell the AI to ONLY use our PDF context to prevent hallucination.
-  const prompt = `
-    You are a helpful assistant. Use the following pieces of context to answer the user's question. 
-    If the answer is not in the context, just say that you don't know, don't try to make up an answer.
-    
-    Context:
-    ${context}
-    
-    Question: ${question}
-    
-    Answer:
-  `;
+  // const prompt = `
+  //   You are a helpful assistant. Use the following pieces of context to answer the user's question.
+  //   If the answer is not in the context, just say that you don't know, don't try to make up an answer.
+
+  //   Context:
+  //   ${context}
+
+  //   Question: ${question}
+
+  //   Answer:
+  // `;
+
+  const prompt = `You are an expert technical and compliance assistant.
+Answer the user's question based strictly on the provided context.
+
+Guidelines:
+1. ARITHMETIC & LOGIC: You are fully allowed and expected to perform calculations, apply percentages, convert units, and execute multi-step logic if the rules and formulas are provided in the context.
+2. CONCISENESS & COMPLETENESS: When comparing limits or numbers, always state the exact values and their respective units.
+3. GROUNDING: Do not invent facts, policies, or outside formulas not supported by the context. If the necessary base rules or numbers are missing, state that you don't know.
+
+Context:
+${context}
+
+Question:
+${question}
+
+Answer:`;
 
   // 4. Send it to Ollama!
   console.log("Asking llm...");

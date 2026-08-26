@@ -45,7 +45,7 @@ export const searchSingleDocument = async (
   queryText,
   count = 5,
 ) => {
-  return await prisma.$queryRaw`
+  const res = await prisma.$queryRaw`
     WITH vector_matches AS (
       SELECT 
         "parentId",
@@ -85,6 +85,7 @@ export const searchSingleDocument = async (
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id;
   `;
+  return res;
 };
 
 export const searchAllUserDocuments = async (

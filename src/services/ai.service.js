@@ -5,6 +5,8 @@ import Groq from "groq-sdk";
 import "dotenv/config";
 import mammoth from "mammoth";
 import { supabase } from "../config/supabase.js";
+import TurndownService from "turndown";
+import { gfm } from "turndown-plugin-gfm";
 
 // 1. Extract text from the physical file
 // export const extractTextFromPDF = async (filepath) => {
@@ -43,8 +45,31 @@ export const extractText = async (filepath, mimetype) => {
     mimetype ===
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   ) {
-    const data = await mammoth.extractRawText({ buffer });
-    return data.value;
+    const turndownService = new TurndownService();
+    const { value: html } = await mammoth.convertToHtml({ buffer: buffer });
+
+    let sanitizedHtml = html
+      .replace(/<td[^>]*>\s*<p>(.*?)<\/p>\s*<\/td>/gis, "<td>$1</td>")
+      .replace(/<th[^>]*>\s*<p>(.*?)<\/p>\s*<\/th>/gis, "<th>$1</th>");
+
+    // 2. Convert the first row's <td> tags to <th> tags
+    sanitizedHtml = sanitizedHtml.replace(
+      /(<table[^>]*>(?:<tbody>)?\s*<tr>)([\s\S]*?)<\/tr>/i,
+      (match, start, row) => {
+        return (
+          start +
+          row.replace(/<td/gi, "<th").replace(/<\/td>/gi, "</th>") +
+          "</tr>"
+        );
+      },
+    );
+    console.log(sanitizedHtml, "sanitizedHtml");
+    // const data = await mammoth.extractRawText({ buffer });
+    turndownService.use(gfm); // <-- 2. Enable GitHub Flavored Markdown (Tables!)
+    const markdownText = turndownService.turndown(sanitizedHtml);
+    console.log(markdownText, "markdownText");
+    return markdownText;
+    // return data.value;
   }
   // 3. Plain Text / Markdown (.txt, .md)
   if (mimetype === "text/plain" || mimetype === "text/markdown") {

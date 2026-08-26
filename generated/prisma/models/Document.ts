@@ -27,6 +27,7 @@ export type AggregateDocument = {
 export type DocumentMinAggregateOutputType = {
   id: string | null
   filename: string | null
+  status: string | null
   userId: string | null
   createdAt: Date | null
 }
@@ -34,6 +35,7 @@ export type DocumentMinAggregateOutputType = {
 export type DocumentMaxAggregateOutputType = {
   id: string | null
   filename: string | null
+  status: string | null
   userId: string | null
   createdAt: Date | null
 }
@@ -41,6 +43,7 @@ export type DocumentMaxAggregateOutputType = {
 export type DocumentCountAggregateOutputType = {
   id: number
   filename: number
+  status: number
   userId: number
   createdAt: number
   _all: number
@@ -50,6 +53,7 @@ export type DocumentCountAggregateOutputType = {
 export type DocumentMinAggregateInputType = {
   id?: true
   filename?: true
+  status?: true
   userId?: true
   createdAt?: true
 }
@@ -57,6 +61,7 @@ export type DocumentMinAggregateInputType = {
 export type DocumentMaxAggregateInputType = {
   id?: true
   filename?: true
+  status?: true
   userId?: true
   createdAt?: true
 }
@@ -64,6 +69,7 @@ export type DocumentMaxAggregateInputType = {
 export type DocumentCountAggregateInputType = {
   id?: true
   filename?: true
+  status?: true
   userId?: true
   createdAt?: true
   _all?: true
@@ -144,6 +150,7 @@ export type DocumentGroupByArgs<ExtArgs extends runtime.Types.Extensions.Interna
 export type DocumentGroupByOutputType = {
   id: string
   filename: string
+  status: string
   userId: string
   createdAt: Date
   _count: DocumentCountAggregateOutputType | null
@@ -172,6 +179,7 @@ export type DocumentWhereInput = {
   NOT?: Prisma.DocumentWhereInput | Prisma.DocumentWhereInput[]
   id?: Prisma.StringFilter<"Document"> | string
   filename?: Prisma.StringFilter<"Document"> | string
+  status?: Prisma.StringFilter<"Document"> | string
   userId?: Prisma.StringFilter<"Document"> | string
   createdAt?: Prisma.DateTimeFilter<"Document"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -181,6 +189,7 @@ export type DocumentWhereInput = {
 export type DocumentOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   filename?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -193,6 +202,7 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.DocumentWhereInput[]
   NOT?: Prisma.DocumentWhereInput | Prisma.DocumentWhereInput[]
   filename?: Prisma.StringFilter<"Document"> | string
+  status?: Prisma.StringFilter<"Document"> | string
   userId?: Prisma.StringFilter<"Document"> | string
   createdAt?: Prisma.DateTimeFilter<"Document"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -202,6 +212,7 @@ export type DocumentWhereUniqueInput = Prisma.AtLeast<{
 export type DocumentOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   filename?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.DocumentCountOrderByAggregateInput
@@ -215,6 +226,7 @@ export type DocumentScalarWhereWithAggregatesInput = {
   NOT?: Prisma.DocumentScalarWhereWithAggregatesInput | Prisma.DocumentScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Document"> | string
   filename?: Prisma.StringWithAggregatesFilter<"Document"> | string
+  status?: Prisma.StringWithAggregatesFilter<"Document"> | string
   userId?: Prisma.StringWithAggregatesFilter<"Document"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Document"> | Date | string
 }
@@ -222,6 +234,7 @@ export type DocumentScalarWhereWithAggregatesInput = {
 export type DocumentCreateInput = {
   id?: string
   filename: string
+  status?: string
   createdAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
   parents?: Prisma.ParentChunkCreateNestedManyWithoutDocumentInput
@@ -230,6 +243,7 @@ export type DocumentCreateInput = {
 export type DocumentUncheckedCreateInput = {
   id?: string
   filename: string
+  status?: string
   userId: string
   createdAt?: Date | string
   parents?: Prisma.ParentChunkUncheckedCreateNestedManyWithoutDocumentInput
@@ -238,6 +252,7 @@ export type DocumentUncheckedCreateInput = {
 export type DocumentUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
   parents?: Prisma.ParentChunkUpdateManyWithoutDocumentNestedInput
@@ -246,6 +261,7 @@ export type DocumentUpdateInput = {
 export type DocumentUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parents?: Prisma.ParentChunkUncheckedUpdateManyWithoutDocumentNestedInput
@@ -254,6 +270,7 @@ export type DocumentUncheckedUpdateInput = {
 export type DocumentCreateManyInput = {
   id?: string
   filename: string
+  status?: string
   userId: string
   createdAt?: Date | string
 }
@@ -261,12 +278,14 @@ export type DocumentCreateManyInput = {
 export type DocumentUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type DocumentUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -284,6 +303,7 @@ export type DocumentOrderByRelationAggregateInput = {
 export type DocumentCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   filename?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -291,6 +311,7 @@ export type DocumentCountOrderByAggregateInput = {
 export type DocumentMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   filename?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -298,6 +319,7 @@ export type DocumentMaxOrderByAggregateInput = {
 export type DocumentMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   filename?: Prisma.SortOrder
+  status?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -366,6 +388,7 @@ export type DocumentUpdateOneRequiredWithoutParentsNestedInput = {
 export type DocumentCreateWithoutUserInput = {
   id?: string
   filename: string
+  status?: string
   createdAt?: Date | string
   parents?: Prisma.ParentChunkCreateNestedManyWithoutDocumentInput
 }
@@ -373,6 +396,7 @@ export type DocumentCreateWithoutUserInput = {
 export type DocumentUncheckedCreateWithoutUserInput = {
   id?: string
   filename: string
+  status?: string
   createdAt?: Date | string
   parents?: Prisma.ParentChunkUncheckedCreateNestedManyWithoutDocumentInput
 }
@@ -409,6 +433,7 @@ export type DocumentScalarWhereInput = {
   NOT?: Prisma.DocumentScalarWhereInput | Prisma.DocumentScalarWhereInput[]
   id?: Prisma.StringFilter<"Document"> | string
   filename?: Prisma.StringFilter<"Document"> | string
+  status?: Prisma.StringFilter<"Document"> | string
   userId?: Prisma.StringFilter<"Document"> | string
   createdAt?: Prisma.DateTimeFilter<"Document"> | Date | string
 }
@@ -416,6 +441,7 @@ export type DocumentScalarWhereInput = {
 export type DocumentCreateWithoutParentsInput = {
   id?: string
   filename: string
+  status?: string
   createdAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutDocumentsInput
 }
@@ -423,6 +449,7 @@ export type DocumentCreateWithoutParentsInput = {
 export type DocumentUncheckedCreateWithoutParentsInput = {
   id?: string
   filename: string
+  status?: string
   userId: string
   createdAt?: Date | string
 }
@@ -446,6 +473,7 @@ export type DocumentUpdateToOneWithWhereWithoutParentsInput = {
 export type DocumentUpdateWithoutParentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutDocumentsNestedInput
 }
@@ -453,6 +481,7 @@ export type DocumentUpdateWithoutParentsInput = {
 export type DocumentUncheckedUpdateWithoutParentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -460,12 +489,14 @@ export type DocumentUncheckedUpdateWithoutParentsInput = {
 export type DocumentCreateManyUserInput = {
   id?: string
   filename: string
+  status?: string
   createdAt?: Date | string
 }
 
 export type DocumentUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parents?: Prisma.ParentChunkUpdateManyWithoutDocumentNestedInput
 }
@@ -473,6 +504,7 @@ export type DocumentUpdateWithoutUserInput = {
 export type DocumentUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parents?: Prisma.ParentChunkUncheckedUpdateManyWithoutDocumentNestedInput
 }
@@ -480,6 +512,7 @@ export type DocumentUncheckedUpdateWithoutUserInput = {
 export type DocumentUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   filename?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -517,6 +550,7 @@ export type DocumentCountOutputTypeCountParentsArgs<ExtArgs extends runtime.Type
 export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   filename?: boolean
+  status?: boolean
   userId?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -527,6 +561,7 @@ export type DocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
 export type DocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   filename?: boolean
+  status?: boolean
   userId?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -535,6 +570,7 @@ export type DocumentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
 export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   filename?: boolean
+  status?: boolean
   userId?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -543,11 +579,12 @@ export type DocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
 export type DocumentSelectScalar = {
   id?: boolean
   filename?: boolean
+  status?: boolean
   userId?: boolean
   createdAt?: boolean
 }
 
-export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "filename" | "userId" | "createdAt", ExtArgs["result"]["document"]>
+export type DocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "filename" | "status" | "userId" | "createdAt", ExtArgs["result"]["document"]>
 export type DocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   parents?: boolean | Prisma.Document$parentsArgs<ExtArgs>
@@ -569,6 +606,7 @@ export type $DocumentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     filename: string
+    status: string
     userId: string
     createdAt: Date
   }, ExtArgs["result"]["document"]>
@@ -998,6 +1036,7 @@ export interface Prisma__DocumentClient<T, Null = never, ExtArgs extends runtime
 export interface DocumentFieldRefs {
   readonly id: Prisma.FieldRef<"Document", 'String'>
   readonly filename: Prisma.FieldRef<"Document", 'String'>
+  readonly status: Prisma.FieldRef<"Document", 'String'>
   readonly userId: Prisma.FieldRef<"Document", 'String'>
   readonly createdAt: Prisma.FieldRef<"Document", 'DateTime'>
 }
