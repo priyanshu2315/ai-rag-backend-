@@ -61,6 +61,11 @@ export const startWorker = () => {
           }
         }
 
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { status: "COMPLETED" },
+        });
+
         // // 3. Loop through each paragraph, vectorize it, and save it
         // for (const text of paragraphs) {
         //   // Get the 384 numbers from Hugging Face
@@ -84,6 +89,10 @@ export const startWorker = () => {
         );
       } catch (error) {
         console.error(`❌ [Job ${job.id}] Failed:`, error);
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { status: "FAILED" },
+        });
       }
     },
     { connection: redisConnection },

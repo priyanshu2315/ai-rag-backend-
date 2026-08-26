@@ -2,7 +2,10 @@ import * as documentRepository from "../repositories/document.repository.js";
 import * as chatRepository from "../repositories/chat.repository.js";
 import * as aiService from "./ai.service.js";
 
-export const generateAnswer = async ({ question, documentId, userId }) => {
+export const generateAnswer = async (
+  { question, documentId, userId },
+  onToken,
+) => {
   // 1. Convert the user's question into a 384-number vector
   console.log(`Embedding question: "${question}"`);
   const queryEmbedding = await aiService.getEmbedding(question);
@@ -56,7 +59,7 @@ export const generateAnswer = async ({ question, documentId, userId }) => {
 
   // 4. Send it to Ollama!
   console.log("Asking llm...");
-  const answer = await aiService.askLLM(prompt);
+  const answer = await aiService.askLLM(prompt, onToken);
 
   return answer;
 };

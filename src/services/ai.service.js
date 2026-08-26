@@ -131,11 +131,19 @@ const models = await groq.models.list();
 for (const model of models.data) {
   console.log(model.id);
 }
-export const askLLM = async (prompt) => {
-  const completion = await groq.chat.completions.create({
+export const askLLM = async (prompt, onToken) => {
+  const stream = await groq.chat.completions.create({
     messages: [{ role: "user", content: prompt }],
     model: "openai/gpt-oss-120b",
     temperature: 0, // ADD THIS: Forces strict, deterministic answers
+    stream: true, // This tells Groq to stream the response
   });
-  return completion.choices[0]?.message?.content;
+  for await (const chunk of stream) {
+    // Extract the exact word/token generated
+    const content = chunk.choices[0]?.delta?.content || "";
+    if (content) {
+      onToken(content); // Fire the callback immediately
+    }
+  }
+  // return completion.choices[0]?.message?.content;
 };

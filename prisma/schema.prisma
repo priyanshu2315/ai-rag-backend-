@@ -27,6 +27,7 @@ model User {
 model Document {
   id        String   @id @default(uuid())
   filename  String
+  status    String        @default("PROCESSING") // <-- Add this line
   userId    String   // Connects to the User
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
