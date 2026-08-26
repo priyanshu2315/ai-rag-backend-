@@ -26,7 +26,7 @@ export const generateAnswer = async (
       documentId,
       vectorStr,
       question,
-      8,
+      5,
     );
   } else {
     // Search across all documents belonging to this user
