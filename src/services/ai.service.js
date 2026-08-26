@@ -7,6 +7,7 @@ import mammoth from "mammoth";
 import { supabase } from "../config/supabase.js";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
+import * as cheerio from "cheerio"; // <-- 1. Import Cheerio at the top of your file
 
 // 1. Extract text from the physical file
 // export const extractTextFromPDF = async (filepath) => {
@@ -45,31 +46,41 @@ export const extractText = async (filepath, mimetype) => {
     mimetype ===
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   ) {
-    const turndownService = new TurndownService();
     const { value: html } = await mammoth.convertToHtml({ buffer: buffer });
 
-    let sanitizedHtml = html
-      .replace(/<td[^>]*>\s*<p>(.*?)<\/p>\s*<\/td>/gis, "<td>$1</td>")
-      .replace(/<th[^>]*>\s*<p>(.*?)<\/p>\s*<\/th>/gis, "<th>$1</th>");
+    // Load the raw HTML into Cheerio so we can manipulate it reliably
+    const $ = cheerio.load(html);
 
-    // 2. Convert the first row's <td> tags to <th> tags
-    sanitizedHtml = sanitizedHtml.replace(
-      /(<table[^>]*>(?:<tbody>)?\s*<tr>)([\s\S]*?)<\/tr>/i,
-      (match, start, row) => {
-        return (
-          start +
-          row.replace(/<td/gi, "<th").replace(/<\/td>/gi, "</th>") +
-          "</tr>"
-        );
-      },
-    );
-    console.log(sanitizedHtml, "sanitizedHtml");
-    // const data = await mammoth.extractRawText({ buffer });
-    turndownService.use(gfm); // <-- 2. Enable GitHub Flavored Markdown (Tables!)
+    // 1. Force the first row of EVERY table to be headers (<th> instead of <td>)
+    $("table").each((_, table) => {
+      $(table)
+        .find("tr")
+        .first() // Grab only the first row
+        .find("td")
+        .each((_, td) => {
+          // Copy the contents of the <td> into a new <th>
+          const th = $("<th>").html($(td).html());
+          $(td).replaceWith(th);
+        });
+    });
+
+    // 2. Remove all <p> tags inside tables (unwraps them so text is inline)
+    $("table p").each((_, p) => {
+      $(p).replaceWith($(p).contents());
+    });
+
+    // Extract the perfectly sanitized HTML
+    const sanitizedHtml = $.html();
+    console.log("Sanitized HTML:", sanitizedHtml); // You will now see clean <th> tags and no <p> tags!
+
+    // 3. Convert to Markdown
+    const turndownService = new TurndownService();
+    turndownService.use(gfm);
+
     const markdownText = turndownService.turndown(sanitizedHtml);
-    console.log(markdownText, "markdownText");
+    console.log("Markdown Text:", markdownText);
+
     return markdownText;
-    // return data.value;
   }
   // 3. Plain Text / Markdown (.txt, .md)
   if (mimetype === "text/plain" || mimetype === "text/markdown") {

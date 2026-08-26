@@ -36,7 +36,40 @@ export const startWorker = () => {
           `[Job ${job.id}] Extracted ${paragraphs.length} paragraphs. Generating AI vectors...`,
         );
 
-        for (const paragraphText of paragraphs) {
+        // for (const paragraphText of paragraphs) {
+        //   const parent = await prisma.parentChunk.create({
+        //     data: {
+        //       documentId: documentId,
+        //       text: paragraphText,
+        //     },
+        //   });
+
+        //   const sentences = paragraphText
+        //     .split(/(?<=[.?!])\s+/)
+        //     .map((s) => s.trim())
+        //     .filter((s) => s.length > 10);
+
+        //   for (const sentenceText of sentences) {
+
+        //     const embeddingArray = await aiService.getEmbedding(sentenceText);
+        //     const embeddingString = `[${embeddingArray.join(",")}]`;
+        //     const childId = randomUUID();
+
+        //     await prisma.$queryRaw`
+        //     INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding)
+        //     VALUES (${childId}, ${sentenceText}, ${parent.id}, ${documentId}, ${embeddingString}::vector)
+        //     `;
+        //   }
+        // }
+
+        // We use .entries() to get both the index (parentIndex) and the text (paragraphText)
+        for (const [parentIndex, paragraphText] of paragraphs.entries()) {
+          const parentNum = parentIndex + 1;
+
+          // 1. Console log for the Parent Chunk
+          console.log(`\n=== Parent ${parentNum} ===`);
+          console.log(`Text: ${paragraphText}\n`);
+
           const parent = await prisma.parentChunk.create({
             data: {
               documentId: documentId,
@@ -49,15 +82,23 @@ export const startWorker = () => {
             .map((s) => s.trim())
             .filter((s) => s.length > 10);
 
-          for (const sentenceText of sentences) {
+          // We use .entries() again to track the child index
+          for (const [childIndex, sentenceText] of sentences.entries()) {
+            const childNum = childIndex + 1;
+
+            // 2. Console log for the Child Chunk (e.g., "Parent 1 -> Parent 1 Child 1")
+            console.log(
+              `Parent ${parentNum} -> Parent ${parentNum} Child ${childNum}: ${sentenceText}`,
+            );
+
             const embeddingArray = await aiService.getEmbedding(sentenceText);
             const embeddingString = `[${embeddingArray.join(",")}]`;
             const childId = randomUUID();
 
             await prisma.$queryRaw`
-            INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding)
-            VALUES (${childId}, ${sentenceText}, ${parent.id}, ${documentId}, ${embeddingString}::vector)
-            `;
+    INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding)
+    VALUES (${childId}, ${sentenceText}, ${parent.id}, ${documentId}, ${embeddingString}::vector)
+    `;
           }
         }
 
