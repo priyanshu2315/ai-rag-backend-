@@ -25,7 +25,7 @@
     "cohere-ai": "^8.1.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "gpt-tokenizer": "^4.0.0",
+    "gpt-tokenizer": "^2.9.0",
     "groq-sdk": "^1.5.0",
     "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
