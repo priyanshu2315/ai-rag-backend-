@@ -61,3 +61,13 @@ export type ParentChunk = Prisma.ParentChunkModel
  * 
  */
 export type ChildChunk = Prisma.ChildChunkModel
+/**
+ * Model Conversation
+ * 
+ */
+export type Conversation = Prisma.ConversationModel
+/**
+ * Model Message
+ * 
+ */
+export type Message = Prisma.MessageModel

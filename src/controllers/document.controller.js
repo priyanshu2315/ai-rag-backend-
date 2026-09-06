@@ -18,11 +18,18 @@ export const uploadDocument = async (req, res) => {
       });
     if (storageError)
       throw new Error(`Supabase upload failed: ${storageError.message}`);
+    const { data: urlData } = supabase.storage
+      .from("documents")
+      .getPublicUrl(storageData.path);
+
+    const fileUrl = urlData.publicUrl;
+
     const result = await documentService.processAndSaveDocument(
       file.originalname,
       storageData.path,
       file.mimetype,
       userId,
+      fileUrl,
     );
 
     return res.status(202).json({
@@ -65,6 +72,34 @@ export const getMyDocuments = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+export const getAllParentChunks = async (req, res) => {
+  try {
+    const docId = req.params.docId;
+    const parentChunks = await documentService.getAllParentChunks(docId);
+    return res.status(200).json({
+      success: true,
+      data: parentChunks,
+    });
+  } catch (error) {}
+};
+
+export const getChildChunksOfParent = async (req, res) => {
+  try {
+    const parentId = req.params.parentId;
+    const result = await documentService.getChildChunksOfParent(parentId);
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    const status = error.message === "Parent chunk not found" ? 404 : 500;
+    return res.status(status).json({
       success: false,
       error: error.message,
     });

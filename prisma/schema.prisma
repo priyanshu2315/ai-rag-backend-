@@ -21,17 +21,21 @@ model User {
   email     String     @unique
   password  String
   documents Document[]
+  conversations Conversation[]
   createdAt DateTime   @default(now())
 }
 
 model Document {
   id        String   @id @default(uuid())
   filename  String
+  summary  String?
   status    String        @default("PROCESSING") // <-- Add this line
   userId    String   // Connects to the User
   user      User     @relation(fields: [userId], references: [id])
+  conversations Conversation[]
   createdAt DateTime @default(now())
   parents   ParentChunk[]
+  fileUrl   String?
 }
 
 model ParentChunk {
@@ -40,6 +44,7 @@ model ParentChunk {
   documentId String
   document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
   children   ChildChunk[]
+  metadata   Json?
 }
 
 model ChildChunk {
@@ -49,4 +54,26 @@ model ChildChunk {
   parent     ParentChunk @relation(fields: [parentId], references: [id], onDelete: Cascade)
   documentId String      // Kept for faster SQL filtering
   embedding  Unsupported("vector(384)")
+  metadata   Json?
+}
+
+model Conversation {
+  id         String    @id @default(uuid())
+  userId     String
+  documentId String?   // Nullable: null = Global Search chat; UUID = Scoped Document chat
+  title      String?   @default("New Conversation")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  messages   Message[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           String       // "user" | "assistant"
+  content        String       @db.Text
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
 }

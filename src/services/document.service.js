@@ -7,6 +7,7 @@ export const processAndSaveDocument = async (
   filepath,
   mimetype,
   userId,
+  fileUrl,
 ) => {
   if (!filename) {
     throw new Error("Filename is required");
@@ -14,7 +15,11 @@ export const processAndSaveDocument = async (
 
   // 1. Save metadata to DB via Repository
   // 2. Save metadata to Postgres so we have an ID
-  const document = await documentRepository.createDocument(filename, userId);
+  const document = await documentRepository.createDocument(
+    filename,
+    userId,
+    fileUrl,
+  );
 
   // Later: Add a background job to Redis to extract text and generate vectors
   // 2. Add a job to Redis.
@@ -35,4 +40,30 @@ export const getAllDocuments = async () => {
 
 export const getUserDocuments = async (userId) => {
   return await documentRepository.getDocumentsByUserId(userId);
+};
+
+export const getAllParentChunks = async (docId) => {
+  return await documentRepository.getAllParentChunks(docId);
+};
+
+export const getChildChunksOfParent = async (parentId) => {
+  if (!parentId) {
+    throw new Error("Parent chunk id is required");
+  }
+
+  const parent = await documentRepository.getParentChunkById(parentId);
+
+  if (!parent) {
+    throw new Error("Parent chunk not found");
+  }
+
+  const children = await documentRepository.getChildChunksByParentId(parentId);
+
+  return {
+    parentId: parent.id,
+    documentId: parent.documentId,
+    parentText: parent.text,
+    totalChildren: children.length,
+    children,
+  };
 };

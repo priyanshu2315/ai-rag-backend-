@@ -81,7 +81,7 @@ export const searchSingleDocument = async (
       ORDER BY total_score DESC
       LIMIT ${count}
     )
-    SELECT p.text
+    SELECT p.text, p.metadata
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id;
   `;
@@ -136,4 +136,77 @@ export const searchAllUserDocuments = async (
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id;
   `;
+};
+
+export const getChunksByPage = async (documentId, pageNumber) => {
+  const result = await prisma.$queryRaw`
+    SELECT id, text, metadata 
+    FROM "ParentChunk" 
+    WHERE "documentId" = ${documentId}
+      AND (metadata->>'page_number')::int = ${pageNumber}
+    ORDER BY (metadata->>'chunk_index')::int ASC;
+  `;
+  return result;
+};
+
+export const saveMessage = async (conversationId, role, content) => {
+  return await prisma.message.create({
+    data: { conversationId, role, content },
+  });
+};
+
+export const getChatHistory = async (conversationId, limit = 6) => {
+  const messages = await prisma.message.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  // Reverse to chronological order and format for the LLM
+  return messages
+    .reverse()
+    .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    .join("\n");
+};
+
+export const getDocumentText = async (documentId) => {
+  // Fetch up to 10 chunks to stay under token limits during summarization
+  const chunks = await prisma.parentChunk.findMany({
+    where: { documentId },
+    take: 10,
+  });
+  return chunks.map((c) => c.text).join("\n\n");
+};
+
+export const getDocumentSummary = async (documentId) => {
+  const doc = await prisma.document.findUnique({
+    where: { id: documentId },
+    select: { summary: true }, // Only pull the summary column
+  });
+  return doc?.summary || null;
+};
+// Add to src/repositories/chat.repository.js
+
+export const getOrCreateConversation = async (userId, documentId) => {
+  let conversation = await prisma.conversation.findFirst({
+    where: {
+      userId: userId,
+      documentId: documentId || null,
+    },
+    include: {
+      messages: { orderBy: { createdAt: "asc" } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
+      data: {
+        userId: userId,
+        documentId: documentId || null,
+      },
+      include: { messages: true },
+    });
+  }
+
+  return conversation;
 };

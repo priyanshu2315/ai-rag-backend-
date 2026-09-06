@@ -54,7 +54,9 @@ export const ModelName = {
   User: 'User',
   Document: 'Document',
   ParentChunk: 'ParentChunk',
-  ChildChunk: 'ChildChunk'
+  ChildChunk: 'ChildChunk',
+  Conversation: 'Conversation',
+  Message: 'Message'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -86,9 +88,11 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 export const DocumentScalarFieldEnum = {
   id: 'id',
   filename: 'filename',
+  summary: 'summary',
   status: 'status',
   userId: 'userId',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  fileUrl: 'fileUrl'
 } as const
 
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
@@ -97,7 +101,8 @@ export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typ
 export const ParentChunkScalarFieldEnum = {
   id: 'id',
   text: 'text',
-  documentId: 'documentId'
+  documentId: 'documentId',
+  metadata: 'metadata'
 } as const
 
 export type ParentChunkScalarFieldEnum = (typeof ParentChunkScalarFieldEnum)[keyof typeof ParentChunkScalarFieldEnum]
@@ -107,10 +112,34 @@ export const ChildChunkScalarFieldEnum = {
   id: 'id',
   text: 'text',
   parentId: 'parentId',
-  documentId: 'documentId'
+  documentId: 'documentId',
+  metadata: 'metadata'
 } as const
 
 export type ChildChunkScalarFieldEnum = (typeof ChildChunkScalarFieldEnum)[keyof typeof ChildChunkScalarFieldEnum]
+
+
+export const ConversationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  documentId: 'documentId',
+  title: 'title',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ConversationScalarFieldEnum = (typeof ConversationScalarFieldEnum)[keyof typeof ConversationScalarFieldEnum]
+
+
+export const MessageScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  role: 'role',
+  content: 'content',
+  createdAt: 'createdAt'
+} as const
+
+export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -121,10 +150,35 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
 export const QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
 } as const
 
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 
