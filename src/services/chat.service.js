@@ -42,7 +42,7 @@ export const generateAnswer = traceable(
     let agentFinished = false;
     let finalAnswer = "";
     let iterations = 0;
-    const MAX_STEPS = 3; // Layer 1: Hard Circuit Breaker Limit
+    const MAX_STEPS = 5; // Layer 1: Hard Circuit Breaker Limit
     const previousSearches = new Set();
 
     while (iterations < MAX_STEPS) {
@@ -232,7 +232,8 @@ export const generateAnswer = traceable(
       finalAnswer = forcedResponse.choices[0].message.content;
     }
     onEvent({ type: "status", message: "Synthesizing final response..." });
-    const words = finalAnswer.split(" ");
+    console.log(finalAnswer, "finalAnswer");
+    const words = finalAnswer?.split(" ");
     for (const word of words) {
       onEvent({ type: "token", text: word + " " });
       await new Promise((resolve) => setTimeout(resolve, 20)); // 20ms delay for smooth UI streaming

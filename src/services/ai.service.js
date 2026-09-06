@@ -249,9 +249,9 @@ export const searchToolDefinition = {
             "The highly optimized, standalone search query (e.g., 'What is the late fee policy for Supplier A?')",
         },
         page_number: {
-          type: "integer",
+          type: ["integer", "null"],
           description:
-            "The exact page number if the user asks for a specific page (e.g., 3).",
+            "The exact page number if the user asks for a specific page (e.g., 3). Use null for general semantic searches.",
         },
       },
       required: ["search_query"],
