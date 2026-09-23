@@ -68,9 +68,9 @@ export const searchSingleDocument = async (
       LIMIT 20
     ),
     combined_scores AS (
-      SELECT "parentId", (1.0 / (60 + rank)) AS score FROM vector_matches
+      SELECT "parentId", (1.0 / (10 + rank)) AS score FROM vector_matches
       UNION ALL
-      SELECT "parentId", (1.0 / (60 + rank)) AS score FROM keyword_matches
+      SELECT "parentId", (1.0 / (10 + rank)) AS score FROM keyword_matches
     ),
     ranked_parents AS (
       SELECT 
@@ -81,7 +81,7 @@ export const searchSingleDocument = async (
       ORDER BY total_score DESC
       LIMIT ${count}
     )
-    SELECT p.text, p.metadata
+    SELECT p.id, p.text, p.metadata
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id;
   `;

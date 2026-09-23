@@ -26,14 +26,14 @@ import { llm, cohere, MODELS, RERANK_MODEL } from "../config/ai.js";
 export const rerankChunks = async (query, chunks, topN = 3) => {
   // Cohere expects an array of strings (the text of our chunks)
   const documents = chunks.map((chunk) => chunk.text);
-  console.log(documents, "documents");
+  // console.log(documents, "documents");
   const response = await cohere.rerank({
     model: RERANK_MODEL,
     query: query,
     documents: documents,
     topN: topN, // We only want the top 3 back
   });
-  console.log(response.results, "results");
+  // console.log(response.results, "results");
   const rerankedChunks = response.results.map((result) => chunks[result.index]);
 
   return rerankedChunks;

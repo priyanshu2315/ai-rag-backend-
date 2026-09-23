@@ -1,79 +1,74 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
   previewFeatures = ["postgresqlExtensions"]
-
 }
-
 
 datasource db {
   provider   = "postgresql"
-  extensions = [vector]
+  extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector(schema: "extensions"), pgcrypto(schema: "extensions"), pg_stat_statements(schema: "extensions"), supabase_vault(schema: "vault")]
 }
 
 model User {
-  id        String     @id @default(uuid())
-  email     String     @unique
-  password  String
-  documents Document[]
-  conversations Conversation[]
-  createdAt DateTime   @default(now())
+  id                String         @id @default(uuid())
+  email             String         @unique
+  password          String
+  resetOtp          String?
+  resetOtpExpiresAt DateTime?
+  createdAt         DateTime       @default(now())
+  conversations     Conversation[]
+  documents         Document[]
 }
 
 model Document {
-  id        String   @id @default(uuid())
-  filename  String
-  summary  String?
-  status    String        @default("PROCESSING") // <-- Add this line
-  userId    String   // Connects to the User
-  user      User     @relation(fields: [userId], references: [id])
+  id            String         @id @default(uuid())
+  filename      String
+  createdAt     DateTime       @default(now())
+  fileUrl       String?
+  status        String         @default("PROCESSING")
+  summary       String?
+  userId        String
   conversations Conversation[]
-  createdAt DateTime @default(now())
-  parents   ParentChunk[]
-  fileUrl   String?
+  user          User           @relation(fields: [userId], references: [id])
+  parents       ParentChunk[]
 }
 
 model ParentChunk {
   id         String       @id @default(uuid())
-  text       String       
+  text       String
   documentId String
-  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  children   ChildChunk[]
   metadata   Json?
+  children   ChildChunk[]
+  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
 
 model ChildChunk {
-  id         String      @id @default(uuid())
-  text       String      
+  id         String                @id @default(uuid())
+  text       String
   parentId   String
-  parent     ParentChunk @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  documentId String      // Kept for faster SQL filtering
+  documentId String
   embedding  Unsupported("vector(384)")
   metadata   Json?
+  parent     ParentChunk           @relation(fields: [parentId], references: [id], onDelete: Cascade)
 }
 
 model Conversation {
   id         String    @id @default(uuid())
   userId     String
-  documentId String?   // Nullable: null = Global Search chat; UUID = Scoped Document chat
+  documentId String?
   title      String?   @default("New Conversation")
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  document   Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  messages   Message[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages   Message[]
 }
 
 model Message {
   id             String       @id @default(uuid())
   conversationId String
-  role           String       // "user" | "assistant"
-  content        String       @db.Text
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
   createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 }

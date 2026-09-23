@@ -79,6 +79,8 @@ export const UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
   password: 'password',
+  resetOtp: 'resetOtp',
+  resetOtpExpiresAt: 'resetOtpExpiresAt',
   createdAt: 'createdAt'
 } as const
 
@@ -88,11 +90,11 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 export const DocumentScalarFieldEnum = {
   id: 'id',
   filename: 'filename',
-  summary: 'summary',
-  status: 'status',
-  userId: 'userId',
   createdAt: 'createdAt',
-  fileUrl: 'fileUrl'
+  fileUrl: 'fileUrl',
+  status: 'status',
+  summary: 'summary',
+  userId: 'userId'
 } as const
 
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]

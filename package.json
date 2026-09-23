@@ -7,8 +7,11 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
+    "seedEvals": "node src/scripts/seedAndGenerateEvals.js",
+    "runEvals": "node src/scripts/runEvals.js",
     "dev": "nodemon server.js",
     "models": "node src/scripts/listModels.js",
+    "indexes": "node src/scripts/checkIndexes.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
