@@ -3,6 +3,7 @@ import documentRoutes from "./src/routes/document.routes.js";
 import { startWorker } from "./src/workers/document.worker.js";
 import chatRoutes from "./src/routes/chat.routes.js";
 import authRoutes from "./src/routes/auth.routes.js";
+import healthRoutes from "./src/routes/health.routes.js";
 import cors from "cors";
 
 const app = express();
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 // Mount routes
+app.use("/api/health", healthRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", authRoutes);
