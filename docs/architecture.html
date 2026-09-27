@@ -1,0 +1,362 @@
+<title>DocuMind Architecture Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c11;
+    --panel: #0f1218;
+    --line: #1d222c;
+    --text: #e9edf4;
+    --muted: #8b95a6;
+    --mono: #a9b8cc;
+    --green: #5fd38d;
+    --amber: #f0b64a;
+    --teal: #43dcc4;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-inline: 16px;
+    padding-block: 28px 44px;
+  }
+  .wrap { max-width: 1640px; margin: 0 auto; display: grid; gap: 18px; }
+  header { display: grid; gap: 8px; }
+  h1 { font-size: clamp(22px, 2.4vw, 30px); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0; max-width: 72ch; line-height: 1.55; }
+  .counts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .count {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px; font-size: 13px; background: var(--panel);
+    font-variant-numeric: tabular-nums;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .dot.built { background: var(--green); }
+  .dot.part { background: linear-gradient(90deg, var(--amber) 50%, transparent 50%); border: 1.5px solid var(--amber); width: 8px; height: 8px; }
+  .dot.miss { border: 1.5px dashed #7d8696; width: 8px; height: 8px; }
+  figure { margin: 0; display: grid; gap: 10px; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+  .scroll svg { display: block; width: 100%; min-width: 1100px; height: auto; }
+  figcaption { color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 95ch; }
+
+  .lbl { font-family: "IBM Plex Sans", system-ui, sans-serif; font-weight: 600; font-size: 13.5px; fill: #e9edf4; }
+  .lbl.off { fill: #7d8696; }
+  .fn { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 11.5px; fill: #a9b8cc; }
+  .fn.off { fill: #6b7382; }
+  .chip { font-family: "IBM Plex Sans", system-ui, sans-serif; font-weight: 600; font-size: 11px; letter-spacing: 0.12em; fill: #e9edf4; }
+  .star { fill: #43dcc4; font-size: 12px; }
+  .alb { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 11.5px; fill: #c3cad6; }
+  .alb.red { fill: #ff8a8a; }
+  .alb.amber { fill: #f5c66e; }
+
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .note { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; background: var(--panel); }
+  .note h2 { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px; font-weight: 600; }
+  .note.plus h2 { color: var(--teal); }
+  .note.next h2 { color: var(--amber); }
+  .note ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; line-height: 1.5; font-size: 14px; }
+  code { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--mono); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>DocuMind RAG architecture, mapped to the code</h1>
+    <p class="sub">The reference RAG architecture redrawn for this project. Every part names the function that implements it, and its dot shows how far it is built.</p>
+    <div class="counts">
+      <span class="count"><span class="dot built"></span>20 built</span>
+      <span class="count"><span class="dot part"></span>7 partly built</span>
+      <span class="count"><span class="dot miss"></span>7 not built yet</span>
+      <span class="count"><span style="color:var(--teal)">★</span>5 not in the reference</span>
+    </div>
+  </header>
+
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 1610 1030" role="img" aria-label="DocuMind architecture: uploads flow from data sources through LlamaParse, chunking and metadata into Postgres; questions flow through the security firewall, the LangGraph router, planner and search tools, then the grader, rewriter and generator; evaluation and red-team testing sit alongside.">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M40 0H0V40" fill="none" stroke="#141820" stroke-width="1"/>
+          </pattern>
+          <filter id="glow" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="5"/>
+          </filter>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#c3cad6"/>
+          </marker>
+          <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#ff6b6b"/>
+          </marker>
+          <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="#f0b64a"/>
+          </marker>
+          <g id="s-built"><circle r="5" fill="#5fd38d"/></g>
+          <g id="s-part"><circle r="4.5" fill="none" stroke="#f0b64a" stroke-width="1.5"/><path d="M0 -4.5A4.5 4.5 0 0 0 0 4.5Z" fill="#f0b64a"/></g>
+          <g id="s-miss"><circle r="4.5" fill="none" stroke="#7d8696" stroke-width="1.5" stroke-dasharray="2 2"/></g>
+        </defs>
+
+        <rect width="1610" height="1030" fill="#0a0c11"/>
+        <rect width="1610" height="1030" fill="url(#grid)"/>
+
+        <!-- ============ ARROWS (drawn first, under panels) ============ -->
+        <!-- user query to reasoning -->
+        <path d="M392 180H426" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
+        <!-- reasoning to validation (firewall first) -->
+        <path d="M700 108V70H956" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
+        <text class="alb" x="829" y="62" text-anchor="middle">screens every query first</text>
+        <!-- reasoning to database -->
+        <path d="M902 320H1285V470H1306" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-start="url(#ah)" marker-end="url(#ah)"/>
+        <text class="alb" x="1095" y="312" text-anchor="middle">hybrid search + rerank</text>
+        <!-- reasoning to specialist nodes -->
+        <path d="M660 342V490H956" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
+        <text class="alb" x="812" y="482" text-anchor="middle">chunks + question</text>
+        <!-- feedback loop -->
+        <path d="M1308 285H904" fill="none" stroke="#f0b64a" stroke-width="1.4" stroke-dasharray="6 5" marker-end="url(#aha)"/>
+        <text class="alb amber" x="1105" y="279" text-anchor="middle">feedback loop · manual</text>
+        <!-- evaluation to database -->
+        <path d="M1445 307V376" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
+        <text class="alb" x="1455" y="346">search + rerank</text>
+        <!-- red team -->
+        <path d="M302 330H426" fill="none" stroke="#ff6b6b" stroke-width="1.4" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
+        <text class="alb red" x="365" y="322" text-anchor="middle">red-team attacks</text>
+        <!-- sources to processing -->
+        <path d="M702 800H776" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
+        <text class="alb" x="729" y="791" text-anchor="middle">BullMQ</text>
+        <!-- inside processing -->
+        <path d="M1012 845H1026" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
+        <path d="M1292 845H1306" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
+        <!-- processing to database -->
+        <path d="M1445 658V619" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
+        <text class="alb" x="1435" y="643" text-anchor="end">INSERT chunks + vectors</text>
+
+        <!-- ============ USER QUERY ============ -->
+        <circle cx="362" cy="158" r="9" fill="none" stroke="#e9edf4" stroke-width="1.6"/>
+        <path d="M345 186Q362 166 379 186" fill="none" stroke="#e9edf4" stroke-width="1.6"/>
+        <text class="lbl" x="362" y="206" text-anchor="middle">User Query</text>
+        <text class="fn" x="362" y="222" text-anchor="middle">askQuestion()</text>
+
+        <!-- ============ STRESS TESTING ============ -->
+        <rect x="30" y="300" width="270" height="250" rx="12" fill="none" stroke="#ff6b6b" stroke-width="3" opacity=".45" filter="url(#glow)"/>
+        <rect x="30" y="300" width="270" height="250" rx="12" fill="#11141b" fill-opacity=".94" stroke="#ff6b6b" stroke-width="1.4"/>
+        <rect x="44" y="314" width="130" height="24" rx="5" fill="#0a0c11" stroke="#ff6b6b" stroke-opacity=".7"/>
+        <text class="chip" x="56" y="330">STRESS TESTING</text>
+        <use href="#s-built" x="57" y="357.5"/>
+        <text class="lbl" x="66" y="362">Prompt Injection</text>
+        <text class="fn" x="66" y="378">red-team test PDFs</text>
+        <text class="fn" x="66" y="393">checkMaliciousIntent()</text>
+        <use href="#s-part" x="57" y="425.5"/>
+        <text class="lbl" x="66" y="430">Information Evasion</text>
+        <text class="fn" x="66" y="446">unanswerable questions</text>
+        <text class="fn" x="66" y="461">goldenDataSet3.js</text>
+        <use href="#s-miss" x="57" y="493.5"/>
+        <text class="lbl off" x="66" y="498">Biased Opinion</text>
+        <text class="fn off" x="66" y="514">not built yet</text>
+
+        <!-- ============ REASONING ENGINE ============ -->
+        <rect x="430" y="110" width="470" height="230" rx="12" fill="none" stroke="#b98cff" stroke-width="3" opacity=".45" filter="url(#glow)"/>
+        <rect x="430" y="110" width="470" height="230" rx="12" fill="#11141b" fill-opacity=".94" stroke="#b98cff" stroke-width="1.4"/>
+        <rect x="444" y="124" width="146" height="24" rx="5" fill="#0a0c11" stroke="#b98cff" stroke-opacity=".7"/>
+        <text class="chip" x="456" y="140">REASONING ENGINE</text>
+        <text class="fn" x="600" y="140">crag.service.js · cragPipeline</text>
+        <use href="#s-built" x="457" y="177.5"/>
+        <text class="lbl" x="466" y="182">Conditional Router</text>
+        <text class="fn" x="466" y="198">analyzeIntentNode()</text>
+        <text class="fn" x="466" y="213">routeBasedOnIntent()</text>
+        <use href="#s-built" x="705" y="177.5"/>
+        <text class="lbl" x="714" y="182">Planner</text>
+        <text class="fn" x="714" y="198">decomposeNode()</text>
+        <text class="fn" x="714" y="213">≤ 4 search steps</text>
+        <use href="#s-built" x="457" y="245.5"/>
+        <text class="lbl" x="466" y="250">Tool Execution</text>
+        <text class="fn" x="466" y="266">retrieveNode() → rerankChunks()</text>
+        <text class="fn" x="466" y="281">fetchPageNode()</text>
+        <text class="fn" x="466" y="296">fetchSummaryNode()</text>
+        <use href="#s-built" x="705" y="245.5"/>
+        <text class="lbl" x="714" y="250">Step Streaming<tspan class="star" dx="6">★</tspan></text>
+        <text class="fn" x="714" y="266">emit() → SSE events</text>
+
+        <!-- ============ VALIDATION ============ -->
+        <rect x="960" y="40" width="300" height="220" rx="12" fill="none" stroke="#f0b64a" stroke-width="3" opacity=".45" filter="url(#glow)"/>
+        <rect x="960" y="40" width="300" height="220" rx="12" fill="#11141b" fill-opacity=".94" stroke="#f0b64a" stroke-width="1.4"/>
+        <rect x="974" y="54" width="100" height="24" rx="5" fill="#0a0c11" stroke="#f0b64a" stroke-opacity=".7"/>
+        <text class="chip" x="986" y="70">VALIDATION</text>
+        <use href="#s-part" x="987" y="95.5"/>
+        <text class="lbl" x="996" y="100">Gatekeeper</text>
+        <text class="fn" x="996" y="116">checkMaliciousIntent()</text>
+        <text class="fn" x="996" y="131">requireAuth() · automatic</text>
+        <use href="#s-miss" x="987" y="163.5"/>
+        <text class="lbl off" x="996" y="168">Auditor</text>
+        <text class="fn off" x="996" y="184">no answer review yet</text>
+        <use href="#s-miss" x="987" y="217.5"/>
+        <text class="lbl off" x="996" y="222">Strategist</text>
+        <text class="fn off" x="996" y="238">improvements chosen by hand</text>
+
+        <!-- ============ EVALUATION ============ -->
+        <rect x="1310" y="40" width="270" height="265" rx="12" fill="none" stroke="#f0b64a" stroke-width="3" opacity=".45" filter="url(#glow)"/>
+        <rect x="1310" y="40" width="270" height="265" rx="12" fill="#11141b" fill-opacity=".94" stroke="#f0b64a" stroke-width="1.4"/>
+        <rect x="1324" y="54" width="100" height="24" rx="5" fill="#0a0c11" stroke="#f0b64a" stroke-opacity=".7"/>
+        <text class="chip" x="1336" y="70">EVALUATION</text>
+        <text class="fn" x="1434" y="70">src/scripts</text>
+        <use href="#s-built" x="1337" y="95.5"/>
+        <text class="lbl" x="1346" y="100">LLM Judges</text>
+        <text class="fn" x="1346" y="116">runEvals() · runEvals2()</text>
+        <use href="#s-built" x="1337" y="145.5"/>
+        <text class="lbl" x="1346" y="150">Golden Datasets<tspan class="star" dx="6">★</tspan></text>
+        <text class="fn" x="1346" y="166">goldenDataSet 1–3</text>
+        <use href="#s-part" x="1337" y="195.5"/>
+        <text class="lbl" x="1346" y="200">Recall@3 &amp; MRR</text>
+        <text class="fn" x="1346" y="216">no precision metric</text>
+        <use href="#s-part" x="1337" y="245.5"/>
+        <text class="lbl" x="1346" y="250">Latency &amp; Cost</text>
+        <text class="fn" x="1346" y="266">LangSmith traceable() only</text>
+
+        <!-- ============ SPECIALIST NODES ============ -->
+        <rect x="960" y="380" width="300" height="235" rx="12" fill="none" stroke="#43dcc4" stroke-width="3" opacity=".45" filter="url(#glow)"/>
+        <rect x="960" y="380" width="300" height="235" rx="12" fill="#11141b" fill-opacity=".94" stroke="#43dcc4" stroke-width="1.4"/>
+        <rect x="974" y="394" width="146" height="24" rx="5" fill="#0a0c11" stroke="#43dcc4" stroke-opacity=".7"/>
+        <text class="chip" x="986" y="410">SPECIALIST NODES</text>
+        <use href="#s-built" x="987" y="433.5"/>
+        <text class="lbl" x="996" y="438">Grader<tspan class="star" dx="6">★</tspan></text>
+        <text class="fn" x="996" y="454">gradeDocumentsNode()</text>
+        <text class="fn" x="996" y="469">routeAfterGrading()</text>
+        <use href="#s-built" x="987" y="500.5"/>
+        <text class="lbl" x="996" y="505">Rewriter<tspan class="star" dx="6">★</tspan></text>
+        <text class="fn" x="996" y="521">rewriteQueryNode()</text>
+        <use href="#s-built" x="987" y="548.5"/>
+        <text class="lbl" x="996" y="553">Generator</text>
+        <text class="fn" x="996" y="569">generateNode() · 120b</text>
+        <text class="fn off" x="982" y="600">one pipeline, not separate agents</text>
+
+        <!-- ============ DATABASE ============ -->
+        <rect x="1310" y="380" width="270" height="235" rx="12" fill="none" stroke="#b98cff" stroke-width="3" opacity=".45" filter="url(#glow)"/>
+        <rect x="1310" y="380" width="270" height="235" rx="12" fill="#11141b" fill-opacity=".94" stroke="#b98cff" stroke-width="1.4"/>
+        <rect x="1324" y="394" width="168" height="24" rx="5" fill="#0a0c11" stroke="#b98cff" stroke-opacity=".7"/>
+        <text class="chip" x="1336" y="410">DATABASE · POSTGRES</text>
+        <use href="#s-built" x="1337" y="433.5"/>
+        <text class="lbl" x="1346" y="438">Vector Store</text>
+        <text class="fn" x="1346" y="454">pgvector · ChildChunk</text>
+        <text class="fn" x="1346" y="469">searchSingleDocument()</text>
+        <use href="#s-built" x="1337" y="500.5"/>
+        <text class="lbl" x="1346" y="505">Relational DB</text>
+        <text class="fn" x="1346" y="521">Prisma · saveMessage()</text>
+        <text class="fn" x="1346" y="536">getChatHistory()</text>
+        <use href="#s-built" x="1337" y="567.5"/>
+        <text class="lbl" x="1346" y="572">File Storage<tspan class="star" dx="6">★</tspan></text>
+        <text class="fn" x="1346" y="588">Supabase Storage</text>
+
+        <!-- ============ LEGEND ============ -->
+        <rect x="30" y="610" width="370" height="118" rx="10" fill="#0f1218" stroke="#1d222c"/>
+        <use href="#s-built" x="52" y="640.5"/>
+        <text class="fn" x="64" y="645">built</text>
+        <use href="#s-part" x="52" y="667.5"/>
+        <text class="fn" x="64" y="672">partly built</text>
+        <use href="#s-miss" x="52" y="694.5"/>
+        <text class="fn" x="64" y="699">not built yet</text>
+        <text class="star" x="198" y="645">★</text>
+        <text class="fn" x="214" y="645">not in the reference</text>
+        <path d="M198 668H232" stroke="#ff6b6b" stroke-width="1.4" stroke-dasharray="6 5"/>
+        <text class="fn" x="242" y="672">red-team testing</text>
+        <path d="M198 695H232" stroke="#f0b64a" stroke-width="1.4" stroke-dasharray="6 5"/>
+        <text class="fn" x="242" y="699">manual loop</text>
+
+        <!-- ============ DATA SOURCES ============ -->
+        <rect x="440" y="700" width="260" height="200" rx="12" fill="none" stroke="#a3acbb" stroke-width="3" opacity=".35" filter="url(#glow)"/>
+        <rect x="440" y="700" width="260" height="200" rx="12" fill="#11141b" fill-opacity=".94" stroke="#a3acbb" stroke-width="1.4"/>
+        <rect x="454" y="714" width="115" height="24" rx="5" fill="#0a0c11" stroke="#a3acbb" stroke-opacity=".7"/>
+        <text class="chip" x="466" y="730">DATA SOURCES</text>
+        <text class="fn" x="578" y="730">uploadDocument()</text>
+        <use href="#s-built" x="467" y="765.5"/>
+        <text class="lbl" x="476" y="770">Documents</text>
+        <text class="fn" x="476" y="786">PDF · DOCX · TXT</text>
+        <use href="#s-built" x="595" y="765.5"/>
+        <text class="lbl" x="604" y="770">Images</text>
+        <text class="fn" x="604" y="786">PNG · JPG</text>
+        <use href="#s-miss" x="467" y="833.5"/>
+        <text class="lbl off" x="476" y="838">Spreadsheets</text>
+        <text class="fn off" x="476" y="854">not yet</text>
+        <use href="#s-miss" x="595" y="833.5"/>
+        <text class="lbl off" x="604" y="838">Code</text>
+        <text class="fn off" x="604" y="854">not yet</text>
+
+        <!-- ============ DATA PROCESSING ============ -->
+        <rect x="760" y="660" width="830" height="345" rx="14" fill="none" stroke="#5fd38d" stroke-width="3" opacity=".4" filter="url(#glow)"/>
+        <rect x="760" y="660" width="830" height="345" rx="14" fill="#0e1614" fill-opacity=".9" stroke="#5fd38d" stroke-width="1.4"/>
+        <rect x="774" y="672" width="138" height="24" rx="5" fill="#0a0c11" stroke="#5fd38d" stroke-opacity=".7"/>
+        <text class="chip" x="786" y="688">DATA PROCESSING</text>
+        <text class="fn" x="922" y="688">document.worker.js · startWorker()</text>
+
+        <!-- re-structuring -->
+        <rect x="780" y="705" width="230" height="280" rx="10" fill="#11141b" stroke="#6fa8ff" stroke-width="1.3"/>
+        <rect x="792" y="717" width="130" height="24" rx="5" fill="#0a0c11" stroke="#6fa8ff" stroke-opacity=".7"/>
+        <text class="chip" x="804" y="733">RE-STRUCTURING</text>
+        <use href="#s-built" x="807" y="760.5"/>
+        <text class="lbl" x="816" y="765">Document Parser</text>
+        <text class="fn" x="816" y="781">extractDocPages()</text>
+        <text class="fn" x="816" y="796">LlamaParse Premium</text>
+        <use href="#s-part" x="807" y="830.5"/>
+        <text class="lbl" x="816" y="835">Structure Analyzer</text>
+        <text class="fn" x="816" y="851">layout → Markdown</text>
+        <text class="fn" x="816" y="866">(inside LlamaParse)</text>
+
+        <!-- chunking -->
+        <rect x="1030" y="705" width="260" height="280" rx="10" fill="#11141b" stroke="#6fa8ff" stroke-width="1.3"/>
+        <rect x="1042" y="717" width="85" height="24" rx="5" fill="#0a0c11" stroke="#6fa8ff" stroke-opacity=".7"/>
+        <text class="chip" x="1054" y="733">CHUNKING</text>
+        <use href="#s-built" x="1057" y="760.5"/>
+        <text class="lbl" x="1066" y="765">Parent/Child Split<tspan class="star" dx="6">★</tspan></text>
+        <text class="fn" x="1066" y="781">parentSplitter · 1200</text>
+        <text class="fn" x="1066" y="796">childSplitter · 400</text>
+        <use href="#s-part" x="1057" y="830.5"/>
+        <text class="lbl" x="1066" y="835">Table Preserver</text>
+        <text class="fn" x="1066" y="851">tables can be split</text>
+        <use href="#s-miss" x="1057" y="888.5"/>
+        <text class="lbl off" x="1066" y="893">Heading Detector</text>
+        <text class="fn off" x="1066" y="909">not built yet</text>
+        <use href="#s-built" x="1057" y="946.5"/>
+        <text class="lbl" x="1066" y="951">Embeddings</text>
+        <text class="fn" x="1066" y="967">getEmbedding() · MiniLM</text>
+
+        <!-- metadata -->
+        <rect x="1310" y="705" width="260" height="280" rx="10" fill="#11141b" stroke="#6fa8ff" stroke-width="1.3"/>
+        <rect x="1322" y="717" width="85" height="24" rx="5" fill="#0a0c11" stroke="#6fa8ff" stroke-opacity=".7"/>
+        <text class="chip" x="1334" y="733">METADATA</text>
+        <use href="#s-built" x="1337" y="760.5"/>
+        <text class="lbl" x="1346" y="765">Summary Generator</text>
+        <text class="fn" x="1346" y="781">batch → master summary</text>
+        <text class="fn" x="1346" y="796">Document.summary</text>
+        <use href="#s-part" x="1337" y="830.5"/>
+        <text class="lbl" x="1346" y="835">Keyword Extractor</text>
+        <text class="fn" x="1346" y="851">to_tsvector at search</text>
+        <use href="#s-miss" x="1337" y="888.5"/>
+        <text class="lbl off" x="1346" y="893">Question Generator</text>
+        <text class="fn off" x="1346" y="909">not built yet</text>
+        <use href="#s-built" x="1337" y="946.5"/>
+        <text class="lbl" x="1346" y="951">Progress Events<tspan class="star" dx="6">★</tspan></text>
+        <text class="fn" x="1346" y="967">publishProgress() → SSE</text>
+      </svg>
+    </div>
+    <figcaption>Solid arrows show where data moves. The dashed red line is red-team testing, and the dashed amber line is the feedback loop, which is done by hand today. On a phone, scroll the diagram sideways.</figcaption>
+  </figure>
+
+  <section class="notes">
+    <div class="note plus">
+      <h2>Beyond the reference</h2>
+      <ul>
+        <li>Hybrid search: pgvector plus Postgres full-text, fused and re-ranked with Cohere in <code>rerankChunks()</code>.</li>
+        <li>Corrective loop: <code>gradeDocumentsNode()</code> grades all chunks together, and <code>rewriteQueryNode()</code> retries with a new search.</li>
+        <li>Untrusted-text wrappers: retrieved text and questions sit inside random nonce tags in <code>generateNode()</code>.</li>
+        <li>Live progress: <code>publishProgress()</code> and <code>streamProgress()</code> for uploads, <code>emit()</code> for every answer step.</li>
+      </ul>
+    </div>
+    <div class="note next">
+      <h2>Next to build</h2>
+      <ul>
+        <li>Heading-aware chunking that keeps tables whole.</li>
+        <li>Question generator: store the questions each chunk answers and search them too.</li>
+        <li>Latency and cost per question in the eval scripts.</li>
+      </ul>
+    </div>
+  </section>
+</div>
