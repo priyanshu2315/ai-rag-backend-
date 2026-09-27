@@ -9,13 +9,16 @@
   "scripts": {
     "seedEvals": "node src/scripts/seedAndGenerateEvals.js",
     "runEvals": "node src/scripts/runEvals.js",
+    "seedEvals2": "node src/scripts/seedAndGenerateEvals2.js",
+    "runEvals2": "node src/scripts/runEvals2.js",
     "dev": "nodemon server.js",
     "models": "node src/scripts/listModels.js",
     "indexes": "node src/scripts/checkIndexes.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@langchain/core": "^1.2.9",
+    "@langchain/core": "^1.2.12",
+    "@langchain/langgraph": "^1.4.18",
     "@langchain/textsplitters": "^1.0.1",
     "@llamaindex/env": "^0.1.30",
     "@prisma/adapter-pg": "^7.9.1",
@@ -27,6 +30,7 @@
     "cheerio": "^1.2.0",
     "cohere-ai": "^8.1.0",
     "cors": "^2.8.6",
+    "crypto": "^1.0.1",
     "express": "^5.2.1",
     "gpt-tokenizer": "^2.9.0",
     "groq-sdk": "^1.5.0",

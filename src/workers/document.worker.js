@@ -10,6 +10,7 @@ import {
   RecursiveCharacterTextSplitter,
 } from "@langchain/textsplitters";
 import { llm, MODELS } from "../config/ai.js";
+import { publishProgress } from "../config/uploadProgress.js";
 
 const redisConnection = new Redis(process.env.REDIS_URL, {
   // host: "localhost",
@@ -50,14 +51,21 @@ export const startWorker = () => {
         for (let i = 0; i < pages.length; i++) {
           const pageNumber = i + 1;
           const pageText = pages[i].text || "";
-          console.log(pageText, "pageText");
           if (!pageText.trim()) continue;
           fullDocumentText += pageText + "\n\n"; // Keep building this for your summarizer loop
 
+          await publishProgress(documentId, {
+            type: "page_start",
+            page: pageNumber,
+            totalPages: pages.length,
+          });
+
           const parentDocs = await parentSplitter.createDocuments([pageText]);
-          console.log(parentDocs, "parentDocs");
+          let parentNumber = 0;
+
           for (const parentDoc of parentDocs) {
-            console.log(parentDoc, "parentDoc");
+            parentNumber++;
+
             const parent = await prisma.parentChunk.create({
               data: {
                 documentId: documentId,
@@ -69,10 +77,22 @@ export const startWorker = () => {
               },
             });
 
+            await publishProgress(documentId, {
+              type: "parent",
+              page: pageNumber,
+              parent: parentNumber,
+              parentId: parent.id,
+              preview: parentDoc.pageContent.slice(0, 100),
+            });
+
             const childDocs = await childSplitter.createDocuments([
               parentDoc.pageContent,
             ]);
+            let childNumber = 0;
+
             for (const childDoc of childDocs) {
+              childNumber++;
+
               const embeddingArray = await aiService.getEmbedding(
                 childDoc.pageContent,
               );
@@ -82,9 +102,17 @@ export const startWorker = () => {
     INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding, metadata)
     VALUES (${childId}, ${childDoc.pageContent}, ${parent.id}, ${documentId}, ${embeddingString}::vector, ${JSON.stringify({ page_number: pageNumber })}::jsonb)
     `;
+              await publishProgress(documentId, {
+                type: "child",
+                page: pageNumber,
+                parent: parentNumber,
+                child: childNumber,
+                totalChildren: childDocs.length,
+              });
             }
           }
         }
+        await publishProgress(documentId, { type: "summarizing" });
 
         console.log(`[Job ${job.id}] Vectors saved. Starting summarization...`);
 
@@ -170,7 +198,7 @@ export const startWorker = () => {
 
           batchSummaries.push(response.choices[0].message.content);
 
-          await delay(2500); // Respect Groq rate limits
+          await delay(8500); // Respect Groq rate limits
         }
 
         let masterSummary = batchSummaries[0];
@@ -196,11 +224,17 @@ export const startWorker = () => {
             summary: masterSummary,
           },
         });
+        await publishProgress(documentId, { type: "completed" });
 
         console.log(
           `✅ [Job ${job.id}] Finished saving vectors and master summary!`,
         );
       } catch (error) {
+        await publishProgress(documentId, {
+          type: "failed",
+          message: "Document processing failed",
+        });
+
         console.error(`❌ [Job ${job.id}] Failed:`, error);
         await prisma.document.update({
           where: { id: documentId },

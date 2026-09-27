@@ -47,13 +47,13 @@ async function runEvals() {
       15, // Count
     );
 
-    // const bestChunks = await aiService.rerankChunks(
-    //   item.question,
-    //   searchResults,
-    //   3,
-    // );
+    const bestChunks = await aiService.rerankChunks(
+      item.question,
+      searchResults,
+      3,
+    );
     // 1c. Find the rank of the correct chunk based on the ID
-    const hitIndex = searchResults.findIndex(
+    const hitIndex = bestChunks.findIndex(
       (chunk) => chunk.id === item.target_parent_chunk_id,
     );
 
@@ -68,7 +68,7 @@ async function runEvals() {
     // ==========================================
     // STEP 2: TEST GENERATION (LLM Agent)
     // ==========================================
-    const contextText = searchResults.map((c) => c.text).join("\n\n---\n\n");
+    const contextText = bestChunks.map((c) => c.text).join("\n\n---\n\n");
 
     // Have the LLM generate an answer using the retrieved context
     const agentResponse = await llm.chat.completions.create({

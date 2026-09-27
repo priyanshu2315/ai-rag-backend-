@@ -5,6 +5,7 @@ import {
   getMyDocuments,
   getAllParentChunks,
   getChildChunksOfParent,
+  streamProgress,
 } from "../controllers/document.controller.js";
 import { upload } from "../config/upload.js"; // Import Multer
 import { requireAuth } from "../middlewares/auth.middleware.js";
@@ -17,5 +18,6 @@ router.get("/", requireAuth, listDocuments);
 router.get("/my-documents", requireAuth, getMyDocuments);
 router.get("/get-all-parent-chunk/:docId", getAllParentChunks);
 router.get("/get-all-child-chunk/:parentId", getChildChunksOfParent);
+router.get("/progress/:docId", requireAuth, streamProgress);
 
 export default router;

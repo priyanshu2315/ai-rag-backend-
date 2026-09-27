@@ -1,5 +1,54 @@
 import { supabase } from "../config/supabase.js";
 import * as documentService from "../services/document.service.js";
+import { createSubscriber, getChannel } from "../config/uploadProgress.js";
+import prisma from "../config/db.js";
+
+export const streamProgress = async (req, res) => {
+  const documentId = req.params.docId;
+
+  // 1. Make sure the doc exists and belongs to this user
+  const doc = await prisma.document.findUnique({ where: { id: documentId } });
+  if (!doc || doc.userId !== req.user.id) {
+    return res
+      .status(404)
+      .json({ success: false, error: "Document not found" });
+  }
+
+  // 2. Same SSE headers you use in chat
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
+
+  // 3. Start listening to this document's channel
+  const subscriber = createSubscriber();
+  const cleanup = () => subscriber.disconnect();
+
+  subscriber.on("message", (channel, message) => {
+    const event = JSON.parse(message);
+    send(event);
+    if (event.type === "completed" || event.type === "failed") {
+      cleanup();
+      res.end();
+    }
+  });
+
+  await subscriber.subscribe(getChannel(documentId));
+
+  // 4. If it already finished before we connected, say so and stop
+  const fresh = await prisma.document.findUnique({ where: { id: documentId } });
+  if (fresh.status === "COMPLETED" || fresh.status === "FAILED") {
+    send({ type: fresh.status === "COMPLETED" ? "completed" : "failed" });
+    cleanup();
+    return res.end();
+  }
+
+  // 5. If the user closes the tab, stop listening
+  req.on("close", cleanup);
+};
 
 export const uploadDocument = async (req, res) => {
   try {

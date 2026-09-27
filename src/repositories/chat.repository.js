@@ -210,3 +210,15 @@ export const getOrCreateConversation = async (userId, documentId) => {
 
   return conversation;
 };
+
+export const clearConversationMessages = async (userId, documentId) => {
+  const result = await prisma.message.deleteMany({
+    where: {
+      conversation: {
+        userId: userId,
+        documentId: documentId || null,
+      },
+    },
+  });
+  return result.count;
+};

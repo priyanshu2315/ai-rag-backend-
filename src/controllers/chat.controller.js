@@ -94,3 +94,25 @@ export const fetchConversation = async (req, res) => {
       .json({ error: "Failed to load conversation history." });
   }
 };
+
+export const clearConversation = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const documentId = req.query.documentId || null;
+
+    const deletedMessages = await chatService.clearConversation(
+      userId,
+      documentId,
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Conversation cleared.",
+      data: { documentId, deletedMessages },
+    });
+  } catch (error) {
+    console.error("Failed to clear conversation:", error);
+    return res
+      .status(500)
+      .json({ success: false, error: "Failed to clear conversation." });
+  }
+};
