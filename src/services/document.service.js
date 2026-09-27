@@ -1,6 +1,7 @@
 import prisma from "../config/db.js";
 import { documentQueue } from "../config/queue.js";
 import * as documentRepository from "../repositories/document.repository.js";
+import { supabase } from "../config/supabase.js";
 
 export const processAndSaveDocument = async (
   filename,
@@ -40,6 +41,52 @@ export const getAllDocuments = async () => {
 
 export const getUserDocuments = async (userId) => {
   return await documentRepository.getDocumentsByUserId(userId);
+};
+
+const deletionError = (statusCode, message) => Object.assign(new Error(message), { statusCode });
+
+export const deleteDocument = async (documentId, userId) => {
+  if (typeof userId !== "string" || !userId) {
+    throw deletionError(401, "Unauthorized");
+  }
+  if (typeof documentId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(documentId)) {
+    throw deletionError(400, "Invalid document ID");
+  }
+
+  const document = await documentRepository.getOwnedDocument(documentId, userId);
+  if (!document) throw deletionError(404, "Document not found");
+  if (!["COMPLETED", "FAILED"].includes(document.status)) {
+    throw deletionError(409, "Document is still processing. Try again when processing finishes.");
+  }
+
+  if (document.fileUrl) {
+    // Uploads store a public URL rather than an object key. Only accept a key
+    // in this Supabase project's documents bucket and this owner's folder.
+    const fileUrl = new URL(document.fileUrl);
+    const storageUrl = new URL(process.env.SUPABASE_URL);
+    const prefix = "/storage/v1/object/public/documents/";
+    if (fileUrl.origin !== storageUrl.origin || !fileUrl.pathname.startsWith(prefix)) {
+      throw new Error("Unrecognized document storage URL");
+    }
+    const storagePath = decodeURIComponent(fileUrl.pathname.slice(prefix.length));
+    if (!storagePath.startsWith(`${userId}/`) || storagePath === `${userId}/` ||
+        storagePath.includes("\\") || storagePath.includes("\0") ||
+        storagePath.split("/").some((part) => part === "." || part === "..")) {
+      throw new Error("Invalid document storage path");
+    }
+
+    // Remove storage first: if it fails, retain the DB record for a retry.
+    // If DB deletion fails afterwards, the same DELETE can be retried safely.
+    const { error } = await supabase.storage.from("documents").remove([storagePath]);
+    if (error && String(error.statusCode) !== "404") {
+      throw deletionError(502, "Could not delete the uploaded file. Please try again.");
+    }
+  }
+
+  const result = await documentRepository.deleteOwnedDocument(documentId, userId);
+  if (result.count === 0) throw deletionError(404, "Document not found");
+  return { documentId };
 };
 
 export const getAllParentChunks = async (docId) => {

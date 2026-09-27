@@ -47,6 +47,20 @@ export const getDocumentById = async (id) => {
   });
 };
 
+export const getOwnedDocument = async (id, userId) => {
+  return prisma.document.findFirst({
+    where: { id, userId },
+    select: { id: true, userId: true, fileUrl: true, status: true },
+  });
+};
+
+export const deleteOwnedDocument = async (id, userId) => {
+  // Existing foreign keys cascade to parents, children, conversations and messages.
+  return prisma.document.deleteMany({
+    where: { id, userId, status: { in: ["COMPLETED", "FAILED"] } },
+  });
+};
+
 export const getAllParentChunks = async (id) => {
   return await prisma.$queryRaw`
     SELECT

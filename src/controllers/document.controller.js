@@ -40,6 +40,11 @@ export const streamProgress = async (req, res) => {
 
   // 4. If it already finished before we connected, say so and stop
   const fresh = await prisma.document.findUnique({ where: { id: documentId } });
+  if (!fresh) {
+    send({ type: "failed", message: "Document no longer exists" });
+    cleanup();
+    return res.end();
+  }
   if (fresh.status === "COMPLETED" || fresh.status === "FAILED") {
     send({ type: fresh.status === "COMPLETED" ? "completed" : "failed" });
     cleanup();
@@ -123,6 +128,24 @@ export const getMyDocuments = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message,
+    });
+  }
+};
+
+export const deleteDocument = async (req, res) => {
+  try {
+    const result = await documentService.deleteDocument(req.params.docId, req.user?.id);
+    return res.status(200).json({
+      success: true,
+      message: "Document deleted successfully",
+      data: result,
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    if (status >= 500) console.error("Document deletion failed:", error.message);
+    return res.status(status).json({
+      success: false,
+      error: error.statusCode ? error.message : "Failed to delete document. Please try again.",
     });
   }
 };
