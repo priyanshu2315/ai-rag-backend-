@@ -14,6 +14,7 @@ const PROVIDERS = {
       chat: "gemini-3.5-flash-lite",
       fast: "gemini-3.5-flash-lite",
       summary: "gemini-3.5-flash-lite",
+      // summary: "gemini-3.5-flash-lite",
     },
   },
   groq: {
@@ -23,7 +24,8 @@ const PROVIDERS = {
       agent: "openai/gpt-oss-120b",
       chat: "openai/gpt-oss-120b",
       fast: "openai/gpt-oss-20b",
-      summary: "gemini-3.5-flash-lite",
+      summary: "openai/gpt-oss-20b",
+      // summary: "gemini-3.5-flash-lite",
     },
   },
   openrouter: {
@@ -33,7 +35,7 @@ const PROVIDERS = {
       agent: "openai/gpt-oss-120b",
       chat: "openai/gpt-oss-120b",
       fast: "openai/gpt-oss-20b",
-      summary: "gemini-3.5-flash-lite",
+ summary: "openai/gpt-oss-20b",      // summary: "gemini-3.5-flash-lite",
     },
   },
 };
