@@ -198,7 +198,7 @@ export const startWorker = () => {
 
           batchSummaries.push(response.choices[0].message.content);
 
-          await delay(60000); // Respect Groq rate limits
+          // await delay(60000); // Respect Groq rate limits
         }
 
         let masterSummary = batchSummaries[0];

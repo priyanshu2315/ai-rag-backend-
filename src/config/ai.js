@@ -35,7 +35,18 @@ const PROVIDERS = {
       agent: "openai/gpt-oss-120b",
       chat: "openai/gpt-oss-120b",
       fast: "openai/gpt-oss-20b",
- summary: "openai/gpt-oss-20b",      // summary: "gemini-3.5-flash-lite",
+      summary: "openai/gpt-oss-20b", // summary: "gemini-3.5-flash-lite",
+    },
+  },
+  opencode: {
+    baseURL: "https://api.b.ai/v1",
+    apiKey: process.env.OPENCODE_API_KEY,
+    models: {
+      agent: "qwen3.8-flash",
+      chat: "qwen3.8-flash",
+      fast: "glm-5.3-flash",
+      summary: "glm-5.3-flash",
+      // summary: "gemini-3.5-flash-lite",
     },
   },
 };
@@ -64,32 +75,6 @@ export const llm = new OpenAI({
   baseURL: provider.baseURL,
   apiKey: provider.apiKey,
 });
-
-export const summaryLlm = new OpenAI({
-  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-  apiKey: process.env.GEMINI_API_KEY,
-});
-
-// export const summaryLlm = new OpenAI({
-//   baseURL: "https://api.inceptionlabs.ai/v1",
-//   apiKey: process.env.INCEPTION_API_KEY,
-// });
-
-if (active === "gemini") {
-  const createCompletion = llm.chat.completions.create.bind(
-    llm.chat.completions,
-  );
-  llm.chat.completions.create = (params, options) => {
-    // Existing services send temperature: 0. Gemini 3 recommends its default.
-    // Copy the payload so callers' request objects remain unchanged.
-    const request = { ...params };
-    if (request.model?.startsWith("gemini-3")) {
-      delete request.temperature;
-      delete request.top_p;
-    }
-    return createCompletion(request, options);
-  };
-}
 
 export const RERANK_MODEL = "rerank-english-v3.0";
 
