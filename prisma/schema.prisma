@@ -26,6 +26,7 @@ model Document {
   createdAt     DateTime       @default(now())
   fileUrl       String?
   status        String         @default("PROCESSING")
+  summaryStatus String         @default("PENDING")
   summary       String?
   userId        String
   conversations Conversation[]

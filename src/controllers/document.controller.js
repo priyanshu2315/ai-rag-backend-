@@ -21,18 +21,35 @@ export const streamProgress = async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
 
-  const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
-
   // 3. Start listening to this document's channel
   const subscriber = createSubscriber();
-  const cleanup = () => subscriber.disconnect();
+  let closed = false;
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    subscriber.disconnect();
+  };
+  const send = (event) => {
+    if (!closed) res.write(`data: ${JSON.stringify(event)}\n\n`);
+  };
+  const finish = (event) => {
+    if (closed) return;
+    send(event);
+    cleanup();
+    res.end();
+  };
+  res.on("close", cleanup);
 
   subscriber.on("message", (channel, message) => {
     const event = JSON.parse(message);
-    send(event);
-    if (event.type === "completed" || event.type === "failed") {
-      cleanup();
-      res.end();
+    if (
+      event.type === "completed" ||
+      event.type === "failed" ||
+      event.type === "summary_failed"
+    ) {
+      finish(event);
+    } else {
+      send(event);
     }
   });
 
@@ -40,19 +57,25 @@ export const streamProgress = async (req, res) => {
 
   // 4. If it already finished before we connected, say so and stop
   const fresh = await prisma.document.findUnique({ where: { id: documentId } });
+  if (closed) return;
   if (!fresh) {
-    send({ type: "failed", message: "Document no longer exists" });
-    cleanup();
-    return res.end();
+    return finish({ type: "failed", message: "Document no longer exists" });
   }
-  if (fresh.status === "COMPLETED" || fresh.status === "FAILED") {
-    send({ type: fresh.status === "COMPLETED" ? "completed" : "failed" });
-    cleanup();
-    return res.end();
+  if (fresh.status === "FAILED") {
+    return finish({ type: "failed" });
+  }
+  if (fresh.status === "COMPLETED") {
+    send({ type: "chunks_ready" });
+    if (fresh.summaryStatus === "COMPLETED" || fresh.summaryStatus === "FAILED") {
+      return finish({
+        type: fresh.summaryStatus === "COMPLETED" ? "completed" : "summary_failed",
+      });
+    }
+    if (fresh.summaryStatus === "PROCESSING") {
+      send({ type: "summarizing" });
+    }
   }
 
-  // 5. If the user closes the tab, stop listening
-  req.on("close", cleanup);
 };
 
 export const uploadDocument = async (req, res) => {

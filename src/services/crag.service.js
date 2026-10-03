@@ -9,6 +9,7 @@ export const GraphState = Annotation.Root({
   question: Annotation({ reducer: (x, y) => y, default: () => "" }),
   documents: Annotation({ reducer: (x, y) => y, default: () => [] }),
   generation: Annotation({ reducer: (x, y) => y, default: () => "" }),
+  summaryUnavailable: Annotation({ reducer: (x, y) => y, default: () => false }),
   loopCount: Annotation({ reducer: (x, y) => x + y, default: () => 0 }),
   documentId: Annotation({ reducer: (x, y) => y, default: () => null }),
   userId: Annotation({ reducer: (x, y) => y, default: () => null }),
@@ -121,28 +122,45 @@ const fetchSummaryNode = async (state, config) => {
     tool: "Summary Lookup",
     query: "Fetching pre-computed summary...",
   });
-  let summaryText = "No document ID provided for summary.";
-  let dbSummary = null;
+  const unavailable = (message) => {
+    emit(config, { type: "tool_finish", tool: "Summary Lookup", message });
+    return { generation: message, summaryUnavailable: true };
+  };
 
-  if (state.documentId) {
-    dbSummary = await chatRepository.getDocumentSummary(state.documentId);
-    summaryText =
-      dbSummary || "A summary is not yet available for this document.";
+  if (!state.documentId) {
+    return unavailable("Select a document before requesting its summary.");
+  }
+
+  const document = await chatRepository.getDocumentSummaryState(state.documentId);
+  if (!document) {
+    return unavailable("Document not found.");
+  }
+  if (
+    document.summaryStatus === "PENDING" ||
+    document.summaryStatus === "PROCESSING"
+  ) {
+    return unavailable(
+      "The document summary is still processing. You can ask questions now.",
+    );
+  }
+  if (document.summaryStatus === "FAILED") {
+    return unavailable(
+      "The document summary failed to generate. You can still ask questions.",
+    );
+  }
+  if (document.summaryStatus !== "COMPLETED" || !document.summary?.trim()) {
+    return unavailable("A summary is not available for this document.");
   }
 
   emit(config, {
     type: "tool_finish",
     tool: "Summary Lookup",
-    message: dbSummary
-      ? "Summary retrieved."
-      : state.documentId
-        ? "No summary available for this document yet."
-        : "No document selected, so there is no summary to fetch.",
+    message: "Summary retrieved.",
   });
 
-  // We package it as a "document" so the generation node can cite it naturally
+  // Package the ready summary as a document so the answer can cite it.
   return {
-    documents: [{ text: summaryText, metadata: { page_number: "Summary" } }],
+    documents: [{ text: document.summary, metadata: { page_number: "Summary" } }],
   };
 };
 
@@ -503,7 +521,11 @@ const workflow = new StateGraph(GraphState)
     fetch_page: "fetch_page", // Goes to page node
     decompose: "decompose",
   })
-  .addEdge("fetch_summary", "generate")
+  .addConditionalEdges(
+    "fetch_summary",
+    (state) => (state.summaryUnavailable ? "unavailable" : "generate"),
+    { unavailable: END, generate: "generate" },
+  )
   .addEdge("fetch_page", "generate")
   .addEdge("rewrite", "retrieve")
   .addNode("decompose", decomposeNode)

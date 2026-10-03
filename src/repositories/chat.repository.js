@@ -101,7 +101,7 @@ export const searchAllUserDocuments = async (
         ROW_NUMBER() OVER (ORDER BY c."embedding" <=> ${vectorStr}::vector ASC) AS rank
       FROM "ChildChunk" c
       JOIN "Document" d ON c."documentId" = d.id
-      WHERE d."userId" = ${userId}
+      WHERE d."userId" = ${userId} AND d."status" = 'COMPLETED'
       ORDER BY c."embedding" <=> ${vectorStr}::vector ASC
       LIMIT 20
     ),
@@ -113,7 +113,7 @@ export const searchAllUserDocuments = async (
         ) AS rank
       FROM "ChildChunk" c
       JOIN "Document" d ON c."documentId" = d.id
-      WHERE d."userId" = ${userId}
+      WHERE d."userId" = ${userId} AND d."status" = 'COMPLETED'
         AND to_tsvector('english', c.text) @@ plainto_tsquery('english', ${queryText})
       ORDER BY ts_rank_cd(to_tsvector('english', c.text), plainto_tsquery('english', ${queryText})) DESC
       LIMIT 20
@@ -184,6 +184,12 @@ export const getDocumentSummary = async (documentId) => {
   });
   return doc?.summary || null;
 };
+
+export const getDocumentSummaryState = (documentId) =>
+  prisma.document.findUnique({
+    where: { id: documentId },
+    select: { summary: true, summaryStatus: true },
+  });
 // Add to src/repositories/chat.repository.js
 
 export const getOrCreateConversation = async (userId, documentId) => {

@@ -41,12 +41,12 @@ export const startWorker = () => {
       const { documentId, filepath, mimetype } = job.data;
       console.log(`[Job ${job.id}] Started processing document...`);
 
+      let fullDocumentText = "";
       try {
         // 1. Read the PDF
         const pages = await aiService.extractDocPages(filepath, mimetype);
 
         let globalChunkIndex = 0;
-        let fullDocumentText = "";
 
         for (let i = 0; i < pages.length; i++) {
           const pageNumber = i + 1;
@@ -112,6 +112,33 @@ export const startWorker = () => {
             }
           }
         }
+
+        if (globalChunkIndex === 0) {
+          throw new Error("Document contains no extractable text");
+        }
+
+        await prisma.document.update({
+          where: { id: documentId },
+          data: {
+            status: "COMPLETED",
+            summaryStatus: "PROCESSING",
+          },
+        });
+        await publishProgress(documentId, { type: "chunks_ready" });
+      } catch (error) {
+        console.error(`[Job ${job.id}] Chunking failed:`, error);
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { status: "FAILED" },
+        });
+        await publishProgress(documentId, {
+          type: "failed",
+          message: "Document processing failed",
+        });
+        return;
+      }
+
+      try {
         await publishProgress(documentId, { type: "summarizing" });
 
         console.log(`[Job ${job.id}] Vectors saved. Starting summarization...`);
@@ -214,29 +241,29 @@ export const startWorker = () => {
 
           masterSummary = masterResponse.choices[0].message.content;
         }
-
+        if (!masterSummary?.trim()) {
+          throw new Error("Document summary is empty");
+        }
         await prisma.document.update({
           where: { id: documentId },
           data: {
-            status: "COMPLETED",
+            summaryStatus: "COMPLETED",
             summary: masterSummary,
           },
         });
         await publishProgress(documentId, { type: "completed" });
-
         console.log(
           `✅ [Job ${job.id}] Finished saving vectors and master summary!`,
         );
       } catch (error) {
-        await publishProgress(documentId, {
-          type: "failed",
-          message: "Document processing failed",
-        });
-
-        console.error(`❌ [Job ${job.id}] Failed:`, error);
+        console.error(`❌ [Job ${job.id}] Summarization failed:`, error);
         await prisma.document.update({
           where: { id: documentId },
-          data: { status: "FAILED" },
+          data: { summaryStatus: "FAILED" },
+        });
+        await publishProgress(documentId, {
+          type: "summary_failed",
+          message: "Document summary failed",
         });
       }
     },

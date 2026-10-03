@@ -36,6 +36,7 @@ export const getDocumentsByUserId = async (userId) => {
       createdAt: true,
       fileUrl: true,
       status: true,
+      summaryStatus: true,
     },
     orderBy: { createdAt: "desc" },
   });
