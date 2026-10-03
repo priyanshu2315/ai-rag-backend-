@@ -1,14 +1,21 @@
-import { llm, AI_PROVIDER, MODELS } from "../config/ai.js";
+import { getAI } from "../config/ai.js";
 
-const res = await llm.models.list();
-const ids = res.data.map((model) => model.id).sort();
-
-const inUse = new Set(Object.values(MODELS));
-
-console.log(`\n${AI_PROVIDER} — ${ids.length} models\n`);
-
-for (const id of ids) {
-  console.log(inUse.has(id) ? `  * ${id}` : `    ${id}`);
+const providers = new Map();
+for (const task of ["agent", "chat", "fast", "summary"]) {
+  const { client, model, providerName } = getAI(task);
+  if (!providers.has(providerName)) {
+    providers.set(providerName, { client, models: new Set() });
+  }
+  providers.get(providerName).models.add(model);
 }
 
-console.log(`\n* = configured in MODELS\n`);
+for (const [providerName, { client, models }] of providers) {
+  const res = await client.models.list();
+  const ids = res.data.map((model) => model.id).sort();
+  console.log(`\n${providerName} — ${ids.length} models\n`);
+  for (const id of ids) {
+    console.log(models.has(id) ? `  * ${id}` : `    ${id}`);
+  }
+}
+
+console.log(`\n* = configured for an AI task\n`);

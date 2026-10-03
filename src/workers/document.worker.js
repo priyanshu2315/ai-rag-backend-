@@ -9,7 +9,7 @@ import {
   MarkdownTextSplitter,
   RecursiveCharacterTextSplitter,
 } from "@langchain/textsplitters";
-import { llm, MODELS } from "../config/ai.js";
+import { chatCompletion } from "../config/ai.js";
 import { publishProgress } from "../config/uploadProgress.js";
 
 const redisConnection = new Redis(process.env.REDIS_URL, {
@@ -190,9 +190,8 @@ export const startWorker = () => {
 
           const prompt = `Summarize the following document section comprehensively using bullet points:\n\n${batchText}`;
 
-          const response = await llm.chat.completions.create({
+          const response = await chatCompletion("summary", {
             messages: [{ role: "user", content: prompt }],
-            model: MODELS.summary,
             temperature: 0,
           });
 
@@ -208,9 +207,8 @@ export const startWorker = () => {
 
           const masterPrompt = `Synthesize these section summaries into one cohesive, master summary of the entire document:\n\n${combinedSummariesText}`;
 
-          const masterResponse = await llm.chat.completions.create({
+          const masterResponse = await chatCompletion("summary", {
             messages: [{ role: "user", content: masterPrompt }],
-            model: MODELS.summary,
             temperature: 0,
           });
 

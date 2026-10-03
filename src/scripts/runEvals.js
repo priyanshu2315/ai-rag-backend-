@@ -4,7 +4,7 @@ import path from "path";
 // 1. Import your actual search function and config
 // (Update this path to wherever your hybrid search function lives)
 import * as aiService from "./../services/ai.service.js";
-import { llm, MODELS } from "../config/ai.js";
+import { chatCompletion } from "../config/ai.js";
 import { searchSingleDocument } from "../repositories/chat.repository.js";
 import { fileURLToPath } from "url";
 // 2. Initialize the LLM client (Groq is perfect for fast, cheap evals)
@@ -71,8 +71,7 @@ async function runEvals() {
     const contextText = bestChunks.map((c) => c.text).join("\n\n---\n\n");
 
     // Have the LLM generate an answer using the retrieved context
-    const agentResponse = await llm.chat.completions.create({
-      model: MODELS.agent, // <-- Perfectly in sync with your production code
+    const agentResponse = await chatCompletion("agent", {
       messages: [
         {
           role: "system",
@@ -104,8 +103,7 @@ async function runEvals() {
       Return ONLY a JSON object: {"faithfulness": 1, "relevance": 1}
     `;
 
-    const judgeResponse = await llm.chat.completions.create({
-      model: MODELS.agent, // Use a smarter model for the judge
+    const judgeResponse = await chatCompletion("agent", {
       messages: [{ role: "user", content: judgePrompt }],
       response_format: { type: "json_object" },
       temperature: 0,

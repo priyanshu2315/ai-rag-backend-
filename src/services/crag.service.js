@@ -1,5 +1,5 @@
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
-import { llm, MODELS } from "../config/ai.js";
+import { chatCompletion } from "../config/ai.js";
 import * as aiService from "./ai.service.js";
 import * as chatRepository from "../repositories/chat.repository.js";
 import crypto from "crypto";
@@ -45,9 +45,8 @@ Respond ONLY with JSON: {"queries": ["...", "..."]}`;
 
   let queries = [state.question];
   try {
-    const response = await llm.chat.completions.create({
+    const response = await chatCompletion("agent", {
       messages: [{ role: "user", content: prompt }],
-      model: MODELS.agent,
       temperature: 0,
       response_format: { type: "json_object" },
     });
@@ -88,12 +87,11 @@ const analyzeIntentNode = async (state, config) => {
   Respond ONLY with a JSON object: {"intent": "category", "page_number": 3} 
   (Set page_number to null if not asking for a specific page).`;
 
-  const response = await llm.chat.completions.create({
+  const response = await chatCompletion("fast", {
     messages: [
       { role: "system", content: prompt },
       { role: "user", content: state.question },
     ],
-    model: MODELS.fast,
     temperature: 0,
     response_format: { type: "json_object" },
   });
@@ -277,9 +275,8 @@ Respond ONLY with a JSON object: {"relevant_chunks": [chunk numbers]}. Example: 
 
   let keep;
   try {
-    const response = await llm.chat.completions.create({
+    const response = await chatCompletion("fast", {
       messages: [{ role: "user", content: prompt }],
-      model: MODELS.fast,
       temperature: 0,
       response_format: { type: "json_object" },
     });
@@ -364,9 +361,8 @@ const rewriteQueryNode = async (state, config) => {
   Write a single, highly specific alternative search keyword or phrase to try again.
   Do not include quotes or conversational text. Return only the raw query.`;
 
-  const response = await llm.chat.completions.create({
+  const response = await chatCompletion("fast", {
     messages: [{ role: "user", content: prompt }],
-    model: MODELS.fast,
     temperature: 0,
   });
 
@@ -465,9 +461,8 @@ const generateNode = async (state, config) => {
   });
   //   messages.push({ role: "tool", content: contextText }); // Pass the verified docs
 
-  const response = await llm.chat.completions.create({
+  const response = await chatCompletion("agent", {
     messages,
-    model: MODELS.agent, // Use your heavy 120b model for synthesis
     temperature: 0,
   });
 

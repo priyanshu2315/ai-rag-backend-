@@ -3,7 +3,6 @@ import { CohereClient } from "cohere-ai";
 import "dotenv/config";
 
 // Available on Gemini's API free tier, subject to the project's quotas.
-const GEMINI_DEFAULT_MODEL = "gemini-3.5-flash-lite";
 
 const PROVIDERS = {
   gemini: {
@@ -50,31 +49,64 @@ const PROVIDERS = {
     },
   },
 };
+const DEFAULT_TASK_PROVIDERS = {
+  agent: "groq",
+  chat: "groq",
+  fast: "groq",
+  summary: "openrouter",
+};
 
-const active = process.env.AI_PROVIDER || "groq";
-const provider = PROVIDERS[active];
+export const AI_PROVIDER = process.env.AI_PROVIDER || "mixed";
+const clients = new Map();
 
-if (!provider) {
-  throw new Error(
-    `Unknown AI_PROVIDER "${active}". Use one of: ${Object.keys(PROVIDERS).join(", ")}`,
-  );
+export function getAI(task) {
+  if (!(task in DEFAULT_TASK_PROVIDERS)) {
+    throw new Error(`Unknown AI task: ${task}`);
+  }
+
+  // A named AI_PROVIDER overrides every task. "mixed" enables task routing.
+  const providerName =
+    AI_PROVIDER === "mixed"
+      ? process.env[`AI_${task.toUpperCase()}_PROVIDER`] ||
+        DEFAULT_TASK_PROVIDERS[task]
+      : AI_PROVIDER;
+
+  const provider = PROVIDERS[providerName];
+  if (!provider) {
+    throw new Error(`Unknown AI provider: ${providerName}`);
+  }
+  if (!provider.apiKey) {
+    throw new Error(`Missing API key for ${providerName}`);
+  }
+
+  // Ignore task model overrides when AI_PROVIDER forces one provider.
+  // This prevents an OpenRouter model ID being sent to OpenCode.
+  const model =
+    AI_PROVIDER === "mixed"
+      ? process.env[`AI_${task.toUpperCase()}_MODEL`] || provider.models[task]
+      : provider.models[task];
+
+  if (!model) {
+    throw new Error(`No ${task} model configured for ${providerName}`);
+  }
+
+  if (!clients.has(providerName)) {
+    clients.set(
+      providerName,
+      new OpenAI({
+        baseURL: provider.baseURL,
+        apiKey: provider.apiKey,
+      }),
+    );
+  }
+
+  return { client: clients.get(providerName), model, providerName };
 }
 
-if (!provider.apiKey) {
-  throw new Error(
-    active === "gemini"
-      ? "Missing Gemini API key. Set GEMINI_API_KEY (or GOOGLE_API_KEY)."
-      : `Missing API key for AI provider "${active}"`,
-  );
+export function chatCompletion(task, options) {
+  const { client, model } = getAI(task);
+  return client.chat.completions.create({ ...options, model });
 }
-
-export const AI_PROVIDER = active;
-export const MODELS = provider.models;
-
-export const llm = new OpenAI({
-  baseURL: provider.baseURL,
-  apiKey: provider.apiKey,
-});
 
 export const RERANK_MODEL = "rerank-english-v3.0";
 

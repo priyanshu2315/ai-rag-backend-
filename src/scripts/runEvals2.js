@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import * as aiService from "./../services/ai.service.js";
-import { llm, MODELS } from "../config/ai.js";
+import { chatCompletion } from "../config/ai.js";
 import { searchSingleDocument } from "../repositories/chat.repository.js";
 import { fileURLToPath } from "url";
 
@@ -72,8 +72,7 @@ async function runEvals() {
 
     const contextText = bestChunks.map((c) => c.text).join("\n\n---\n\n");
 
-    const agentResponse = await llm.chat.completions.create({
-      model: MODELS.agent,
+    const agentResponse = await chatCompletion("agent", {
       messages: [
         {
           role: "system",
@@ -104,8 +103,7 @@ async function runEvals() {
       Return ONLY a JSON object: {"faithfulness": 1, "relevance": 1}
     `;
 
-    const judgeResponse = await llm.chat.completions.create({
-      model: MODELS.agent,
+    const judgeResponse = await chatCompletion("agent", {
       messages: [{ role: "user", content: judgePrompt }],
       response_format: { type: "json_object" },
       temperature: 0,

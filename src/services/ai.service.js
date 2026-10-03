@@ -9,7 +9,7 @@ import { gfm } from "turndown-plugin-gfm";
 import * as cheerio from "cheerio"; // <-- 1. Import Cheerio at the top of your file
 import { traceable } from "langsmith/traceable";
 import { LlamaParseReader } from "llama-cloud-services";
-import { llm, cohere, MODELS, RERANK_MODEL } from "../config/ai.js";
+import { chatCompletion, cohere, RERANK_MODEL } from "../config/ai.js";
 
 // 1. Extract text from the physical file
 // export const extractTextFromPDF = async (filepath) => {
@@ -282,9 +282,8 @@ export const getAgentResponse = traceable(
 
     const messagesWithContext = [systemPrompt, ...messages];
 
-    return await llm.chat.completions.create({
+    return await chatCompletion("agent", {
       messages: messagesWithContext,
-      model: MODELS.agent,
       temperature: 0,
       tools: [searchToolDefinition, summaryToolDefinition],
       tool_choice: "auto", // Allows the AI to decide if it needs to search or just reply
@@ -294,9 +293,8 @@ export const getAgentResponse = traceable(
 );
 
 export const askLLM = async (prompt, onToken) => {
-  const stream = await llm.chat.completions.create({
+  const stream = await chatCompletion("chat", {
     messages: [{ role: "user", content: prompt }],
-    model: MODELS.chat,
     temperature: 0, // ADD THIS: Forces strict, deterministic answers
     stream: true, // This tells Groq to stream the response
   });
@@ -336,12 +334,11 @@ Respond ONLY with a valid JSON object: {"status": "SAFE"} or {"status": "MALICIO
 
     console.log("inside maiclious funciton");
 
-    const response = await llm.chat.completions.create({
+    const response = await chatCompletion("fast", {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
-      model: MODELS.fast, // Or a smaller/cheaper model like Llama-3-8B if available
       temperature: 0,
       response_format: { type: "json_object" }, // Forces strict JSON output
     });
@@ -366,9 +363,8 @@ Output ONLY valid JSON: {"intent": "GREETING" | "GLOBAL_SUMMARIZE" | "SEARCH"}
 
 Message: "${userMessage}"`;
 
-  const response = await llm.chat.completions.create({
+  const response = await chatCompletion("fast", {
     messages: [{ role: "user", content: prompt }],
-    model: MODELS.fast,
     temperature: 0,
     response_format: { type: "json_object" },
   });
@@ -383,9 +379,8 @@ ${chatHistoryText}
 Question: ${userMessage}
 Standalone Query:`;
 
-  const response = await llm.chat.completions.create({
+  const response = await chatCompletion("fast", {
     messages: [{ role: "user", content: prompt }],
-    model: MODELS.fast,
     temperature: 0,
   });
   return response.choices[0].message.content.trim();
