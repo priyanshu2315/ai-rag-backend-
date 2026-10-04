@@ -1,0 +1,101 @@
+NORTHSTAR LOGISTICS - OPERATIONS REFERENCE PACK
+Synthetic test data. All companies, people, places and figures in this document are fictional.
+Edition: January 2024. Each section states the period to which its data applies.
+
+SECTION 1 - DELIVERY CONFLICT ESCALATION
+
+This procedure applies when a delivery-related conflict threatens a commitment made to a client. The delivery associate first records the conflict and attempts coordination with dispatch. If that does not resolve it, the associate escalates to the Delivery Lead, which is Tier 1. If the Delivery Lead cannot resolve the conflict within two business hours of accepting it, the Delivery Lead escalates to the Head of Operations, which is Tier 2. Tier 2 must resolve the conflict within a maximum of eight business hours from Tier 2 acceptance. This is a resolution deadline, not merely an acknowledgement deadline.
+
+The incident record must include the client commitment, shipment reference, owner, acceptance time and next action. Internal coordination continues while the incident is open. Notification requirements are recorded separately in the stakeholder communication policy.
+
+SECTION 2 - INTERNAL STOCK DISAGREEMENTS
+
+A disagreement about stock placement that does not affect a client commitment is handled by the Inventory Lead. The Inventory Lead informs the Warehouse Manager after the internal investigation. The normal resolution target is three business days. This procedure does not apply to a delivery conflict that threatens a client commitment. Its reporting rules and deadline must not be substituted for the delivery conflict procedure.
+
+SECTION 3 - COMPLETE WAREHOUSE COST REGISTER FOR 2023
+
+This is the complete set of Northstar warehouses operating in 2023. All amounts are total annual operating costs in INR, calculated on the same basis for calendar year 2023. These figures are final and there are no subsequent corrections to this register.
+
+Warehouse | 2023 annual operating cost
+Amber Depot | INR 7,200,000
+Cedar Depot | INR 9,400,000
+Granite Depot | INR 8,800,000
+Willow Depot | INR 10,600,000
+Harbor Depot | INR 11,900,000
+Juniper Depot | INR 13,700,000
+Maple Depot | INR 9,900,000
+Silver Depot | INR 12,100,000
+
+The register records operating cost, not revenue or storage capacity. Information on local management and addresses is held in the site directory.
+
+SECTION 4 - AMBER DEPOT SITE DIRECTORY
+
+For calendar year 2023, Amber Depot's manager was Dev Shah and its city was Copper Glen. The site handled packaged household goods and coordinated local truck arrivals. Its manager owned receiving schedules and shift planning. The city name identifies the municipality containing the depot; it is not the regional transport office. Municipal statistics are maintained in the civic annex.
+
+SECTION 5 - CEDAR DEPOT SITE DIRECTORY
+
+For calendar year 2023, Cedar Depot's manager was Anita Rao and its city was Pine Reach. The depot supported temperature-controlled storage. The manager coordinated maintenance windows, staffing and carrier access. Site costs were reported through the annual warehouse cost register. Municipal statistics are maintained separately from this directory.
+
+SECTION 6 - GRANITE DEPOT SITE DIRECTORY
+
+For calendar year 2023, Granite Depot's manager was Omar Das and its city was Stone Crossing. The site handled industrial parts. The manager controlled yard access and delivery appointment availability. Its city must not be confused with the location of its largest client. The civic annex contains municipal population figures.
+
+SECTION 7 - WILLOW DEPOT SITE DIRECTORY
+
+For calendar year 2023, Willow Depot's manager was Leena Bose and its city was Willow Bend. The depot handled furniture and bulky goods. The manager controlled appointment schedules and internal transport planning. The annual cost register uses the depot name; the civic annex uses the municipality name.
+
+SECTION 8 - CLIENT COMMITMENT COMMUNICATION POLICY
+
+For any delivery-related conflict affecting a client commitment, the Client Account Owner must be informed immediately when the risk is identified. This obligation applies even if the delivery team is still trying to resolve the conflict internally and even if no formal escalation has occurred. Internal handling is not a reason to delay informing the Client Account Owner. The Delivery Lead and Head of Operations remain the formal escalation owners described in the delivery conflict procedure.
+
+For a routine internal stock disagreement with no impact on a client commitment, the Inventory Lead follows the separate stock procedure. Do not apply that procedure's delayed reporting rule to a threatened client commitment. The incident record should show when the Client Account Owner was informed.
+
+SECTION 9 - HARBOR DEPOT SITE DIRECTORY
+
+For calendar year 2023, Harbor Depot's manager was Kavya Sen and its city was Bay Hollow. The depot supported container transfers and mixed freight. The manager coordinated unloading slots and safety inspections. The municipality and depot are separate administrative entities. The depot name alone should not be treated as the city name.
+
+SECTION 10 - MAPLE DEPOT SITE DIRECTORY
+
+For calendar year 2023, Maple Depot's manager was Farhan Ali and its city was Maple Ford. The site handled retail replenishment. The manager coordinated short-term storage and outbound consolidation. Population statistics refer to city residents, not depot employees or the number of deliveries.
+
+SECTION 11 - SILVER DEPOT SITE DIRECTORY
+
+For calendar year 2023, Silver Depot's manager was Meera Sethi and its city was Silver Marsh. The depot handled spare parts and repair returns. The manager controlled shift scheduling and carrier coordination. The cost register contains the site's annual operating costs using the same measurement basis as all other sites.
+
+SECTION 12 - CIVIC ANNEX: WESTERN MUNICIPALITIES
+
+The following are final municipal resident populations on 31 December 2023. They are not metropolitan-area populations, projections or employee counts.
+
+Municipality | Resident population
+Copper Glen | 210,500
+Pine Reach | 325,000
+Stone Crossing | 418,200
+Willow Bend | 275,600
+
+Use the city recorded in the site directory to select the appropriate municipality. A warehouse's operating cost does not establish the size of its city's population. These figures apply only to the stated date.
+
+SECTION 13 - CUSTOMER BILLING DISPUTES
+
+A billing dispute is first handled by Accounts Receivable. Unresolved billing disputes go to the Finance Director. The maximum resolution target at that tier is five business days. These are billing-specific roles and deadlines. A delivery conflict threatening a client commitment remains governed by the delivery conflict escalation procedure and the client commitment communication policy.
+
+SECTION 14 - JUNIPER DEPOT SITE DIRECTORY
+
+For calendar year 2023, Juniper Depot's manager was Nisha Verma and its city was Larkspur Vale. These assignments applied throughout the full calendar year. Juniper Depot handled medical equipment and scheduled replacement parts. Nisha Verma owned local staffing and dispatch coordination. Larkspur Vale is the municipality containing this depot; it is not Bay Hollow or Silver Marsh. Municipal resident counts are recorded in the civic annex.
+
+SECTION 15 - CIVIC ANNEX: EASTERN MUNICIPALITIES
+
+The following are final municipal resident populations on 31 December 2023. They are not metropolitan-area populations, projections or employee counts.
+
+Municipality | Resident population
+Bay Hollow | 680,100
+Maple Ford | 390,400
+Silver Marsh | 512,300
+Larkspur Vale | 842,600
+
+These figures refer to residents inside municipal boundaries. There are no estimates for other dates in this annex. Use the site directory to establish which municipality belongs to a warehouse before selecting a population figure.
+
+SECTION 16 - REPORTING DEFINITIONS
+
+For this reference pack, calendar year 2023 runs from 1 January through 31 December 2023. An annual operating cost is the full calendar-year cost of running a warehouse. It is distinct from revenue, profit, client invoice value and city expenditure. A named site manager is responsible for the warehouse; a named escalation owner is responsible for a particular incident tier. These roles must not be treated as interchangeable.
+
+The delivery conflict procedure measures its Tier 2 resolution deadline from Tier 2 acceptance. It does not describe a guaranteed total duration from the original detection of the conflict. All business-hour deadlines in this pack must be reported as business hours rather than converted into calendar hours.

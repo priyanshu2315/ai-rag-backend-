@@ -47,7 +47,7 @@ export const startWorker = () => {
         const pages = await aiService.extractDocPages(filepath, mimetype);
 
         let globalChunkIndex = 0;
-
+      
         for (let i = 0; i < pages.length; i++) {
           const pageNumber = i + 1;
           const pageText = pages[i].text || "";

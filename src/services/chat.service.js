@@ -51,7 +51,7 @@ export const generateAnswer = traceable(
     );
 
     const finalAnswer = finalState?.generation;
-    console.log(finalAnswer, "finalAnswer");
+    // console.log(finalAnswer, "finalAnswer");
     // 4. Stream and Save
     onEvent({ type: "status", message: "Synthesizing final response..." });
     const words = finalAnswer?.split(" ");

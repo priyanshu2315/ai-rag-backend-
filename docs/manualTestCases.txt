@@ -1,0 +1,15 @@
+claude mail -> priyanshus.vayuz@gmail.com
+
+
+Broke Chunking 
+files-> "C:\Users\priya\Downloads\Chunking_Stress_Test_Document.pdf"
+-> "C:\Users\priya\Downloads\Chunking_Stress_Test_Answer_Key.pdf"
+claude session for file -> https://claude.ai/chat/52f93eff-507f-491f-ac29-cf7cc6045509
+
+
+Broke chunking and search Main(search) -> 
+
+questions -> Which warehouse had the highest operating costs in 2023? Who managed that warehouse during 2023? In which city was it located? What was that city's population (city proper) on 31 December 2023?
+
+file-> "C:\Users\priya\Downloads\Part_A_Operations_Reference.pdf"
+claude session for file -> https://claude.ai/chat/52f93eff-507f-491f-ac29-cf7cc6045509
