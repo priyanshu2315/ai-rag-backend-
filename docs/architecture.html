@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DocuMind Architecture Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -59,17 +64,33 @@
   .note.next h2 { color: var(--amber); }
   .note ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; line-height: 1.5; font-size: 14px; }
   code { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--mono); }
+  .flow { border: 1px solid var(--line); border-radius: 12px; padding: 20px; background: var(--panel); }
+  .flow h2 { margin: 0 0 8px; font-size: 20px; }
+  .flow p { line-height: 1.6; }
+  .steps { padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; counter-reset: step; }
+  .steps li { padding: 14px; border: 1px solid var(--line); border-radius: 8px; line-height: 1.55; counter-increment: step; }
+  .steps li::before { content: counter(step) " → "; color: var(--teal); font-weight: 600; }
+  .steps strong { display: inline; }
+  .steps p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+  .table-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; line-height: 1.5; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+  th { color: var(--teal); }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; line-height: 1.6; }
+  .warning { border-left: 3px solid var(--amber); padding-left: 14px; }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header>
     <h1>DocuMind RAG architecture, mapped to the code</h1>
-    <p class="sub">The reference RAG architecture redrawn for this project. Every part names the function that implements it, and its dot shows how far it is built.</p>
+    <p class="sub">Reviewed 5 October 2026 against the backend. The map shows the current upload and question paths; the detailed flows below record the recent changes and confirmed gaps. This repository contains the backend and documentation, not the application frontend.</p>
     <div class="counts">
-      <span class="count"><span class="dot built"></span>20 built</span>
-      <span class="count"><span class="dot part"></span>7 partly built</span>
-      <span class="count"><span class="dot miss"></span>7 not built yet</span>
-      <span class="count"><span style="color:var(--teal)">★</span>5 not in the reference</span>
+      <span class="count"><span class="dot built"></span>Implemented</span>
+      <span class="count"><span class="dot part"></span>Partial / known gaps</span>
+      <span class="count"><span class="dot miss"></span>Not implemented</span>
+      <span class="count"><span style="color:var(--teal)">★</span>Project additions</span>
     </div>
   </header>
 
@@ -167,7 +188,7 @@
         <use href="#s-built" x="705" y="177.5"/>
         <text class="lbl" x="714" y="182">Planner</text>
         <text class="fn" x="714" y="198">decomposeNode()</text>
-        <text class="fn" x="714" y="213">≤ 4 search steps</text>
+        <text class="fn" x="714" y="213">≤ 4 independent queries</text>
         <use href="#s-built" x="457" y="245.5"/>
         <text class="lbl" x="466" y="250">Tool Execution</text>
         <text class="fn" x="466" y="266">retrieveNode() → rerankChunks()</text>
@@ -176,6 +197,8 @@
         <use href="#s-built" x="705" y="245.5"/>
         <text class="lbl" x="714" y="250">Step Streaming<tspan class="star" dx="6">★</tspan></text>
         <text class="fn" x="714" y="266">emit() → SSE events</text>
+        <text class="fn" x="714" y="281">candidates → final context</text>
+        <text class="fn" x="714" y="296">same-section neighbors</text>
 
         <!-- ============ VALIDATION ============ -->
         <rect x="960" y="40" width="300" height="220" rx="12" fill="none" stroke="#f0b64a" stroke-width="3" opacity=".45" filter="url(#glow)"/>
@@ -224,10 +247,11 @@
         <use href="#s-built" x="987" y="500.5"/>
         <text class="lbl" x="996" y="505">Rewriter<tspan class="star" dx="6">★</tspan></text>
         <text class="fn" x="996" y="521">rewriteQueryNode()</text>
+        <text class="fn" x="996" y="536">no evidence · 3 rounds max</text>
         <use href="#s-built" x="987" y="548.5"/>
         <text class="lbl" x="996" y="553">Generator</text>
-        <text class="fn" x="996" y="569">generateNode() · 120b</text>
-        <text class="fn off" x="982" y="600">one pipeline, not separate agents</text>
+        <text class="fn" x="996" y="569">generateNode() · agent role</text>
+        <text class="fn" x="982" y="600">getAI(task) selects provider/model</text>
 
         <!-- ============ DATABASE ============ -->
         <rect x="1310" y="380" width="270" height="235" rx="12" fill="none" stroke="#b98cff" stroke-width="3" opacity=".45" filter="url(#glow)"/>
@@ -306,17 +330,17 @@
         <text class="chip" x="1054" y="733">CHUNKING</text>
         <use href="#s-built" x="1057" y="760.5"/>
         <text class="lbl" x="1066" y="765">Parent/Child Split<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="1066" y="781">parentSplitter · 1200</text>
-        <text class="fn" x="1066" y="796">childSplitter · 400</text>
-        <use href="#s-part" x="1057" y="830.5"/>
+        <text class="fn" x="1066" y="781">buildDocumentChunks()</text>
+        <text class="fn" x="1066" y="796">1200/200 · 400/50 chars</text>
+        <use href="#s-miss" x="1057" y="830.5"/>
         <text class="lbl" x="1066" y="835">Table Preserver</text>
-        <text class="fn" x="1066" y="851">tables can be split</text>
-        <use href="#s-miss" x="1057" y="888.5"/>
-        <text class="lbl off" x="1066" y="893">Heading Detector</text>
-        <text class="fn off" x="1066" y="909">not built yet</text>
+        <text class="fn" x="1066" y="851">no repeated column headers</text>
+        <use href="#s-part" x="1057" y="888.5"/>
+        <text class="lbl" x="1066" y="893">Sections &amp; Heading Paths</text>
+        <text class="fn" x="1066" y="909">formatting can misassign scope</text>
         <use href="#s-built" x="1057" y="946.5"/>
         <text class="lbl" x="1066" y="951">Embeddings</text>
-        <text class="fn" x="1066" y="967">getEmbedding() · MiniLM</text>
+        <text class="fn" x="1066" y="967">MiniLM · ≤256 tokens · 384D</text>
 
         <!-- metadata -->
         <rect x="1310" y="705" width="260" height="280" rx="10" fill="#11141b" stroke="#6fa8ff" stroke-width="1.3"/>
@@ -325,38 +349,129 @@
         <use href="#s-built" x="1337" y="760.5"/>
         <text class="lbl" x="1346" y="765">Summary Generator</text>
         <text class="fn" x="1346" y="781">batch → master summary</text>
-        <text class="fn" x="1346" y="796">Document.summary</text>
+        <text class="fn" x="1346" y="796">summaryStatus ≠ status</text>
         <use href="#s-part" x="1337" y="830.5"/>
-        <text class="lbl" x="1346" y="835">Keyword Extractor</text>
-        <text class="fn" x="1346" y="851">to_tsvector at search</text>
+        <text class="lbl" x="1346" y="835">Contextual Search Text</text>
+        <text class="fn" x="1346" y="851">filename + breadcrumb + text</text>
         <use href="#s-miss" x="1337" y="888.5"/>
         <text class="lbl off" x="1346" y="893">Question Generator</text>
         <text class="fn off" x="1346" y="909">not built yet</text>
         <use href="#s-built" x="1337" y="946.5"/>
         <text class="lbl" x="1346" y="951">Progress Events<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="1346" y="967">publishProgress() → SSE</text>
+        <text class="fn" x="1346" y="967">live SSE · REST saved chunks</text>
       </svg>
     </div>
     <figcaption>Solid arrows show where data moves. The dashed red line is red-team testing, and the dashed amber line is the feedback loop, which is done by hand today. On a phone, scroll the diagram sideways.</figcaption>
   </figure>
 
+  <section class="flow" aria-labelledby="upload-flow">
+    <h2 id="upload-flow">Upload → searchable document → summary</h2>
+    <p>The work completed on 3–4 October separates search readiness from summary readiness and carries section context into stored chunks. Example: a school handbook's “Late pickup” section continues on another page.</p>
+    <ol class="steps">
+      <li><strong>Store and queue</strong><p>The authenticated upload stores the file in Supabase and enqueues BullMQ work. The API returns 202 with the document ID. Ingestion starts at <code>PROCESSING</code>; summary starts at <code>PENDING</code>.</p></li>
+      <li><strong>Read pages</strong><p><code>extractDocPages()</code> returns page objects containing Markdown for PDF, DOCX, and images. TXT/Markdown uploads return one text object. The worker emits <code>page_extracted</code> with the complete extracted text.</p></li>
+      <li><strong>Track sections</strong><p>The heading stack persists across pages. “Late pickup” stays in the breadcrumb of ordinary continuation text. Section groups exist in memory; their IDs and paths are saved in chunk metadata. Heading formatting still needs validation.</p></li>
+      <li><strong>Create parents and children</strong><p>Each page part becomes parents of up to 1,200 characters with 200 overlap, then children of up to 400 with 50 overlap. Source <code>text</code> is separate from <code>searchText</code>: filename + section path + passage. Size settings count characters before the context prefix.</p></li>
+      <li><strong>Link and embed</strong><p>Parents link to previous/next parents in the same section. Children embed their full <code>searchText</code> into 384 numbers. A tokenizer checks at most 256 tokens; oversized input fails ingestion rather than silently losing text.</p></li>
+      <li><strong>Save and enable questions</strong><p><code>saveDocumentChunks()</code> saves parents and children in a transaction. The worker sets <code>status=COMPLETED</code>, <code>summaryStatus=PROCESSING</code>, then emits <code>chunks_ready</code>. Questions can start now.</p></li>
+      <li><strong>Generate the summary</strong><p>The worker batches full extracted text, summarizes the batches, and saves a master summary. It sets <code>summaryStatus=COMPLETED</code> or <code>FAILED</code>. Summary failure leaves the searchable chunks available.</p></li>
+    </ol>
+  </section>
+
+  <section class="flow" aria-labelledby="search-flow">
+    <h2 id="search-flow">Question → evidence → answer</h2>
+    <ol class="steps">
+      <li><strong>Check access and input</strong><p>JWT and ownership checks protect document access. <code>checkMaliciousIntent()</code> screens input before the CRAG graph; accepted questions load conversation history.</p></li>
+      <li><strong>Choose the path</strong><p>Intent routes greetings to generation, summary requests to the saved summary with readiness checks, page requests to page chunks, and factual questions to decomposition.</p></li>
+      <li><strong>Split the question</strong><p><code>decomposeNode()</code> creates up to four independent queries, then searches them sequentially. It does not insert facts found by one query into the next query.</p></li>
+      <li><strong>Search contextual children</strong><p>Vector and Postgres full-text search each collect up to 20 child hits. RRF returns up to 15 parent candidates per query. Single-document RRF uses 10; user-wide search uses 60 and filters owned completed documents. Full-text ranking uses <code>ts_rank_cd</code>, not BM25.</p></li>
+      <li><strong>Rerank and expand</strong><p>Cohere chooses up to three parent <code>searchText</code> passages per query. Parent IDs are deduplicated. Immediate same-section previous/next parents are added, capped at 24 total parents; expansion is not recursive.</p></li>
+      <li><strong>Grade or retry</strong><p>One grading call evaluates the combined evidence against the original question. Any retained evidence proceeds to generation. With none, rewrite the original question into one alternative query. Three retrieval rounds maximum, not three retries for each subquery. Grader errors currently retain the evidence.</p></li>
+      <li><strong>Generate and deliver</strong><p>Generation receives contextual passages, history, and page citations, with untrusted input wrapped in random tags. The completed answer is sent as word events and saved as a message. A relevance decision does not guarantee a correct or complete answer.</p></li>
+    </ol>
+  </section>
+
+  <section class="flow" aria-labelledby="routing-readiness">
+    <h2 id="routing-readiness">Provider routing and two readiness states</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Setting or state</th><th>Current behavior</th></tr></thead>
+        <tbody>
+          <tr><td><code>AI_PROVIDER=mixed</code></td><td>Defaults: agent/chat/fast → Groq, summary → OpenRouter. Per-task provider and model environment overrides are allowed.</td></tr>
+          <tr><td><code>AI_PROVIDER=opencode</code> (or another named provider)</td><td>Every LLM task uses that provider's configured models; per-task provider and model overrides are ignored. Restart the process after environment changes. Embeddings and Cohere remain separate.</td></tr>
+          <tr><td><code>status=PROCESSING</code></td><td>Chunks are not ready. Wait before document questions.</td></tr>
+          <tr><td><code>status=COMPLETED</code>, summary pending/processing</td><td>Document questions are available; the summary is not ready.</td></tr>
+          <tr><td><code>summaryStatus=COMPLETED</code></td><td>Summary requests require the saved, nonempty summary as well as this state.</td></tr>
+          <tr><td><code>summaryStatus=FAILED</code></td><td>The summary is unavailable; completed ingestion still permits questions.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="flow" aria-labelledby="inspection">
+    <h2 id="inspection">What can be inspected</h2>
+    <p><code>GET /api/documents/get-all-parent-chunk/:docId</code> returns owned parents with raw/contextual text, metadata, links, and child counts. <code>GET /api/documents/get-all-child-chunk/:parentId</code> returns their children, vectors, dimensions, and embedding diagnostics. Rebuild section groups from the saved metadata.</p>
+    <pre>Parent / child metadata:
+document_title (filename), heading_path, section_id, section_part_index,
+page_number, source_pages, chunk_index, chunker_version
+Child additions: child_index, embedding diagnostics
+Parent links: prevParentId, nextParentId (same-section reading order)</pre>
+    <p><code>GET /api/documents/progress/:docId</code> emits live extraction, heading, section, chunk, link, embedding, save, and readiness events. Chat emits candidates, reranked selections, neighbor additions, grading decisions, and final generation context. Event IDs and timestamps help correlate the events with console logs.</p>
+    <p class="warning"><strong>Current change: Redis history is disabled to save storage.</strong> <code>getProgressHistory()</code> returns an empty list. Refresh can reload saved chunks through REST but cannot recover the old upload timeline or original parsed page text. Detailed chat events are also not stored with message history. Missing live source-page data must not be shown as a measured “0”. The old 24-hour replay description in <a href="frontend-chunk-inspector.md">the frontend handoff</a> is stale.</p>
+    <p>Detailed logs: <code>[Document pipeline]</code>, <code>[CRAG details]</code>, and standalone <code>[Chunking]</code>. <code>RAG_DEBUG=false</code> disables these verbose JSON logs; other worker logs remain. Events marked <code>preparing</code> precede the database commit.</p>
+  </section>
+
+  <section class="flow" aria-labelledby="stress-gaps">
+    <h2 id="stress-gaps">Confirmed stress-test gaps — fixes still pending</h2>
+    <p>Compared both uploads of <code>Chunking_Stress_Test_Document.pdf</code>: after the parser prompt update <code>ec020eb3-9aff-44cf-ae63-2f361bfa32e2</code>, before <code>c57f4a08-8043-48b5-88f3-d01bad4aab85</code>. The newer prompt improved some headings but did not repair these stored relationships.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Confirmed problem</th><th>Effect</th><th>Proposed next work, not implemented</th></tr></thead>
+        <tbody>
+          <tr><td>5A removes the handbook subtitle; 18 is nested under 17; 19 loses document headings.</td><td>Chunks inherit an incomplete or incorrect section path.</td><td>Preserve generic document identity separately and validate heading relationships instead of accepting parser formatting as truth.</td></tr>
+          <tr><td>Page 4 financial rows D08–D12 inherit section 6 (pallet standards).</td><td>A table continuation is labeled with an unrelated topic.</td><td>Recognize interrupted table continuations and associate them with section 5.</td></tr>
+          <tr><td>5A explains section 5, but no reference relationship exists.</td><td>The table's column explanation can be missed during retrieval.</td><td>Resolve explicit section/table references separately from previous/next reading order.</td></tr>
+          <tr><td>Kettleby's parent and child rows lack headers; headers are two parents earlier.</td><td>158,744 (2022 census) can be mistaken for 163,482 (2023 city proper).</td><td>Repeat column labels, dates, units, and row identity in every parent/child table piece.</td></tr>
+          <tr><td>Dependent questions are split into independent searches.</td><td>Later searches cannot reliably target an entity discovered by an earlier result.</td><td>Plan dependent retrieval after the chunking defects are addressed and evaluated.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Both uploads have identical stored page-11 parent text. Original cached extraction for the earlier upload preserved the correct headers and Kettleby numbers; splitting separated them. The complete context used for the reported wrong answer was not captured, so this confirms a chunking defect without proving the exact generation failure.</p>
+    <pre>Labels every Kettleby table piece should retain:
+City: Kettleby
+Census — 1 January 2022: 158,744
+Metropolitan area — 31 December 2023: 361,092
+City proper — 31 December 2023: 163,482</pre>
+  </section>
+
+  <section class="flow" aria-labelledby="migration-history">
+    <h2 id="migration-history">Database changes recorded on 3–4 October</h2>
+    <p><code>20261003120000_add_document_summary_status</code> adds summary readiness. <code>20261004112441_contextual_chunking</code> adds required parent/child <code>searchText</code>, parent link fields, and the child contextual full-text GIN index. The user approved a development database reset and migration application on 4 October, followed by client generation. This history does not authorize another reset.</p>
+    <p>The contextual migration assumes empty chunk tables; populated databases need an approved data plan. There is no compatibility path for older chunk formats because the user chose fresh uploads. Generate Prisma Client explicitly when required. Verify live index availability before making performance claims; earlier migration SQL drops vector indexes. Follow <a href="../PRISMA_WORKFLOW.md">the project migration workflow</a> with the installed Prisma version.</p>
+  </section>
+
   <section class="notes">
     <div class="note plus">
       <h2>Beyond the reference</h2>
       <ul>
-        <li>Hybrid search: pgvector plus Postgres full-text, fused and re-ranked with Cohere in <code>rerankChunks()</code>.</li>
-        <li>Corrective loop: <code>gradeDocumentsNode()</code> grades all chunks together, and <code>rewriteQueryNode()</code> retries with a new search.</li>
+        <li>Contextual children feed hybrid search; Cohere reranks parents, then immediate same-section neighbors expand the evidence.</li>
+        <li>The corrective loop grades the collection and rewrites only when no evidence remains, with at most three retrieval rounds.</li>
         <li>Untrusted-text wrappers: retrieved text and questions sit inside random nonce tags in <code>generateNode()</code>.</li>
-        <li>Live progress: <code>publishProgress()</code> and <code>streamProgress()</code> for uploads, <code>emit()</code> for every answer step.</li>
+        <li>Live progress and detailed inspection: saved parent/child REST responses, upload SSE, chat retrieval events, and verbose console logs.</li>
+        <li>Separate chunk and summary readiness lets questions start before summary generation finishes.</li>
       </ul>
     </div>
     <div class="note next">
       <h2>Next to build</h2>
       <ul>
-        <li>Heading-aware chunking that keeps tables whole.</li>
+        <li>Validate heading hierarchy, preserve document identity, and recognize interrupted table continuations.</li>
+        <li>Keep table column labels, dates, and units with every piece; connect explicit references such as 5A → section 5.</li>
+        <li>Evaluate section scope and table labels on stored parents and children before claiming the failures are fixed.</li>
         <li>Question generator: store the questions each chunk answers and search them too.</li>
         <li>Latency and cost per question in the eval scripts.</li>
       </ul>
     </div>
   </section>
 </div>
+</body>
+</html>
