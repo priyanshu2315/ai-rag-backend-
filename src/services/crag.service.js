@@ -92,15 +92,73 @@ const analyzeIntentNode = async (state, config) => {
     query: "Understanding your question...",
   });
 
-  const prompt = `You are an intent classifier. Analyze the user's input and categorize it.
-  Categories:
-  1. "greeting": Casual chat, hellos, or thank yous.
-  2. "summary": Asking for a general overview or summary of the document.
-  3. "page": Asking to retrieve or read a specific page number.
-  4. "search": Factual questions requiring database retrieval.
-  
-  Respond ONLY with a JSON object: {"intent": "category", "page_number": 3} 
-  (Set page_number to null if not asking for a specific page).`;
+  // const prompt = `You are an intent classifier. Analyze the user's input and categorize it.
+  // Categories:
+  // 1. "greeting": Casual chat, hellos, or thank yous.
+  // 2. "summary": Asking for a general overview or summary of the document.
+  // 3. "page": Asking to retrieve or read a specific page number.
+  // 4. "search": Factual questions requiring database retrieval.
+
+  // Respond ONLY with a JSON object: {"intent": "category", "page_number": 3}
+  // (Set page_number to null if not asking for a specific page).`;
+  const prompt = `You are an intent classifier for a document question-answering system.
+Choose the route needed to answer the user's request.
+
+Categories:
+
+1. "greeting"
+   Simple greetings, thanks, or casual conversation without a document
+   information request.
+   If the message also asks a document question, classify that question.
+
+2. "summary"
+   A general overview of the entire document that can be answered using
+   its precomputed summary.
+   Examples:
+   - "Summarize this document."
+   - "Give me an overall overview."
+   - "What is this document generally about?"
+
+   Do not choose summary just because the user says "list", "explain",
+   "overview", or "summarize".
+
+3. "page"
+   A request to display or read a specific numbered page.
+   Examples:
+   - "Show page 3."
+   - "Read page 12."
+
+   A factual question that mentions a page still belongs to search.
+   Example: "Who is the manager mentioned on page 3?" → search.
+
+4. "search"
+   Requests to find, list, extract, compare, calculate, or explain
+   particular facts from the document.
+
+   Choose search when the requested information is limited by a year,
+   date, person, organization, place, topic, section, condition, or
+   other specific criterion.
+
+   A summary of a particular topic or selected facts also requires search.
+   Examples:
+   - "List down events happening in 2014." → search
+   - "Summarize the events from 2014." → search
+   - "Explain the leave policy." → search
+   - "List all warehouse managers." → search
+   - "Which warehouse had the highest operating costs?" → search
+   - "Compare the rules before and after 2023." → search
+   - "Give an overview of the safety incidents." → search
+
+Decision rules:
+- Classify by the information needed, not the requested writing style.
+- Use summary only for a general overview of the whole document.
+- If any part requires finding particular facts, choose search.
+- If uncertain, choose search.
+- Do not answer the question. Return only the classification.
+- page_number must be an integer only for page intent; otherwise null.
+
+Return ONLY valid JSON:
+{"intent": "greeting|summary|page|search", "page_number": null}`;
 
   const response = await chatCompletion("fast", {
     messages: [
@@ -262,7 +320,10 @@ const retrieveNode = async (state, config) => {
       documents: best,
     });
     for (const chunk of best) {
-      collected.set(chunk.id, { ...chunk, retrievalOrigin: { type: "search" } });
+      collected.set(chunk.id, {
+        ...chunk,
+        retrievalOrigin: { type: "search" },
+      });
     }
 
     emit(config, {
@@ -281,7 +342,9 @@ const retrieveNode = async (state, config) => {
     type: "neighbor_expansion",
     attempt: state.loopCount + 1,
     seedParentIds: seeds.map((parent) => parent.id),
-    addedParentIds: documents.filter((parent) => !collected.has(parent.id)).map((parent) => parent.id),
+    addedParentIds: documents
+      .filter((parent) => !collected.has(parent.id))
+      .map((parent) => parent.id),
     documents,
   });
 
