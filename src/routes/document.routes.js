@@ -17,8 +17,8 @@ const router = express.Router();
 router.post("/upload", requireAuth, upload.single("file"), uploadDocument);
 router.get("/", requireAuth, listDocuments);
 router.get("/my-documents", requireAuth, getMyDocuments);
-router.get("/get-all-parent-chunk/:docId", getAllParentChunks);
-router.get("/get-all-child-chunk/:parentId", getChildChunksOfParent);
+router.get("/get-all-parent-chunk/:docId", requireAuth, getAllParentChunks);
+router.get("/get-all-child-chunk/:parentId", requireAuth, getChildChunksOfParent);
 router.get("/progress/:docId", requireAuth, streamProgress);
 router.delete("/:docId", requireAuth, deleteDocument);
 

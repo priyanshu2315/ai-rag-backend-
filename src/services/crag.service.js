@@ -9,7 +9,10 @@ export const GraphState = Annotation.Root({
   question: Annotation({ reducer: (x, y) => y, default: () => "" }),
   documents: Annotation({ reducer: (x, y) => y, default: () => [] }),
   generation: Annotation({ reducer: (x, y) => y, default: () => "" }),
-  summaryUnavailable: Annotation({ reducer: (x, y) => y, default: () => false }),
+  summaryUnavailable: Annotation({
+    reducer: (x, y) => y,
+    default: () => false,
+  }),
   loopCount: Annotation({ reducer: (x, y) => x + y, default: () => 0 }),
   documentId: Annotation({ reducer: (x, y) => y, default: () => null }),
   userId: Annotation({ reducer: (x, y) => y, default: () => null }),
@@ -19,7 +22,17 @@ export const GraphState = Annotation.Root({
   subQueries: Annotation({ reducer: (x, y) => y, default: () => [] }),
 });
 
-const emit = (config, event) => config?.configurable?.onEvent?.(event);
+const emit = (config, event) => {
+  const payload = {
+    ...event,
+    eventId: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+  if (process.env.RAG_DEBUG !== "false") {
+    console.log("[CRAG details]", JSON.stringify(payload));
+  }
+  config?.configurable?.onEvent?.(payload);
+};
 
 const decomposeNode = async (state, config) => {
   emit(config, {
@@ -66,6 +79,7 @@ Respond ONLY with JSON: {"queries": ["...", "..."]}`;
     type: "tool_finish",
     tool: "Question Splitter",
     message: `${queries.length} search(es): ${queries.join(" | ")}`,
+    queries,
   });
   return { subQueries: queries };
 };
@@ -110,6 +124,8 @@ const analyzeIntentNode = async (state, config) => {
     type: "tool_finish",
     tool: "Intent Classifier",
     message: intentMessages[result.intent] || intentMessages.search,
+    intent: result.intent,
+    pageNumber: result.page_number || null,
   });
 
   return { intent: result.intent, page_number: result.page_number || null };
@@ -131,7 +147,9 @@ const fetchSummaryNode = async (state, config) => {
     return unavailable("Select a document before requesting its summary.");
   }
 
-  const document = await chatRepository.getDocumentSummaryState(state.documentId);
+  const document = await chatRepository.getDocumentSummaryState(
+    state.documentId,
+  );
   if (!document) {
     return unavailable("Document not found.");
   }
@@ -160,7 +178,9 @@ const fetchSummaryNode = async (state, config) => {
 
   // Package the ready summary as a document so the answer can cite it.
   return {
-    documents: [{ text: document.summary, metadata: { page_number: "Summary" } }],
+    documents: [
+      { text: document.summary, metadata: { page_number: "Summary" } },
+    ],
   };
 };
 
@@ -227,9 +247,23 @@ const retrieveNode = async (state, config) => {
           15,
         );
 
+    emit(config, {
+      type: "retrieval_candidates",
+      attempt: state.loopCount + 1,
+      query,
+      documents: matched,
+    });
     const best =
       matched.length > 0 ? await aiService.rerankChunks(query, matched, 3) : [];
-    for (const chunk of best) collected.set(chunk.id || chunk.text, chunk);
+    emit(config, {
+      type: "rerank_result",
+      attempt: state.loopCount + 1,
+      query,
+      documents: best,
+    });
+    for (const chunk of best) {
+      collected.set(chunk.id, { ...chunk, retrievalOrigin: { type: "search" } });
+    }
 
     emit(config, {
       type: "tool_finish",
@@ -238,7 +272,19 @@ const retrieveNode = async (state, config) => {
     });
   }
 
-  const documents = [...collected.values()];
+  const seeds = [...collected.values()];
+  const documents = await chatRepository.getParentNeighbors(
+    seeds,
+    state.userId,
+  );
+  emit(config, {
+    type: "neighbor_expansion",
+    attempt: state.loopCount + 1,
+    seedParentIds: seeds.map((parent) => parent.id),
+    addedParentIds: documents.filter((parent) => !collected.has(parent.id)).map((parent) => parent.id),
+    documents,
+  });
+
   emit(config, {
     type: "status",
     message: `Collected ${documents.length} unique chunks from ${queries.length} search(es).`,
@@ -266,10 +312,12 @@ const gradeDocumentsNode = async (state, config) => {
   }
 
   const numberedChunks = state.documents
-    .map(
-      (doc, i) =>
-        `[Chunk ${i + 1}] (Page ${doc.metadata?.page_number || "Unknown"})\n${doc.text}`,
-    )
+    .map((doc, index) => {
+      const page = doc.metadata?.page_number || "Unknown";
+      const text = doc.searchText;
+
+      return `[Chunk ${index + 1}] (Page ${page})\n${text}`;
+    })
     .join("\n\n---\n\n");
 
   const prompt = `You are selecting which document chunks are useful for answering a question.
@@ -292,6 +340,7 @@ Drop a chunk only if it has nothing to do with the question.
 Respond ONLY with a JSON object: {"relevant_chunks": [chunk numbers]}. Example: {"relevant_chunks": [1, 3]}`;
 
   let keep;
+  let decisionSource = "model";
   try {
     const response = await chatCompletion("fast", {
       messages: [{ role: "user", content: prompt }],
@@ -303,9 +352,23 @@ Respond ONLY with a JSON object: {"relevant_chunks": [chunk numbers]}. Example: 
   } catch (error) {
     console.error(`[CRAG] Grader failed, keeping all chunks:`, error.message);
     keep = new Set(state.documents.map((_, i) => i + 1));
+    decisionSource = "grader_error_fallback";
   }
 
   const relevantDocs = state.documents.filter((_, i) => keep.has(i + 1));
+  emit(config, {
+    type: "grading_result",
+    attempt: state.loopCount,
+    decisionSource,
+    keptParentIds: relevantDocs.map((parent) => parent.id),
+    decisions: state.documents.map((parent, index) => ({
+      parentId: parent.id,
+      documentId: parent.documentId,
+      page: parent.metadata.page_number,
+      sectionId: parent.metadata.section_id,
+      relevant: keep.has(index + 1),
+    })),
+  });
 
   state.documents.forEach((doc, i) => {
     emit(config, {
@@ -390,10 +453,10 @@ const rewriteQueryNode = async (state, config) => {
     type: "tool_finish",
     tool: "Query Rewriter",
     message: `New query: ${newQuery}`,
+    query: newQuery,
   });
   return { subQueries: [newQuery] };
 };
-
 
 // 5. Node: Generate Final Answer
 const generateNode = async (state, config) => {
@@ -425,10 +488,18 @@ const generateNode = async (state, config) => {
       ? state.documents
           .map((chunk) => {
             const page = chunk.metadata?.page_number || "Unknown";
-            return `<${docTag} source_id="Page ${page}">\n${chunk.text}\n</${docTag}>`;
+            const text =
+              state.intent === "summary" ? chunk.text : chunk.searchText;
+            return `<${docTag} source_id="Page ${page}">\n${text}\n</${docTag}>`;
           })
           .join("\n\n---\n\n")
       : "SEARCH_RESULT: Empty. The document does not contain the complete answer.";
+  emit(config, {
+    type: "generation_context",
+    intent: state.intent,
+    documents: state.documents,
+    contextText,
+  });
 
   let systemPromptContent = "";
 

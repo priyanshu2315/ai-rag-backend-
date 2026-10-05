@@ -1,6 +1,11 @@
 import { supabase } from "../config/supabase.js";
 import * as documentService from "../services/document.service.js";
-import { createSubscriber, getChannel } from "../config/uploadProgress.js";
+import {
+  createSubscriber,
+  getChannel,
+  getProgressHistory,
+} from "../config/uploadProgress.js";
+import { randomUUID } from "node:crypto";
 import prisma from "../config/db.js";
 
 export const streamProgress = async (req, res) => {
@@ -24,13 +29,24 @@ export const streamProgress = async (req, res) => {
   // 3. Start listening to this document's channel
   const subscriber = createSubscriber();
   let closed = false;
+  let replaying = true;
+  const waitingEvents = [];
+  const sentIds = new Set();
   const cleanup = () => {
     if (closed) return;
     closed = true;
     subscriber.disconnect();
   };
   const send = (event) => {
-    if (!closed) res.write(`data: ${JSON.stringify(event)}\n\n`);
+    if (closed || (event.eventId && sentIds.has(event.eventId))) return;
+    const payload = {
+      documentId,
+      timestamp: new Date().toISOString(),
+      eventId: randomUUID(),
+      ...event,
+    };
+    sentIds.add(payload.eventId);
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
   };
   const finish = (event) => {
     if (closed) return;
@@ -40,8 +56,8 @@ export const streamProgress = async (req, res) => {
   };
   res.on("close", cleanup);
 
-  subscriber.on("message", (channel, message) => {
-    const event = JSON.parse(message);
+  const dispatch = (event) => {
+    if (closed || (event.eventId && sentIds.has(event.eventId))) return;
     if (
       event.type === "completed" ||
       event.type === "failed" ||
@@ -51,9 +67,26 @@ export const streamProgress = async (req, res) => {
     } else {
       send(event);
     }
+  };
+
+  subscriber.on("message", (channel, message) => {
+    const event = JSON.parse(message);
+    if (replaying) waitingEvents.push(event);
+    else dispatch(event);
   });
 
   await subscriber.subscribe(getChannel(documentId));
+
+  // Subscribe first, then replay: buffer live events and deduplicate their IDs.
+  try {
+    const history = await getProgressHistory(documentId);
+    for (const event of history) dispatch(event);
+  } catch (error) {
+    console.error("Reading progress history failed:", error.message);
+  }
+  replaying = false;
+  for (const event of waitingEvents) dispatch(event);
+  if (closed) return;
 
   // 4. If it already finished before we connected, say so and stop
   const fresh = await prisma.document.findUnique({ where: { id: documentId } });
@@ -176,18 +209,23 @@ export const deleteDocument = async (req, res) => {
 export const getAllParentChunks = async (req, res) => {
   try {
     const docId = req.params.docId;
-    const parentChunks = await documentService.getAllParentChunks(docId);
+    const parentChunks = await documentService.getAllParentChunks(docId, req.user.id);
     return res.status(200).json({
       success: true,
       data: parentChunks,
     });
-  } catch (error) {}
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      error: error.message,
+    });
+  }
 };
 
 export const getChildChunksOfParent = async (req, res) => {
   try {
     const parentId = req.params.parentId;
-    const result = await documentService.getChildChunksOfParent(parentId);
+    const result = await documentService.getChildChunksOfParent(parentId, req.user.id);
     return res.status(200).json({
       success: true,
       data: result,

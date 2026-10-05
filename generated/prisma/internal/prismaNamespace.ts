@@ -918,6 +918,9 @@ export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typ
 export const ParentChunkScalarFieldEnum = {
   id: 'id',
   text: 'text',
+  searchText: 'searchText',
+  prevParentId: 'prevParentId',
+  nextParentId: 'nextParentId',
   documentId: 'documentId',
   metadata: 'metadata'
 } as const
@@ -928,6 +931,7 @@ export type ParentChunkScalarFieldEnum = (typeof ParentChunkScalarFieldEnum)[key
 export const ChildChunkScalarFieldEnum = {
   id: 'id',
   text: 'text',
+  searchText: 'searchText',
   parentId: 'parentId',
   documentId: 'documentId',
   metadata: 'metadata'

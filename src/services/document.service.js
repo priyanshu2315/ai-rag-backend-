@@ -89,16 +89,18 @@ export const deleteDocument = async (documentId, userId) => {
   return { documentId };
 };
 
-export const getAllParentChunks = async (docId) => {
+export const getAllParentChunks = async (docId, userId) => {
+  const document = await documentRepository.getOwnedDocument(docId, userId);
+  if (!document) throw deletionError(404, "Document not found");
   return await documentRepository.getAllParentChunks(docId);
 };
 
-export const getChildChunksOfParent = async (parentId) => {
+export const getChildChunksOfParent = async (parentId, userId) => {
   if (!parentId) {
     throw new Error("Parent chunk id is required");
   }
 
-  const parent = await documentRepository.getParentChunkById(parentId);
+  const parent = await documentRepository.getParentChunkById(parentId, userId);
 
   if (!parent) {
     throw new Error("Parent chunk not found");
@@ -110,6 +112,7 @@ export const getChildChunksOfParent = async (parentId) => {
     parentId: parent.id,
     documentId: parent.documentId,
     parentText: parent.text,
+    parent: { ...parent, totalChildren: children.length },
     totalChildren: children.length,
     children,
   };

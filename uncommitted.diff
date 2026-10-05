@@ -1,0 +1,1972 @@
+﻿diff --git a/generated/prisma/internal/class.ts b/generated/prisma/internal/class.ts
+index f6429b2..7a2fd92 100644
+--- a/generated/prisma/internal/class.ts
++++ b/generated/prisma/internal/class.ts
+@@ -22,7 +22,7 @@ const config: runtime.GetPrismaClientConfig = {
+   "clientVersion": "7.9.1",
+   "engineVersion": "e922089b7d7502aff4249d5da3420f6fa55fc6ad",
+   "activeProvider": "postgresql",
+-  "inlineSchema": "generator client {\n  provider        = \"prisma-client\"\n  output          = \"../generated/prisma\"\n  previewFeatures = [\"postgresqlExtensions\"]\n}\n\ndatasource db {\n  provider   = \"postgresql\"\n  extensions = [uuid_ossp(map: \"uuid-ossp\", schema: \"extensions\"), vector(schema: \"extensions\"), pgcrypto(schema: \"extensions\"), pg_stat_statements(schema: \"extensions\"), supabase_vault(schema: \"vault\")]\n}\n\nmodel User {\n  id                String         @id @default(uuid())\n  email             String         @unique\n  password          String\n  resetOtp          String?\n  resetOtpExpiresAt DateTime?\n  createdAt         DateTime       @default(now())\n  conversations     Conversation[]\n  documents         Document[]\n}\n\nmodel Document {\n  id            String         @id @default(uuid())\n  filename      String\n  createdAt     DateTime       @default(now())\n  fileUrl       String?\n  status        String         @default(\"PROCESSING\")\n  summaryStatus String         @default(\"PENDING\")\n  summary       String?\n  userId        String\n  conversations Conversation[]\n  user          User           @relation(fields: [userId], references: [id])\n  parents       ParentChunk[]\n}\n\nmodel ParentChunk {\n  id         String       @id @default(uuid())\n  text       String\n  documentId String\n  metadata   Json?\n  children   ChildChunk[]\n  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)\n}\n\nmodel ChildChunk {\n  id         String                     @id @default(uuid())\n  text       String\n  parentId   String\n  documentId String\n  embedding  Unsupported(\"vector(384)\")\n  metadata   Json?\n  parent     ParentChunk                @relation(fields: [parentId], references: [id], onDelete: Cascade)\n}\n\nmodel Conversation {\n  id         String    @id @default(uuid())\n  userId     String\n  documentId String?\n  title      String?   @default(\"New Conversation\")\n  createdAt  DateTime  @default(now())\n  updatedAt  DateTime  @updatedAt\n  document   Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)\n  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)\n  messages   Message[]\n}\n\nmodel Message {\n  id             String       @id @default(uuid())\n  conversationId String\n  role           String\n  content        String\n  createdAt      DateTime     @default(now())\n  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)\n}\n",
++  "inlineSchema": "generator client {\n  provider        = \"prisma-client\"\n  output          = \"../generated/prisma\"\n  previewFeatures = [\"postgresqlExtensions\"]\n}\n\ndatasource db {\n  provider   = \"postgresql\"\n  extensions = [uuid_ossp(map: \"uuid-ossp\", schema: \"extensions\"), vector(schema: \"extensions\"), pgcrypto(schema: \"extensions\"), pg_stat_statements(schema: \"extensions\"), supabase_vault(schema: \"vault\")]\n}\n\nmodel User {\n  id                String         @id @default(uuid())\n  email             String         @unique\n  password          String\n  resetOtp          String?\n  resetOtpExpiresAt DateTime?\n  createdAt         DateTime       @default(now())\n  conversations     Conversation[]\n  documents         Document[]\n}\n\nmodel Document {\n  id            String         @id @default(uuid())\n  filename      String\n  createdAt     DateTime       @default(now())\n  fileUrl       String?\n  status        String         @default(\"PROCESSING\")\n  summaryStatus String         @default(\"PENDING\")\n  summary       String?\n  userId        String\n  conversations Conversation[]\n  user          User           @relation(fields: [userId], references: [id])\n  parents       ParentChunk[]\n}\n\nmodel ParentChunk {\n  id           String       @id @default(uuid())\n  text         String\n  searchText   String\n  prevParentId String?\n  nextParentId String?\n  documentId   String\n  metadata     Json?\n  children     ChildChunk[]\n  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)\n}\n\nmodel ChildChunk {\n  id         String @id @default(uuid())\n  text       String\n  searchText String\n\n  parentId   String\n  documentId String\n  embedding  Unsupported(\"vector(384)\")\n  metadata   Json?\n  parent     ParentChunk                @relation(fields: [parentId], references: [id], onDelete: Cascade)\n}\n\nmodel Conversation {\n  id         String    @id @default(uuid())\n  userId     String\n  documentId String?\n  title      String?   @default(\"New Conversation\")\n  createdAt  DateTime  @default(now())\n  updatedAt  DateTime  @updatedAt\n  document   Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)\n  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)\n  messages   Message[]\n}\n\nmodel Message {\n  id             String       @id @default(uuid())\n  conversationId String\n  role           String\n  content        String\n  createdAt      DateTime     @default(now())\n  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)\n}\n",
+   "runtimeDataModel": {
+     "models": {},
+     "enums": {},
+@@ -34,10 +34,10 @@ const config: runtime.GetPrismaClientConfig = {
+   }
+ }
+ 
+-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"resetOtp\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"resetOtpExpiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"conversations\",\"kind\":\"object\",\"type\":\"Conversation\",\"relationName\":\"ConversationToUser\"},{\"name\":\"documents\",\"kind\":\"object\",\"type\":\"Document\",\"relationName\":\"DocumentToUser\"}],\"dbName\":null},\"Document\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"filename\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"fileUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"summaryStatus\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"summary\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"conversations\",\"kind\":\"object\",\"type\":\"Conversation\",\"relationName\":\"ConversationToDocument\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"DocumentToUser\"},{\"name\":\"parents\",\"kind\":\"object\",\"type\":\"ParentChunk\",\"relationName\":\"DocumentToParentChunk\"}],\"dbName\":null},\"ParentChunk\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"text\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"documentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadata\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"children\",\"kind\":\"object\",\"type\":\"ChildChunk\",\"relationName\":\"ChildChunkToParentChunk\"},{\"name\":\"document\",\"kind\":\"object\",\"type\":\"Document\",\"relationName\":\"DocumentToParentChunk\"}],\"dbName\":null},\"ChildChunk\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"text\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"parentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"documentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadata\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"parent\",\"kind\":\"object\",\"type\":\"ParentChunk\",\"relationName\":\"ChildChunkToParentChunk\"}],\"dbName\":null},\"Conversation\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"documentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"document\",\"kind\":\"object\",\"type\":\"Document\",\"relationName\":\"ConversationToDocument\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"ConversationToUser\"},{\"name\":\"messages\",\"kind\":\"object\",\"type\":\"Message\",\"relationName\":\"ConversationToMessage\"}],\"dbName\":null},\"Message\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"conversationId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"content\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"conversation\",\"kind\":\"object\",\"type\":\"Conversation\",\"relationName\":\"ConversationToMessage\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
++config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"resetOtp\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"resetOtpExpiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"conversations\",\"kind\":\"object\",\"type\":\"Conversation\",\"relationName\":\"ConversationToUser\"},{\"name\":\"documents\",\"kind\":\"object\",\"type\":\"Document\",\"relationName\":\"DocumentToUser\"}],\"dbName\":null},\"Document\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"filename\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"fileUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"summaryStatus\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"summary\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"conversations\",\"kind\":\"object\",\"type\":\"Conversation\",\"relationName\":\"ConversationToDocument\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"DocumentToUser\"},{\"name\":\"parents\",\"kind\":\"object\",\"type\":\"ParentChunk\",\"relationName\":\"DocumentToParentChunk\"}],\"dbName\":null},\"ParentChunk\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"text\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"searchText\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"prevParentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"nextParentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"documentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadata\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"children\",\"kind\":\"object\",\"type\":\"ChildChunk\",\"relationName\":\"ChildChunkToParentChunk\"},{\"name\":\"document\",\"kind\":\"object\",\"type\":\"Document\",\"relationName\":\"DocumentToParentChunk\"}],\"dbName\":null},\"ChildChunk\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"text\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"searchText\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"parentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"documentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadata\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"parent\",\"kind\":\"object\",\"type\":\"ParentChunk\",\"relationName\":\"ChildChunkToParentChunk\"}],\"dbName\":null},\"Conversation\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"documentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"document\",\"kind\":\"object\",\"type\":\"Document\",\"relationName\":\"ConversationToDocument\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"ConversationToUser\"},{\"name\":\"messages\",\"kind\":\"object\",\"type\":\"Message\",\"relationName\":\"ConversationToMessage\"}],\"dbName\":null},\"Message\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"conversationId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"content\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"conversation\",\"kind\":\"object\",\"type\":\"Conversation\",\"relationName\":\"ConversationToMessage\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+ config.parameterizationSchema = {
+-  strings: JSON.parse("[\"where\",\"orderBy\",\"cursor\",\"conversations\",\"user\",\"parent\",\"children\",\"document\",\"_count\",\"parents\",\"conversation\",\"messages\",\"documents\",\"User.findUnique\",\"User.findUniqueOrThrow\",\"User.findFirst\",\"User.findFirstOrThrow\",\"User.findMany\",\"data\",\"User.createOne\",\"User.createMany\",\"User.createManyAndReturn\",\"User.updateOne\",\"User.updateMany\",\"User.updateManyAndReturn\",\"create\",\"update\",\"User.upsertOne\",\"User.deleteOne\",\"User.deleteMany\",\"having\",\"_min\",\"_max\",\"User.groupBy\",\"User.aggregate\",\"Document.findUnique\",\"Document.findUniqueOrThrow\",\"Document.findFirst\",\"Document.findFirstOrThrow\",\"Document.findMany\",\"Document.createOne\",\"Document.createMany\",\"Document.createManyAndReturn\",\"Document.updateOne\",\"Document.updateMany\",\"Document.updateManyAndReturn\",\"Document.upsertOne\",\"Document.deleteOne\",\"Document.deleteMany\",\"Document.groupBy\",\"Document.aggregate\",\"ParentChunk.findUnique\",\"ParentChunk.findUniqueOrThrow\",\"ParentChunk.findFirst\",\"ParentChunk.findFirstOrThrow\",\"ParentChunk.findMany\",\"ParentChunk.createOne\",\"ParentChunk.createMany\",\"ParentChunk.createManyAndReturn\",\"ParentChunk.updateOne\",\"ParentChunk.updateMany\",\"ParentChunk.updateManyAndReturn\",\"ParentChunk.upsertOne\",\"ParentChunk.deleteOne\",\"ParentChunk.deleteMany\",\"ParentChunk.groupBy\",\"ParentChunk.aggregate\",\"ChildChunk.findUnique\",\"ChildChunk.findUniqueOrThrow\",\"ChildChunk.findFirst\",\"ChildChunk.findFirstOrThrow\",\"ChildChunk.findMany\",\"ChildChunk.updateOne\",\"ChildChunk.updateMany\",\"ChildChunk.updateManyAndReturn\",\"ChildChunk.deleteOne\",\"ChildChunk.deleteMany\",\"ChildChunk.groupBy\",\"ChildChunk.aggregate\",\"Conversation.findUnique\",\"Conversation.findUniqueOrThrow\",\"Conversation.findFirst\",\"Conversation.findFirstOrThrow\",\"Conversation.findMany\",\"Conversation.createOne\",\"Conversation.createMany\",\"Conversation.createManyAndReturn\",\"Conversation.updateOne\",\"Conversation.updateMany\",\"Conversation.updateManyAndReturn\",\"Conversation.upsertOne\",\"Conversation.deleteOne\",\"Conversation.deleteMany\",\"Conversation.groupBy\",\"Conversation.aggregate\",\"Message.findUnique\",\"Message.findUniqueOrThrow\",\"Message.findFirst\",\"Message.findFirstOrThrow\",\"Message.findMany\",\"Message.createOne\",\"Message.createMany\",\"Message.createManyAndReturn\",\"Message.updateOne\",\"Message.updateMany\",\"Message.updateManyAndReturn\",\"Message.upsertOne\",\"Message.deleteOne\",\"Message.deleteMany\",\"Message.groupBy\",\"Message.aggregate\",\"AND\",\"OR\",\"NOT\",\"id\",\"conversationId\",\"role\",\"content\",\"createdAt\",\"equals\",\"in\",\"notIn\",\"lt\",\"lte\",\"gt\",\"gte\",\"not\",\"contains\",\"startsWith\",\"endsWith\",\"userId\",\"documentId\",\"title\",\"updatedAt\",\"text\",\"parentId\",\"metadata\",\"string_contains\",\"string_starts_with\",\"string_ends_with\",\"array_starts_with\",\"array_ends_with\",\"array_contains\",\"filename\",\"fileUrl\",\"status\",\"summaryStatus\",\"summary\",\"email\",\"password\",\"resetOtp\",\"resetOtpExpiresAt\",\"every\",\"some\",\"none\",\"is\",\"isNot\",\"connectOrCreate\",\"upsert\",\"createMany\",\"set\",\"disconnect\",\"delete\",\"connect\",\"updateMany\",\"deleteMany\"]"),
+-  graph: "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_AQAgCQAAgAIAIHIBAM4BACF2QADPAQAhggEBAM4BACGPAQEAzgEAIZABAQDWAQAhkQEBAM4BACGSAQEAzgEAIZMBAQDWAQAhAgAAABsAIBIAAEAAIAhyAQDOAQAhdkAAzwEAIYIBAQDOAQAhjwEBAM4BACGQAQEA1gEAIZEBAQDOAQAhkgEBAM4BACGTAQEA1gEAIQIAAAAHACASAABCACACAAAABwAgEgAAQgAgAwAAABsAIBkAADsAIBoAAEAAIAEAAAAbACABAAAABwAgBQgAAPsBACAfAAD9AQAgIAAA_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_AQAAAAGAAQEAAAABgQEBAAAAAQlvAACoAQAwcAAAhwEAEHEAAKgBADByAQChAQAhdkAAogEAIYIBAQChAQAhgwEBAKkBACGEAQEAqQEAIYUBQACiAQAhDggAAKsBACAfAACsAQAgIAAArAEAIHcBAAAAAXgBAAAABXkBAAAABXoBAAAAAXsBAAAAAXwBAAAAAX0BAAAAAX4BAKoBACF_AQAAAAGAAQEAAAABgQEBAAAAAQ4IAACrAQAgHwAArAEAICAAAKwBACB3AQAAAAF4AQAAAAV5AQAAAAV6AQAAAAF7AQAAAAF8AQAAAAF9AQAAAAF-AQCqAQAhfwEAAAABgAEBAAAAAYEBAQAAAAEIdwIAAAABeAIAAAAFeQIAAAAFegIAAAABewIAAAABfAIAAAABfQIAAAABfgIAqwEAIQt3AQAAAAF4AQAAAAV5AQAAAAV6AQAAAAF7AQAAAAF8AQAAAAF9AQAAAAF-AQCsAQAhfwEAAAABgAEBAAAAAYEBAQAAAAEIbwAArQEAMHAAAG8AEHEAAK0BADByAQChAQAhgwEBAKEBACGGAQEAoQEAIYcBAQChAQAhiAEAAK4BACAPCAAAqwEAIB8AAK8BACAgAACvAQAgd4AAAAABeoAAAAABe4AAAAABfIAAAAABfYAAAAABfoAAAAABiQEBAAAAAYoBAQAAAAGLAQEAAAABjAGAAAAAAY0BgAAAAAGOAYAAAAABDHeAAAAAAXqAAAAAAXuAAAAAAXyAAAAAAX2AAAAAAX6AAAAAAYkBAQAAAAGKAQEAAAABiwEBAAAAAYwBgAAAAAGNAYAAAAABjgGAAAAAAQdvAACwAQAwcAAAXwAQcQAAsAEAMHIBAKEBACGDAQEAoQEAIYYBAQChAQAhiAEAAK4BACALbwAAsQEAMHAAAEkAEHEAALEBADByAQChAQAhdkAAogEAIYIBAQChAQAhjwEBAKEBACGQAQEAqQEAIZEBAQChAQAhkgEBAKEBACGTAQEAqQEAIQlvAACyAQAwcAAAMwAQcQAAsgEAMHIBAKEBACF2QACiAQAhlAEBAKEBACGVAQEAoQEAIZYBAQCpAQAhlwFAALMBACELCAAAqwEAIB8AALUBACAgAAC1AQAgd0AAAAABeEAAAAAFeUAAAAAFekAAAAABe0AAAAABfEAAAAABfUAAAAABfkAAtAEAIQsIAACrAQAgHwAAtQEAICAAALUBACB3QAAAAAF4QAAAAAV5QAAAAAV6QAAAAAF7QAAAAAF8QAAAAAF9QAAAAAF-QAC0AQAhCHdAAAAAAXhAAAAABXlAAAAABXpAAAAAAXtAAAAAAXxAAAAAAX1AAAAAAX5AALUBACELAwAAuwEAIAwAALwBACBvAAC2AQAwcAAAIAAQcQAAtgEAMHIBALcBACF2QAC6AQAhlAEBALcBACGVAQEAtwEAIZYBAQC4AQAhlwFAALkBACELdwEAAAABeAEAAAAEeQEAAAAEegEAAAABewEAAAABfAEAAAABfQEAAAABfgEApwEAIX8BAAAAAYABAQAAAAGBAQEAAAABC3cBAAAAAXgBAAAABXkBAAAABXoBAAAAAXsBAAAAAXwBAAAAAX0BAAAAAX4BAKwBACF_AQAAAAGAAQEAAAABgQEBAAAAAQh3QAAAAAF4QAAAAAV5QAAAAAV6QAAAAAF7QAAAAAF8QAAAAAF9QAAAAAF-QAC1AQAhCHdAAAAAAXhAAAAABHlAAAAABHpAAAAAAXtAAAAAAXxAAAAAAX1AAAAAAX5AAKUBACEDmAEAAAMAIJkBAAADACCaAQAAAwAgA5gBAAAHACCZAQAABwAgmgEAAAcAIA4DAAC7AQAgBAAAvgEAIAkAAL8BACBvAAC9AQAwcAAABwAQcQAAvQEAMHIBALcBACF2QAC6AQAhggEBALcBACGPAQEAtwEAIZABAQC4AQAhkQEBALcBACGSAQEAtwEAIZMBAQC4AQAhDQMAALsBACAMAAC8AQAgbwAAtgEAMHAAACAAEHEAALYBADByAQC3AQAhdkAAugEAIZQBAQC3AQAhlQEBALcBACGWAQEAuAEAIZcBQAC5AQAhmwEAACAAIJwBAAAgACADmAEAAAoAIJkBAAAKACCaAQAACgAgCQoAAMEBACBvAADAAQAwcAAAFQAQcQAAwAEAMHIBALcBACFzAQC3AQAhdAEAtwEAIXUBALcBACF2QAC6AQAhDgQAAL4BACAHAADJAQAgCwAAygEAIG8AAMgBADBwAAADABBxAADIAQAwcgEAtwEAIXZAALoBACGCAQEAtwEAIYMBAQC4AQAhhAEBALgBACGFAUAAugEAIZsBAAADACCcAQAAAwAgCQUAAMQBACBvAADCAQAwcAAADgAQcQAAwgEAMHIBALcBACGDAQEAtwEAIYYBAQC3AQAhhwEBALcBACGIAQAAwwEAIAx3gAAAAAF6gAAAAAF7gAAAAAF8gAAAAAF9gAAAAAF-gAAAAAGJAQEAAAABigEBAAAAAYsBAQAAAAGMAYAAAAABjQGAAAAAAY4BgAAAAAELBgAAxgEAIAcAAMcBACBvAADFAQAwcAAACgAQcQAAxQEAMHIBALcBACGDAQEAtwEAIYYBAQC3AQAhiAEAAMMBACCbAQAACgAgnAEAAAoAIAkGAADGAQAgBwAAxwEAIG8AAMUBADBwAAAKABBxAADFAQAwcgEAtwEAIYMBAQC3AQAhhgEBALcBACGIAQAAwwEAIAOYAQAADgAgmQEAAA4AIJoBAAAOACAQAwAAuwEAIAQAAL4BACAJAAC_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_AQAgbwAAvQEAMHAAAAcAEHEAAL0BADByAQAAAAF2QAC6AQAhggEBALcBACGPAQEAtwEAIZABAQC4AQAhkQEBALcBACGSAQEAtwEAIZMBAQC4AQAhAgAAABsAIBIAAKwCACACAAAAqgIAIBIAAKsCACALbwAAqQIAMHAAAKoCABBxAACpAgAwcgEAtwEAIXZAALoBACGCAQEAtwEAIY8BAQC3AQAhkAEBALgBACGRAQEAtwEAIZIBAQC3AQAhkwEBALgBACELbwAAqQIAMHAAAKoCABBxAACpAgAwcgEAtwEAIXZAALoBACGCAQEAtwEAIY8BAQC3AQAhkAEBALgBACGRAQEAtwEAIZIBAQC3AQAhkwEBALgBACEHcgEAzgEAIXZAAM8BACGPAQEAzgEAIZABAQDWAQAhkQEBAM4BACGSAQEAzgEAIZMBAQDWAQAhCQMAAP4BACAJAACAAgAgcgEAzgEAIXZAAM8BACGPAQEAzgEAIZABAQDWAQAhkQEBAM4BACGSAQEAzgEAIZMBAQDWAQAhCQMAAJkCACAJAACbAgAgcgEAAAABdkAAAAABjwEBAAAAAZABAQAAAAGRAQEAAAABkgEBAAAAAZMBAQAAAAEHBwAA5gEAIAsAAOgBACByAQAAAAF2QAAAAAGDAQEAAAABhAEBAAAAAYUBQAAAAAECAAAABQAgGQAAtgIAIAMAAAAFACAZAAC2AgAgGgAAtQIAIAESAADCAgAwAgAAAAUAIBIAALUCACACAAAAlQIAIBIAALQCACAFcgEAzgEAIXZAAM8BACGDAQEA1gEAIYQBAQDWAQAhhQFAAM8BACEHBwAA1wEAIAsAANkBACByAQDOAQAhdkAAzwEAIYMBAQDWAQAhhAEBANYBACGFAUAAzwEAIQcHAADmAQAgCwAA6AEAIHIBAAAAAXZAAAAAAYMBAQAAAAGEAQEAAAABhQFAAAAAAQQZAACuAgAwnQEAAK8CADCfAQAAsQIAIKMBAACRAgAwBBkAAKICADCdAQAAowIAMJ8BAAClAgAgowEAAKYCADAAAAQDAAC5AgAgDAAAugIAIJYBAADSAQAglwEAANIBACAABQQAALsCACAHAADAAgAgCwAAwQIAIIMBAADSAQAghAEAANIBACADBgAAvwIAIAcAAMACACCIAQAA0gEAIAAFAwAAuQIAIAQAALsCACAJAAC8AgAgkAEAANIBACCTAQAA0gEAIAAFcgEAAAABdkAAAAABgwEBAAAAAYQBAQAAAAGFAUAAAAABB3IBAAAAAXZAAAAAAY8BAQAAAAGQAQEAAAABkQEBAAAAAZIBAQAAAAGTAQEAAAABBwMAALcCACByAQAAAAF2QAAAAAGUAQEAAAABlQEBAAAAAZYBAQAAAAGXAUAAAAABAgAAAAEAIBkAAMQCACAFcgEAAAABdkAAAAABggEBAAAAAYQBAQAAAAGFAUAAAAABA3IBAAAAAYYBAQAAAAGIAYAAAAABAwAAACAAIBkAAMQCACAaAADKAgAgCQAAACAAIAMAAKACACASAADKAgAgcgEAzgEAIXZAAM8BACGUAQEAzgEAIZUBAQDOAQAhlgEBANYBACGXAUAAnwIAIQcDAACgAgAgcgEAzgEAIXZAAM8BACGUAQEAzgEAIZUBAQDOAQAhlgEBANYBACGXAUAAnwIAIQoDAACZAgAgBAAAmgIAIHIBAAAAAXZAAAAAAYIBAQAAAAGPAQEAAAABkAEBAAAAAZEBAQAAAAGSAQEAAAABkwEBAAAAAQIAAAAbACAZAADLAgAgAwAAAAcAIBkAAMsCACAaAADPAgAgDAAAAAcAIAMAAP4BACAEAAD_AQAgEgAAzwIAIHIBAM4BACF2QADPAQAhggEBAM4BACGPAQEAzgEAIZABAQDWAQAhkQEBAM4BACGSAQEAzgEAIZMBAQDWAQAhCgMAAP4BACAEAAD_AQAgcgEAzgEAIXZAAM8BACGCAQEAzgEAIY8BAQDOAQAhkAEBANYBACGRAQEAzgEAIZIBAQDOAQAhkwEBANYBACEFBwAA-gEAIHIBAAAAAYMBAQAAAAGGAQEAAAABiAGAAAAAAQIAAAAMACAZAADQAgAgAwAAAAoAIBkAANACACAaAADUAgAgBwAAAAoAIAcAAPEBACASAADUAgAgcgEAzgEAIYMBAQDOAQAhhgEBAM4BACGIAYAAAAABBQcAAPEBACByAQDOAQAhgwEBAM4BACGGAQEAzgEAIYgBgAAAAAEHDAAAuAIAIHIBAAAAAXZAAAAAAZQBAQAAAAGVAQEAAAABlgEBAAAAAZcBQAAAAAECAAAAAQAgGQAA1QIAIAoEAACaAgAgCQAAmwIAIHIBAAAAAXZAAAAAAYIBAQAAAAGPAQEAAAABkAEBAAAAAZEBAQAAAAGSAQEAAAABkwEBAAAAAQIAAAAbACAZAADXAgAgBHIBAAAAAXQBAAAAAXUBAAAAAXZAAAAAAQMAAAAgACAZAADVAgAgGgAA3AIAIAkAAAAgACAMAAChAgAgEgAA3AIAIHIBAM4BACF2QADPAQAhlAEBAM4BACGVAQEAzgEAIZYBAQDWAQAhlwFAAJ8CACEHDAAAoQIAIHIBAM4BACF2QADPAQAhlAEBAM4BACGVAQEAzgEAIZYBAQDWAQAhlwFAAJ8CACEDAAAABwAgGQAA1wIAIBoAAN8CACAMAAAABwAgBAAA_wEAIAkAAIACACASAADfAgAgcgEAzgEAIXZAAM8BACGCAQEAzgEAIY8BAQDOAQAhkAEBANYBACGRAQEAzgEAIZIBAQDOAQAhkwEBANYBACEKBAAA_wEAIAkAAIACACByAQDOAQAhdkAAzwEAIYIBAQDOAQAhjwEBAM4BACGQAQEA1gEAIZEBAQDOAQAhkgEBAM4BACGTAQEA1gEAIQgEAADnAQAgBwAA5gEAIHIBAAAAAXZAAAAAAYIBAQAAAAGDAQEAAAABhAEBAAAAAYUBQAAAAAECAAAABQAgGQAA4AIAIAMAAAADACAZAADgAgAgGgAA5AIAIAoAAAADACAEAADYAQAgBwAA1wEAIBIAAOQCACByAQDOAQAhdkAAzwEAIYIBAQDOAQAhgwEBANYBACGEAQEA1gEAIYUBQADPAQAhCAQAANgBACAHAADXAQAgcgEAzgEAIXZAAM8BACGCAQEAzgEAIYMBAQDWAQAhhAEBANYBACGFAUAAzwEAIQMDBgIIAAoMHAMEBAABBwgDCAAJCxgIBAMJAgQAAQgABwkNBAMGEQUHAAMIAAYBBQAEAQYSAAIDEwAJFAABCgACAQsZAAIDHQAMHgAAAAADCAAPHwAQIAARAAAAAwgADx8AECAAEQEEAAEBBAABAwgAFh8AFyAAGAAAAAMIABYfABcgABgBBwADAQcAAwMIAB0fAB4gAB8AAAADCAAdHwAeIAAfAQUABAMIACMfACQgACUAAAADCAAjHwAkIAAlAgQAAQd8AwIEAAEHggEDAwgAKh8AKyAALAAAAAMIACofACsgACwBCgACAQoAAgMIADEfADIgADMAAAADCAAxHwAyIAAzDQIBDh8BDyIBECMBESQBEyYBFCgLFSkMFisBFy0LGC4NGy8BHDABHTELITQOIjUSIzYDJDcDJTgDJjkDJzoDKDwDKT4LKj8TK0EDLEMLLUQULkUDL0YDMEcLMUoVMksZM0wENE0ENU4ENk8EN1AEOFIEOVQLOlUaO1cEPFkLPVobPlsEP1wEQF0LQWAcQmEgQ2IFRGMFRWQFRmUFR2YFSGgFSWoLSmshS2wFTG0LTXAiTnEmT3ICUHMCUXQCUnUCU3YCVHgCVXoLVnsnV34CWIABC1mBAShagwECW4QBAlyFAQtdiAEpXokBLV-KAQhgiwEIYYwBCGKNAQhjjgEIZJABCGWSAQtmkwEuZ5UBCGiXAQtpmAEvapkBCGuaAQhsmwELbZ4BMG6fATQ"
++  strings: JSON.parse("[\"where\",\"orderBy\",\"cursor\",\"conversations\",\"user\",\"parent\",\"children\",\"document\",\"_count\",\"parents\",\"conversation\",\"messages\",\"documents\",\"User.findUnique\",\"User.findUniqueOrThrow\",\"User.findFirst\",\"User.findFirstOrThrow\",\"User.findMany\",\"data\",\"User.createOne\",\"User.createMany\",\"User.createManyAndReturn\",\"User.updateOne\",\"User.updateMany\",\"User.updateManyAndReturn\",\"create\",\"update\",\"User.upsertOne\",\"User.deleteOne\",\"User.deleteMany\",\"having\",\"_min\",\"_max\",\"User.groupBy\",\"User.aggregate\",\"Document.findUnique\",\"Document.findUniqueOrThrow\",\"Document.findFirst\",\"Document.findFirstOrThrow\",\"Document.findMany\",\"Document.createOne\",\"Document.createMany\",\"Document.createManyAndReturn\",\"Document.updateOne\",\"Document.updateMany\",\"Document.updateManyAndReturn\",\"Document.upsertOne\",\"Document.deleteOne\",\"Document.deleteMany\",\"Document.groupBy\",\"Document.aggregate\",\"ParentChunk.findUnique\",\"ParentChunk.findUniqueOrThrow\",\"ParentChunk.findFirst\",\"ParentChunk.findFirstOrThrow\",\"ParentChunk.findMany\",\"ParentChunk.createOne\",\"ParentChunk.createMany\",\"ParentChunk.createManyAndReturn\",\"ParentChunk.updateOne\",\"ParentChunk.updateMany\",\"ParentChunk.updateManyAndReturn\",\"ParentChunk.upsertOne\",\"ParentChunk.deleteOne\",\"ParentChunk.deleteMany\",\"ParentChunk.groupBy\",\"ParentChunk.aggregate\",\"ChildChunk.findUnique\",\"ChildChunk.findUniqueOrThrow\",\"ChildChunk.findFirst\",\"ChildChunk.findFirstOrThrow\",\"ChildChunk.findMany\",\"ChildChunk.updateOne\",\"ChildChunk.updateMany\",\"ChildChunk.updateManyAndReturn\",\"ChildChunk.deleteOne\",\"ChildChunk.deleteMany\",\"ChildChunk.groupBy\",\"ChildChunk.aggregate\",\"Conversation.findUnique\",\"Conversation.findUniqueOrThrow\",\"Conversation.findFirst\",\"Conversation.findFirstOrThrow\",\"Conversation.findMany\",\"Conversation.createOne\",\"Conversation.createMany\",\"Conversation.createManyAndReturn\",\"Conversation.updateOne\",\"Conversation.updateMany\",\"Conversation.updateManyAndReturn\",\"Conversation.upsertOne\",\"Conversation.deleteOne\",\"Conversation.deleteMany\",\"Conversation.groupBy\",\"Conversation.aggregate\",\"Message.findUnique\",\"Message.findUniqueOrThrow\",\"Message.findFirst\",\"Message.findFirstOrThrow\",\"Message.findMany\",\"Message.createOne\",\"Message.createMany\",\"Message.createManyAndReturn\",\"Message.updateOne\",\"Message.updateMany\",\"Message.updateManyAndReturn\",\"Message.upsertOne\",\"Message.deleteOne\",\"Message.deleteMany\",\"Message.groupBy\",\"Message.aggregate\",\"AND\",\"OR\",\"NOT\",\"id\",\"conversationId\",\"role\",\"content\",\"createdAt\",\"equals\",\"in\",\"notIn\",\"lt\",\"lte\",\"gt\",\"gte\",\"not\",\"contains\",\"startsWith\",\"endsWith\",\"userId\",\"documentId\",\"title\",\"updatedAt\",\"text\",\"searchText\",\"parentId\",\"metadata\",\"string_contains\",\"string_starts_with\",\"string_ends_with\",\"array_starts_with\",\"array_ends_with\",\"array_contains\",\"prevParentId\",\"nextParentId\",\"filename\",\"fileUrl\",\"status\",\"summaryStatus\",\"summary\",\"email\",\"password\",\"resetOtp\",\"resetOtpExpiresAt\",\"every\",\"some\",\"none\",\"is\",\"isNot\",\"connectOrCreate\",\"upsert\",\"createMany\",\"set\",\"disconnect\",\"delete\",\"connect\",\"updateMany\",\"deleteMany\"]"),
++  graph: "5AI0XAsDAAC7AQAgDAAAvAEAIG8AALYBADBwAAAgABBxAAC2AQAwcgEAAAABdkAAugEAIZcBAQAAAAGYAQEAtwEAIZkBAQC4AQAhmgFAALkBACEBAAAAAQAgDAQAAL4BACAHAADJAQAgCwAAygEAIG8AAMgBADBwAAADABBxAADIAQAwcgEAtwEAIXZAALoBACGCAQEAtwEAIYMBAQC4AQAhhAEBALgBACGFAUAAugEAIQUEAAC7AgAgBwAAwAIAIAsAAMECACCDAQAA0gEAIIQBAADSAQAgDAQAAL4BACAHAADJAQAgCwAAygEAIG8AAMgBADBwAAADABBxAADIAQAwcgEAAAABdkAAugEAIYIBAQC3AQAhgwEBALgBACGEAQEAuAEAIYUBQAC6AQAhAwAAAAMAIAEAAAQAMAIAAAUAIA4DAAC7AQAgBAAAvgEAIAkAAL8BACBvAAC9AQAwcAAABwAQcQAAvQEAMHIBALcBACF2QAC6AQAhggEBALcBACGSAQEAtwEAIZMBAQC4AQAhlAEBALcBACGVAQEAtwEAIZYBAQC4AQAhAQAAAAcAIAMAAAADACABAAAEADACAAAFACAMBgAAxgEAIAcAAMcBACBvAADFAQAwcAAACgAQcQAAxQEAMHIBALcBACGDAQEAtwEAIYYBAQC3AQAhhwEBALcBACGJAQAAwwEAIJABAQC4AQAhkQEBALgBACEFBgAAvwIAIAcAAMACACCJAQAA0gEAIJABAADSAQAgkQEAANIBACAMBgAAxgEAIAcAAMcBACBvAADFAQAwcAAACgAQcQAAxQEAMHIBAAAAAYMBAQC3AQAhhgEBALcBACGHAQEAtwEAIYkBAADDAQAgkAEBALgBACGRAQEAuAEAIQMAAAAKACABAAALADACAAAMACAKBQAAxAEAIG8AAMIBADBwAAAOABBxAADCAQAwcgEAtwEAIYMBAQC3AQAhhgEBALcBACGHAQEAtwEAIYgBAQC3AQAhiQEAAMMBACACBQAAvgIAIIkBAADSAQAgCgUAAMQBACBvAADCAQAwcAAADgAQcQAAwgEAMHIBAAAAAYMBAQC3AQAhhgEBALcBACGHAQEAtwEAIYgBAQC3AQAhiQEAAMMBACADAAAADgAgAQAADwAwAgAAEAAgAQAAAA4AIAEAAAADACABAAAACgAgCQoAAMEBACBvAADAAQAwcAAAFQAQcQAAwAEAMHIBALcBACFzAQC3AQAhdAEAtwEAIXUBALcBACF2QAC6AQAhAQoAAL0CACAJCgAAwQEAIG8AAMABADBwAAAVABBxAADAAQAwcgEAAAABcwEAtwEAIXQBALcBACF1AQC3AQAhdkAAugEAIQMAAAAVACABAAAWADACAAAXACABAAAAFQAgBQMAALkCACAEAAC7AgAgCQAAvAIAIJMBAADSAQAglgEAANIBACAOAwAAuwEAIAQAAL4BACAJAAC_AQAgbwAAvQEAMHAAAAcAEHEAAL0BADByAQAAAAF2QAC6AQAhggEBALcBACGSAQEAtwEAIZMBAQC4AQAhlAEBALcBACGVAQEAtwEAIZYBAQC4AQAhAwAAAAcAIAEAABoAMAIAABsAIAEAAAADACABAAAABwAgAQAAAAEAIAsDAAC7AQAgDAAAvAEAIG8AALYBADBwAAAgABBxAAC2AQAwcgEAtwEAIXZAALoBACGXAQEAtwEAIZgBAQC3AQAhmQEBALgBACGaAUAAuQEAIQQDAAC5AgAgDAAAugIAIJkBAADSAQAgmgEAANIBACADAAAAIAAgAQAAIQAwAgAAAQAgAwAAACAAIAEAACEAMAIAAAEAIAMAAAAgACABAAAhADACAAABACAIAwAAtwIAIAwAALgCACByAQAAAAF2QAAAAAGXAQEAAAABmAEBAAAAAZkBAQAAAAGaAUAAAAABARIAACUAIAZyAQAAAAF2QAAAAAGXAQEAAAABmAEBAAAAAZkBAQAAAAGaAUAAAAABARIAACcAMAESAAAnADAIAwAAoAIAIAwAAKECACByAQDOAQAhdkAAzwEAIZcBAQDOAQAhmAEBAM4BACGZAQEA1gEAIZoBQACfAgAhAgAAAAEAIBIAACoAIAZyAQDOAQAhdkAAzwEAIZcBAQDOAQAhmAEBAM4BACGZAQEA1gEAIZoBQACfAgAhAgAAACAAIBIAACwAIAIAAAAgACASAAAsACADAAAAAQAgGQAAJQAgGgAAKgAgAQAAAAEAIAEAAAAgACAFCAAAnAIAIB8AAJ4CACAgAACdAgAgmQEAANIBACCaAQAA0gEAIAlvAACyAQAwcAAAMwAQcQAAsgEAMHIBAKEBACF2QACiAQAhlwEBAKEBACGYAQEAoQEAIZkBAQCpAQAhmgFAALMBACEDAAAAIAAgAQAAMgAwHgAAMwAgAwAAACAAIAEAACEAMAIAAAEAIAEAAAAbACABAAAAGwAgAwAAAAcAIAEAABoAMAIAABsAIAMAAAAHACABAAAaADACAAAbACADAAAABwAgAQAAGgAwAgAAGwAgCwMAAJkCACAEAACaAgAgCQAAmwIAIHIBAAAAAXZAAAAAAYIBAQAAAAGSAQEAAAABkwEBAAAAAZQBAQAAAAGVAQEAAAABlgEBAAAAAQESAAA7ACAIcgEAAAABdkAAAAABggEBAAAAAZIBAQAAAAGTAQEAAAABlAEBAAAAAZUBAQAAAAGWAQEAAAABARIAAD0AMAESAAA9ADALAwAA_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_AQAAAAGAAQEAAAABgQEBAAAAAQlvAACoAQAwcAAAhwEAEHEAAKgBADByAQChAQAhdkAAogEAIYIBAQChAQAhgwEBAKkBACGEAQEAqQEAIYUBQACiAQAhDggAAKsBACAfAACsAQAgIAAArAEAIHcBAAAAAXgBAAAABXkBAAAABXoBAAAAAXsBAAAAAXwBAAAAAX0BAAAAAX4BAKoBACF_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_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_gEAIAkAAIACACByAQDOAQAhdkAAzwEAIZIBAQDOAQAhkwEBANYBACGUAQEAzgEAIZUBAQDOAQAhlgEBANYBACEJAwAAmQIAIAkAAJsCACByAQAAAAF2QAAAAAGSAQEAAAABkwEBAAAAAZQBAQAAAAGVAQEAAAABlgEBAAAAAQcHAADmAQAgCwAA6AEAIHIBAAAAAXZAAAAAAYMBAQAAAAGEAQEAAAABhQFAAAAAAQIAAAAFACAZAAC2AgAgAwAAAAUAIBkAALYCACAaAAC1AgAgARIAAMICADACAAAABQAgEgAAtQIAIAIAAACVAgAgEgAAtAIAIAVyAQDOAQAhdkAAzwEAIYMBAQDWAQAhhAEBANYBACGFAUAAzwEAIQcHAADXAQAgCwAA2QEAIHIBAM4BACF2QADPAQAhgwEBANYBACGEAQEA1gEAIYUBQADPAQAhBwcAAOYBACALAADoAQAgcgEAAAABdkAAAAABgwEBAAAAAYQBAQAAAAGFAUAAAAABBBkAAK4CADCgAQAArwIAMKIBAACxAgAgpgEAAJECADAEGQAAogIAMKABAACjAgAwogEAAKUCACCmAQAApgIAMAAABAMAALkCACAMAAC6AgAgmQEAANIBACCaAQAA0gEAIAAFBAAAuwIAIAcAAMACACALAADBAgAggwEAANIBACCEAQAA0gEAIAUGAAC_AgAgBwAAwAIAIIkBAADSAQAgkAEAANIBACCRAQAA0gEAIAAFAwAAuQIAIAQAALsCACAJAAC8AgAgkwEAANIBACCWAQAA0gEAIAAFcgEAAAABdkAAAAABgwEBAAAAAYQBAQAAAAGFAUAAAAABB3IBAAAAAXZAAAAAAZIBAQAAAAGTAQEAAAABlAEBAAAAAZUBAQAAAAGWAQEAAAABBwMAALcCACByAQAAAAF2QAAAAAGXAQEAAAABmAEBAAAAAZkBAQAAAAGaAUAAAAABAgAAAAEAIBkAAMQCACAFcgEAAAABdkAAAAABggEBAAAAAYQBAQAAAAGFAUAAAAABBnIBAAAAAYYBAQAAAAGHAQEAAAABiQGAAAAAAZABAQAAAAGRAQEAAAABAwAAACAAIBkAAMQCACAaAADKAgAgCQAAACAAIAMAAKACACASAADKAgAgcgEAzgEAIXZAAM8BACGXAQEAzgEAIZgBAQDOAQAhmQEBANYBACGaAUAAnwIAIQcDAACgAgAgcgEAzgEAIXZAAM8BACGXAQEAzgEAIZgBAQDOAQAhmQEBANYBACGaAUAAnwIAIQoDAACZAgAgBAAAmgIAIHIBAAAAAXZAAAAAAYIBAQAAAAGSAQEAAAABkwEBAAAAAZQBAQAAAAGVAQEAAAABlgEBAAAAAQIAAAAbACAZAADLAgAgAwAAAAcAIBkAAMsCACAaAADPAgAgDAAAAAcAIAMAAP4BACAEAAD_AQAgEgAAzwIAIHIBAM4BACF2QADPAQAhggEBAM4BACGSAQEAzgEAIZMBAQDWAQAhlAEBAM4BACGVAQEAzgEAIZYBAQDWAQAhCgMAAP4BACAEAAD_AQAgcgEAzgEAIXZAAM8BACGCAQEAzgEAIZIBAQDOAQAhkwEBANYBACGUAQEAzgEAIZUBAQDOAQAhlgEBANYBACEIBwAA-gEAIHIBAAAAAYMBAQAAAAGGAQEAAAABhwEBAAAAAYkBgAAAAAGQAQEAAAABkQEBAAAAAQIAAAAMACAZAADQAgAgAwAAAAoAIBkAANACACAaAADUAgAgCgAAAAoAIAcAAPEBACASAADUAgAgcgEAzgEAIYMBAQDOAQAhhgEBAM4BACGHAQEAzgEAIYkBgAAAAAGQAQEA1gEAIZEBAQDWAQAhCAcAAPEBACByAQDOAQAhgwEBAM4BACGGAQEAzgEAIYcBAQDOAQAhiQGAAAAAAZABAQDWAQAhkQEBANYBACEHDAAAuAIAIHIBAAAAAXZAAAAAAZcBAQAAAAGYAQEAAAABmQEBAAAAAZoBQAAAAAECAAAAAQAgGQAA1QIAIAoEAACaAgAgCQAAmwIAIHIBAAAAAXZAAAAAAYIBAQAAAAGSAQEAAAABkwEBAAAAAZQBAQAAAAGVAQEAAAABlgEBAAAAAQIAAAAbACAZAADXAgAgBHIBAAAAAXQBAAAAAXUBAAAAAXZAAAAAAQMAAAAgACAZAADVAgAgGgAA3AIAIAkAAAAgACAMAAChAgAgEgAA3AIAIHIBAM4BACF2QADPAQAhlwEBAM4BACGYAQEAzgEAIZkBAQDWAQAhmgFAAJ8CACEHDAAAoQIAIHIBAM4BACF2QADPAQAhlwEBAM4BACGYAQEAzgEAIZkBAQDWAQAhmgFAAJ8CACEDAAAABwAgGQAA1wIAIBoAAN8CACAMAAAABwAgBAAA_wEAIAkAAIACACASAADfAgAgcgEAzgEAIXZAAM8BACGCAQEAzgEAIZIBAQDOAQAhkwEBANYBACGUAQEAzgEAIZUBAQDOAQAhlgEBANYBACEKBAAA_wEAIAkAAIACACByAQDOAQAhdkAAzwEAIYIBAQDOAQAhkgEBAM4BACGTAQEA1gEAIZQBAQDOAQAhlQEBAM4BACGWAQEA1gEAIQgEAADnAQAgBwAA5gEAIHIBAAAAAXZAAAAAAYIBAQAAAAGDAQEAAAABhAEBAAAAAYUBQAAAAAECAAAABQAgGQAA4AIAIAMAAAADACAZAADgAgAgGgAA5AIAIAoAAAADACAEAADYAQAgBwAA1wEAIBIAAOQCACByAQDOAQAhdkAAzwEAIYIBAQDOAQAhgwEBANYBACGEAQEA1gEAIYUBQADPAQAhCAQAANgBACAHAADXAQAgcgEAzgEAIXZAAM8BACGCAQEAzgEAIYMBAQDWAQAhhAEBANYBACGFAUAAzwEAIQMDBgIIAAoMHAMEBAABBwgDCAAJCxgIBAMJAgQAAQgABwkNBAMGEQUHAAMIAAYBBQAEAQYSAAIDEwAJFAABCgACAQsZAAIDHQAMHgAAAAADCAAPHwAQIAARAAAAAwgADx8AECAAEQEEAAEBBAABAwgAFh8AFyAAGAAAAAMIABYfABcgABgBBwADAQcAAwMIAB0fAB4gAB8AAAADCAAdHwAeIAAfAQUABAMIACMfACQgACUAAAADCAAjHwAkIAAlAgQAAQd8AwIEAAEHggEDAwgAKh8AKyAALAAAAAMIACofACsgACwBCgACAQoAAgMIADEfADIgADMAAAADCAAxHwAyIAAzDQIBDh8BDyIBECMBESQBEyYBFCgLFSkMFisBFy0LGC4NGy8BHDABHTELITQOIjUSIzYDJDcDJTgDJjkDJzoDKDwDKT4LKj8TK0EDLEMLLUQULkUDL0YDMEcLMUoVMksZM0wENE0ENU4ENk8EN1AEOFIEOVQLOlUaO1cEPFkLPVobPlsEP1wEQF0LQWAcQmEgQ2IFRGMFRWQFRmUFR2YFSGgFSWoLSmshS2wFTG0LTXAiTnEmT3ICUHMCUXQCUnUCU3YCVHgCVXoLVnsnV34CWIABC1mBAShagwECW4QBAlyFAQtdiAEpXokBLV-KAQhgiwEIYYwBCGKNAQhjjgEIZJABCGWSAQtmkwEuZ5UBCGiXAQtpmAEvapkBCGuaAQhsmwELbZ4BMG6fATQ"
+ }
+ 
+ async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Module> {
+diff --git a/generated/prisma/internal/prismaNamespace.ts b/generated/prisma/internal/prismaNamespace.ts
+index 1dbf248..9e9c812 100644
+--- a/generated/prisma/internal/prismaNamespace.ts
++++ b/generated/prisma/internal/prismaNamespace.ts
+@@ -918,6 +918,9 @@ export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typ
+ export const ParentChunkScalarFieldEnum = {
+   id: 'id',
+   text: 'text',
++  searchText: 'searchText',
++  prevParentId: 'prevParentId',
++  nextParentId: 'nextParentId',
+   documentId: 'documentId',
+   metadata: 'metadata'
+ } as const
+@@ -928,6 +931,7 @@ export type ParentChunkScalarFieldEnum = (typeof ParentChunkScalarFieldEnum)[key
+ export const ChildChunkScalarFieldEnum = {
+   id: 'id',
+   text: 'text',
++  searchText: 'searchText',
+   parentId: 'parentId',
+   documentId: 'documentId',
+   metadata: 'metadata'
+diff --git a/generated/prisma/internal/prismaNamespaceBrowser.ts b/generated/prisma/internal/prismaNamespaceBrowser.ts
+index 1853866..d738ec0 100644
+--- a/generated/prisma/internal/prismaNamespaceBrowser.ts
++++ b/generated/prisma/internal/prismaNamespaceBrowser.ts
+@@ -104,6 +104,9 @@ export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typ
+ export const ParentChunkScalarFieldEnum = {
+   id: 'id',
+   text: 'text',
++  searchText: 'searchText',
++  prevParentId: 'prevParentId',
++  nextParentId: 'nextParentId',
+   documentId: 'documentId',
+   metadata: 'metadata'
+ } as const
+@@ -114,6 +117,7 @@ export type ParentChunkScalarFieldEnum = (typeof ParentChunkScalarFieldEnum)[key
+ export const ChildChunkScalarFieldEnum = {
+   id: 'id',
+   text: 'text',
++  searchText: 'searchText',
+   parentId: 'parentId',
+   documentId: 'documentId',
+   metadata: 'metadata'
+diff --git a/generated/prisma/models/ChildChunk.ts b/generated/prisma/models/ChildChunk.ts
+index 17d624c..0cf4709 100644
+--- a/generated/prisma/models/ChildChunk.ts
++++ b/generated/prisma/models/ChildChunk.ts
+@@ -27,6 +27,7 @@ export type AggregateChildChunk = {
+ export type ChildChunkMinAggregateOutputType = {
+   id: string | null
+   text: string | null
++  searchText: string | null
+   parentId: string | null
+   documentId: string | null
+ }
+@@ -34,6 +35,7 @@ export type ChildChunkMinAggregateOutputType = {
+ export type ChildChunkMaxAggregateOutputType = {
+   id: string | null
+   text: string | null
++  searchText: string | null
+   parentId: string | null
+   documentId: string | null
+ }
+@@ -41,6 +43,7 @@ export type ChildChunkMaxAggregateOutputType = {
+ export type ChildChunkCountAggregateOutputType = {
+   id: number
+   text: number
++  searchText: number
+   parentId: number
+   documentId: number
+   metadata: number
+@@ -51,6 +54,7 @@ export type ChildChunkCountAggregateOutputType = {
+ export type ChildChunkMinAggregateInputType = {
+   id?: true
+   text?: true
++  searchText?: true
+   parentId?: true
+   documentId?: true
+ }
+@@ -58,6 +62,7 @@ export type ChildChunkMinAggregateInputType = {
+ export type ChildChunkMaxAggregateInputType = {
+   id?: true
+   text?: true
++  searchText?: true
+   parentId?: true
+   documentId?: true
+ }
+@@ -65,6 +70,7 @@ export type ChildChunkMaxAggregateInputType = {
+ export type ChildChunkCountAggregateInputType = {
+   id?: true
+   text?: true
++  searchText?: true
+   parentId?: true
+   documentId?: true
+   metadata?: true
+@@ -146,6 +152,7 @@ export type ChildChunkGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
+ export type ChildChunkGroupByOutputType = {
+   id: string
+   text: string
++  searchText: string
+   parentId: string
+   documentId: string
+   metadata: runtime.JsonValue | null
+@@ -175,6 +182,7 @@ export type ChildChunkWhereInput = {
+   NOT?: Prisma.ChildChunkWhereInput | Prisma.ChildChunkWhereInput[]
+   id?: Prisma.StringFilter<"ChildChunk"> | string
+   text?: Prisma.StringFilter<"ChildChunk"> | string
++  searchText?: Prisma.StringFilter<"ChildChunk"> | string
+   parentId?: Prisma.StringFilter<"ChildChunk"> | string
+   documentId?: Prisma.StringFilter<"ChildChunk"> | string
+   metadata?: Prisma.JsonNullableFilter<"ChildChunk">
+@@ -184,6 +192,7 @@ export type ChildChunkWhereInput = {
+ export type ChildChunkOrderByWithRelationInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
+   parentId?: Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
+@@ -196,6 +205,7 @@ export type ChildChunkWhereUniqueInput = Prisma.AtLeast<{
+   OR?: Prisma.ChildChunkWhereInput[]
+   NOT?: Prisma.ChildChunkWhereInput | Prisma.ChildChunkWhereInput[]
+   text?: Prisma.StringFilter<"ChildChunk"> | string
++  searchText?: Prisma.StringFilter<"ChildChunk"> | string
+   parentId?: Prisma.StringFilter<"ChildChunk"> | string
+   documentId?: Prisma.StringFilter<"ChildChunk"> | string
+   metadata?: Prisma.JsonNullableFilter<"ChildChunk">
+@@ -205,6 +215,7 @@ export type ChildChunkWhereUniqueInput = Prisma.AtLeast<{
+ export type ChildChunkOrderByWithAggregationInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
+   parentId?: Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
+@@ -219,6 +230,7 @@ export type ChildChunkScalarWhereWithAggregatesInput = {
+   NOT?: Prisma.ChildChunkScalarWhereWithAggregatesInput | Prisma.ChildChunkScalarWhereWithAggregatesInput[]
+   id?: Prisma.StringWithAggregatesFilter<"ChildChunk"> | string
+   text?: Prisma.StringWithAggregatesFilter<"ChildChunk"> | string
++  searchText?: Prisma.StringWithAggregatesFilter<"ChildChunk"> | string
+   parentId?: Prisma.StringWithAggregatesFilter<"ChildChunk"> | string
+   documentId?: Prisma.StringWithAggregatesFilter<"ChildChunk"> | string
+   metadata?: Prisma.JsonNullableWithAggregatesFilter<"ChildChunk">
+@@ -227,6 +239,7 @@ export type ChildChunkScalarWhereWithAggregatesInput = {
+ export type ChildChunkUpdateInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   parent?: Prisma.ParentChunkUpdateOneRequiredWithoutChildrenNestedInput
+@@ -235,6 +248,7 @@ export type ChildChunkUpdateInput = {
+ export type ChildChunkUncheckedUpdateInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+   parentId?: Prisma.StringFieldUpdateOperationsInput | string
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+@@ -243,6 +257,7 @@ export type ChildChunkUncheckedUpdateInput = {
+ export type ChildChunkUpdateManyMutationInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+@@ -250,6 +265,7 @@ export type ChildChunkUpdateManyMutationInput = {
+ export type ChildChunkUncheckedUpdateManyInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+   parentId?: Prisma.StringFieldUpdateOperationsInput | string
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+@@ -268,6 +284,7 @@ export type ChildChunkOrderByRelationAggregateInput = {
+ export type ChildChunkCountOrderByAggregateInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
+   parentId?: Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+   metadata?: Prisma.SortOrder
+@@ -276,6 +293,7 @@ export type ChildChunkCountOrderByAggregateInput = {
+ export type ChildChunkMaxOrderByAggregateInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
+   parentId?: Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+ }
+@@ -283,6 +301,7 @@ export type ChildChunkMaxOrderByAggregateInput = {
+ export type ChildChunkMinOrderByAggregateInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
+   parentId?: Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+ }
+@@ -331,6 +350,7 @@ export type ChildChunkScalarWhereInput = {
+   NOT?: Prisma.ChildChunkScalarWhereInput | Prisma.ChildChunkScalarWhereInput[]
+   id?: Prisma.StringFilter<"ChildChunk"> | string
+   text?: Prisma.StringFilter<"ChildChunk"> | string
++  searchText?: Prisma.StringFilter<"ChildChunk"> | string
+   parentId?: Prisma.StringFilter<"ChildChunk"> | string
+   documentId?: Prisma.StringFilter<"ChildChunk"> | string
+   metadata?: Prisma.JsonNullableFilter<"ChildChunk">
+@@ -339,6 +359,7 @@ export type ChildChunkScalarWhereInput = {
+ export type ChildChunkUpdateWithoutParentInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+@@ -346,6 +367,7 @@ export type ChildChunkUpdateWithoutParentInput = {
+ export type ChildChunkUncheckedUpdateWithoutParentInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+@@ -353,6 +375,7 @@ export type ChildChunkUncheckedUpdateWithoutParentInput = {
+ export type ChildChunkUncheckedUpdateManyWithoutParentInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+@@ -362,6 +385,7 @@ export type ChildChunkUncheckedUpdateManyWithoutParentInput = {
+ export type ChildChunkSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+   id?: boolean
+   text?: boolean
++  searchText?: boolean
+   parentId?: boolean
+   documentId?: boolean
+   metadata?: boolean
+@@ -372,6 +396,7 @@ export type ChildChunkSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
+ export type ChildChunkSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+   id?: boolean
+   text?: boolean
++  searchText?: boolean
+   parentId?: boolean
+   documentId?: boolean
+   metadata?: boolean
+@@ -381,12 +406,13 @@ export type ChildChunkSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
+ export type ChildChunkSelectScalar = {
+   id?: boolean
+   text?: boolean
++  searchText?: boolean
+   parentId?: boolean
+   documentId?: boolean
+   metadata?: boolean
+ }
+ 
+-export type ChildChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "text" | "parentId" | "documentId" | "metadata", ExtArgs["result"]["childChunk"]>
++export type ChildChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "text" | "searchText" | "parentId" | "documentId" | "metadata", ExtArgs["result"]["childChunk"]>
+ export type ChildChunkInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+   parent?: boolean | Prisma.ParentChunkDefaultArgs<ExtArgs>
+ }
+@@ -402,6 +428,7 @@ export type $ChildChunkPayload<ExtArgs extends runtime.Types.Extensions.Internal
+   scalars: runtime.Types.Extensions.GetPayloadResult<{
+     id: string
+     text: string
++    searchText: string
+     parentId: string
+     documentId: string
+     metadata: runtime.JsonValue | null
+@@ -760,6 +787,7 @@ export interface Prisma__ChildChunkClient<T, Null = never, ExtArgs extends runti
+ export interface ChildChunkFieldRefs {
+   readonly id: Prisma.FieldRef<"ChildChunk", 'String'>
+   readonly text: Prisma.FieldRef<"ChildChunk", 'String'>
++  readonly searchText: Prisma.FieldRef<"ChildChunk", 'String'>
+   readonly parentId: Prisma.FieldRef<"ChildChunk", 'String'>
+   readonly documentId: Prisma.FieldRef<"ChildChunk", 'String'>
+   readonly metadata: Prisma.FieldRef<"ChildChunk", 'Json'>
+diff --git a/generated/prisma/models/ParentChunk.ts b/generated/prisma/models/ParentChunk.ts
+index d51ff69..12b7498 100644
+--- a/generated/prisma/models/ParentChunk.ts
++++ b/generated/prisma/models/ParentChunk.ts
+@@ -27,18 +27,27 @@ export type AggregateParentChunk = {
+ export type ParentChunkMinAggregateOutputType = {
+   id: string | null
+   text: string | null
++  searchText: string | null
++  prevParentId: string | null
++  nextParentId: string | null
+   documentId: string | null
+ }
+ 
+ export type ParentChunkMaxAggregateOutputType = {
+   id: string | null
+   text: string | null
++  searchText: string | null
++  prevParentId: string | null
++  nextParentId: string | null
+   documentId: string | null
+ }
+ 
+ export type ParentChunkCountAggregateOutputType = {
+   id: number
+   text: number
++  searchText: number
++  prevParentId: number
++  nextParentId: number
+   documentId: number
+   metadata: number
+   _all: number
+@@ -48,18 +57,27 @@ export type ParentChunkCountAggregateOutputType = {
+ export type ParentChunkMinAggregateInputType = {
+   id?: true
+   text?: true
++  searchText?: true
++  prevParentId?: true
++  nextParentId?: true
+   documentId?: true
+ }
+ 
+ export type ParentChunkMaxAggregateInputType = {
+   id?: true
+   text?: true
++  searchText?: true
++  prevParentId?: true
++  nextParentId?: true
+   documentId?: true
+ }
+ 
+ export type ParentChunkCountAggregateInputType = {
+   id?: true
+   text?: true
++  searchText?: true
++  prevParentId?: true
++  nextParentId?: true
+   documentId?: true
+   metadata?: true
+   _all?: true
+@@ -140,6 +158,9 @@ export type ParentChunkGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inte
+ export type ParentChunkGroupByOutputType = {
+   id: string
+   text: string
++  searchText: string
++  prevParentId: string | null
++  nextParentId: string | null
+   documentId: string
+   metadata: runtime.JsonValue | null
+   _count: ParentChunkCountAggregateOutputType | null
+@@ -168,6 +189,9 @@ export type ParentChunkWhereInput = {
+   NOT?: Prisma.ParentChunkWhereInput | Prisma.ParentChunkWhereInput[]
+   id?: Prisma.StringFilter<"ParentChunk"> | string
+   text?: Prisma.StringFilter<"ParentChunk"> | string
++  searchText?: Prisma.StringFilter<"ParentChunk"> | string
++  prevParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
++  nextParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
+   documentId?: Prisma.StringFilter<"ParentChunk"> | string
+   metadata?: Prisma.JsonNullableFilter<"ParentChunk">
+   children?: Prisma.ChildChunkListRelationFilter
+@@ -177,6 +201,9 @@ export type ParentChunkWhereInput = {
+ export type ParentChunkOrderByWithRelationInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
++  prevParentId?: Prisma.SortOrderInput | Prisma.SortOrder
++  nextParentId?: Prisma.SortOrderInput | Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
+   children?: Prisma.ChildChunkOrderByRelationAggregateInput
+@@ -189,6 +216,9 @@ export type ParentChunkWhereUniqueInput = Prisma.AtLeast<{
+   OR?: Prisma.ParentChunkWhereInput[]
+   NOT?: Prisma.ParentChunkWhereInput | Prisma.ParentChunkWhereInput[]
+   text?: Prisma.StringFilter<"ParentChunk"> | string
++  searchText?: Prisma.StringFilter<"ParentChunk"> | string
++  prevParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
++  nextParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
+   documentId?: Prisma.StringFilter<"ParentChunk"> | string
+   metadata?: Prisma.JsonNullableFilter<"ParentChunk">
+   children?: Prisma.ChildChunkListRelationFilter
+@@ -198,6 +228,9 @@ export type ParentChunkWhereUniqueInput = Prisma.AtLeast<{
+ export type ParentChunkOrderByWithAggregationInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
++  prevParentId?: Prisma.SortOrderInput | Prisma.SortOrder
++  nextParentId?: Prisma.SortOrderInput | Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
+   _count?: Prisma.ParentChunkCountOrderByAggregateInput
+@@ -211,6 +244,9 @@ export type ParentChunkScalarWhereWithAggregatesInput = {
+   NOT?: Prisma.ParentChunkScalarWhereWithAggregatesInput | Prisma.ParentChunkScalarWhereWithAggregatesInput[]
+   id?: Prisma.StringWithAggregatesFilter<"ParentChunk"> | string
+   text?: Prisma.StringWithAggregatesFilter<"ParentChunk"> | string
++  searchText?: Prisma.StringWithAggregatesFilter<"ParentChunk"> | string
++  prevParentId?: Prisma.StringNullableWithAggregatesFilter<"ParentChunk"> | string | null
++  nextParentId?: Prisma.StringNullableWithAggregatesFilter<"ParentChunk"> | string | null
+   documentId?: Prisma.StringWithAggregatesFilter<"ParentChunk"> | string
+   metadata?: Prisma.JsonNullableWithAggregatesFilter<"ParentChunk">
+ }
+@@ -218,6 +254,9 @@ export type ParentChunkScalarWhereWithAggregatesInput = {
+ export type ParentChunkCreateInput = {
+   id?: string
+   text: string
++  searchText: string
++  prevParentId?: string | null
++  nextParentId?: string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   children?: Prisma.ChildChunkCreateNestedManyWithoutParentInput
+   document: Prisma.DocumentCreateNestedOneWithoutParentsInput
+@@ -226,6 +265,9 @@ export type ParentChunkCreateInput = {
+ export type ParentChunkUncheckedCreateInput = {
+   id?: string
+   text: string
++  searchText: string
++  prevParentId?: string | null
++  nextParentId?: string | null
+   documentId: string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   children?: Prisma.ChildChunkUncheckedCreateNestedManyWithoutParentInput
+@@ -234,6 +276,9 @@ export type ParentChunkUncheckedCreateInput = {
+ export type ParentChunkUpdateInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   children?: Prisma.ChildChunkUpdateManyWithoutParentNestedInput
+   document?: Prisma.DocumentUpdateOneRequiredWithoutParentsNestedInput
+@@ -242,6 +287,9 @@ export type ParentChunkUpdateInput = {
+ export type ParentChunkUncheckedUpdateInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   children?: Prisma.ChildChunkUncheckedUpdateManyWithoutParentNestedInput
+@@ -250,6 +298,9 @@ export type ParentChunkUncheckedUpdateInput = {
+ export type ParentChunkCreateManyInput = {
+   id?: string
+   text: string
++  searchText: string
++  prevParentId?: string | null
++  nextParentId?: string | null
+   documentId: string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+@@ -257,12 +308,18 @@ export type ParentChunkCreateManyInput = {
+ export type ParentChunkUpdateManyMutationInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+ 
+ export type ParentChunkUncheckedUpdateManyInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+@@ -280,6 +337,9 @@ export type ParentChunkOrderByRelationAggregateInput = {
+ export type ParentChunkCountOrderByAggregateInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
++  prevParentId?: Prisma.SortOrder
++  nextParentId?: Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+   metadata?: Prisma.SortOrder
+ }
+@@ -287,12 +347,18 @@ export type ParentChunkCountOrderByAggregateInput = {
+ export type ParentChunkMaxOrderByAggregateInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
++  prevParentId?: Prisma.SortOrder
++  nextParentId?: Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+ }
+ 
+ export type ParentChunkMinOrderByAggregateInput = {
+   id?: Prisma.SortOrder
+   text?: Prisma.SortOrder
++  searchText?: Prisma.SortOrder
++  prevParentId?: Prisma.SortOrder
++  nextParentId?: Prisma.SortOrder
+   documentId?: Prisma.SortOrder
+ }
+ 
+@@ -354,6 +420,9 @@ export type ParentChunkUpdateOneRequiredWithoutChildrenNestedInput = {
+ export type ParentChunkCreateWithoutDocumentInput = {
+   id?: string
+   text: string
++  searchText: string
++  prevParentId?: string | null
++  nextParentId?: string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   children?: Prisma.ChildChunkCreateNestedManyWithoutParentInput
+ }
+@@ -361,6 +430,9 @@ export type ParentChunkCreateWithoutDocumentInput = {
+ export type ParentChunkUncheckedCreateWithoutDocumentInput = {
+   id?: string
+   text: string
++  searchText: string
++  prevParentId?: string | null
++  nextParentId?: string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   children?: Prisma.ChildChunkUncheckedCreateNestedManyWithoutParentInput
+ }
+@@ -397,6 +469,9 @@ export type ParentChunkScalarWhereInput = {
+   NOT?: Prisma.ParentChunkScalarWhereInput | Prisma.ParentChunkScalarWhereInput[]
+   id?: Prisma.StringFilter<"ParentChunk"> | string
+   text?: Prisma.StringFilter<"ParentChunk"> | string
++  searchText?: Prisma.StringFilter<"ParentChunk"> | string
++  prevParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
++  nextParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
+   documentId?: Prisma.StringFilter<"ParentChunk"> | string
+   metadata?: Prisma.JsonNullableFilter<"ParentChunk">
+ }
+@@ -404,6 +479,9 @@ export type ParentChunkScalarWhereInput = {
+ export type ParentChunkCreateWithoutChildrenInput = {
+   id?: string
+   text: string
++  searchText: string
++  prevParentId?: string | null
++  nextParentId?: string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   document: Prisma.DocumentCreateNestedOneWithoutParentsInput
+ }
+@@ -411,6 +489,9 @@ export type ParentChunkCreateWithoutChildrenInput = {
+ export type ParentChunkUncheckedCreateWithoutChildrenInput = {
+   id?: string
+   text: string
++  searchText: string
++  prevParentId?: string | null
++  nextParentId?: string | null
+   documentId: string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+@@ -434,6 +515,9 @@ export type ParentChunkUpdateToOneWithWhereWithoutChildrenInput = {
+ export type ParentChunkUpdateWithoutChildrenInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   document?: Prisma.DocumentUpdateOneRequiredWithoutParentsNestedInput
+ }
+@@ -441,6 +525,9 @@ export type ParentChunkUpdateWithoutChildrenInput = {
+ export type ParentChunkUncheckedUpdateWithoutChildrenInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   documentId?: Prisma.StringFieldUpdateOperationsInput | string
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+@@ -448,12 +535,18 @@ export type ParentChunkUncheckedUpdateWithoutChildrenInput = {
+ export type ParentChunkCreateManyDocumentInput = {
+   id?: string
+   text: string
++  searchText: string
++  prevParentId?: string | null
++  nextParentId?: string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+ 
+ export type ParentChunkUpdateWithoutDocumentInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   children?: Prisma.ChildChunkUpdateManyWithoutParentNestedInput
+ }
+@@ -461,6 +554,9 @@ export type ParentChunkUpdateWithoutDocumentInput = {
+ export type ParentChunkUncheckedUpdateWithoutDocumentInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+   children?: Prisma.ChildChunkUncheckedUpdateManyWithoutParentNestedInput
+ }
+@@ -468,6 +564,9 @@ export type ParentChunkUncheckedUpdateWithoutDocumentInput = {
+ export type ParentChunkUncheckedUpdateManyWithoutDocumentInput = {
+   id?: Prisma.StringFieldUpdateOperationsInput | string
+   text?: Prisma.StringFieldUpdateOperationsInput | string
++  searchText?: Prisma.StringFieldUpdateOperationsInput | string
++  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
++  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+ }
+ 
+@@ -505,6 +604,9 @@ export type ParentChunkCountOutputTypeCountChildrenArgs<ExtArgs extends runtime.
+ export type ParentChunkSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+   id?: boolean
+   text?: boolean
++  searchText?: boolean
++  prevParentId?: boolean
++  nextParentId?: boolean
+   documentId?: boolean
+   metadata?: boolean
+   children?: boolean | Prisma.ParentChunk$childrenArgs<ExtArgs>
+@@ -515,6 +617,9 @@ export type ParentChunkSelect<ExtArgs extends runtime.Types.Extensions.InternalA
+ export type ParentChunkSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+   id?: boolean
+   text?: boolean
++  searchText?: boolean
++  prevParentId?: boolean
++  nextParentId?: boolean
+   documentId?: boolean
+   metadata?: boolean
+   document?: boolean | Prisma.DocumentDefaultArgs<ExtArgs>
+@@ -523,6 +628,9 @@ export type ParentChunkSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
+ export type ParentChunkSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+   id?: boolean
+   text?: boolean
++  searchText?: boolean
++  prevParentId?: boolean
++  nextParentId?: boolean
+   documentId?: boolean
+   metadata?: boolean
+   document?: boolean | Prisma.DocumentDefaultArgs<ExtArgs>
+@@ -531,11 +639,14 @@ export type ParentChunkSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
+ export type ParentChunkSelectScalar = {
+   id?: boolean
+   text?: boolean
++  searchText?: boolean
++  prevParentId?: boolean
++  nextParentId?: boolean
+   documentId?: boolean
+   metadata?: boolean
+ }
+ 
+-export type ParentChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "text" | "documentId" | "metadata", ExtArgs["result"]["parentChunk"]>
++export type ParentChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "text" | "searchText" | "prevParentId" | "nextParentId" | "documentId" | "metadata", ExtArgs["result"]["parentChunk"]>
+ export type ParentChunkInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+   children?: boolean | Prisma.ParentChunk$childrenArgs<ExtArgs>
+   document?: boolean | Prisma.DocumentDefaultArgs<ExtArgs>
+@@ -557,6 +668,9 @@ export type $ParentChunkPayload<ExtArgs extends runtime.Types.Extensions.Interna
+   scalars: runtime.Types.Extensions.GetPayloadResult<{
+     id: string
+     text: string
++    searchText: string
++    prevParentId: string | null
++    nextParentId: string | null
+     documentId: string
+     metadata: runtime.JsonValue | null
+   }, ExtArgs["result"]["parentChunk"]>
+@@ -986,6 +1100,9 @@ export interface Prisma__ParentChunkClient<T, Null = never, ExtArgs extends runt
+ export interface ParentChunkFieldRefs {
+   readonly id: Prisma.FieldRef<"ParentChunk", 'String'>
+   readonly text: Prisma.FieldRef<"ParentChunk", 'String'>
++  readonly searchText: Prisma.FieldRef<"ParentChunk", 'String'>
++  readonly prevParentId: Prisma.FieldRef<"ParentChunk", 'String'>
++  readonly nextParentId: Prisma.FieldRef<"ParentChunk", 'String'>
+   readonly documentId: Prisma.FieldRef<"ParentChunk", 'String'>
+   readonly metadata: Prisma.FieldRef<"ParentChunk", 'Json'>
+ }
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index 34f5393..d63953f 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -37,6 +37,9 @@ model Document {
+ model ParentChunk {
+   id         String       @id @default(uuid())
+   text       String
++  searchText   String
++  prevParentId String?
++  nextParentId String?
+   documentId String
+   metadata   Json?
+   children   ChildChunk[]
+@@ -46,6 +49,8 @@ model ParentChunk {
+ model ChildChunk {
+   id         String                @id @default(uuid())
+   text       String
++  searchText String
++
+   parentId   String
+   documentId String
+   embedding  Unsupported("vector(384)")
+diff --git a/src/config/uploadProgress.js b/src/config/uploadProgress.js
+index 514014d..9d027cf 100644
+--- a/src/config/uploadProgress.js
++++ b/src/config/uploadProgress.js
+@@ -1,4 +1,5 @@
+ import Redis from "ioredis";
++import { randomUUID } from "node:crypto";
+ import "dotenv/config";
+ 
+ const makeRedis = () =>
+@@ -10,10 +11,38 @@ const makeRedis = () =>
+ const publisher = makeRedis();
+ 
+ const channelName = (documentId) => `doc-progress:${documentId}`;
++const historyKey = (documentId) => `doc-progress-history:${documentId}`;
++
++// Keep one day's events so opening the inspector late does not lose details.
++export const clearProgressHistory = async (documentId) => {
++  await publisher.del(historyKey(documentId));
++};
++
++export const getProgressHistory = async (documentId) => {
++  const messages = await publisher.lrange(historyKey(documentId), 0, -1);
++  return messages.map((message) => JSON.parse(message));
++};
+ 
+ export const publishProgress = async (documentId, event) => {
++  const payload = {
++    ...event,
++    documentId,
++    eventId: randomUUID(),
++    timestamp: new Date().toISOString(),
++  };
++  const message = JSON.stringify(payload);
++  if (process.env.RAG_DEBUG !== "false") {
++    console.log("[Document pipeline]", message);
++  }
++
++  try {
++    await publisher.rpush(historyKey(documentId), message);
++    await publisher.expire(historyKey(documentId), 86400);
++  } catch (err) {
++    console.error("Saving progress history failed:", err.message);
++  }
+   try {
+-    await publisher.publish(channelName(documentId), JSON.stringify(event));
++    await publisher.publish(channelName(documentId), message);
+   } catch (err) {
+     console.error("publishProgress failed:", err.message);
+   }
+diff --git a/src/controllers/chat.controller.js b/src/controllers/chat.controller.js
+index e52be52..eb18a42 100644
+--- a/src/controllers/chat.controller.js
++++ b/src/controllers/chat.controller.js
+@@ -11,8 +11,8 @@ export const askQuestion = async (req, res) => {
+     }
+ 
+     if (documentId) {
+-      const doc = await prisma.document.findUnique({
+-        where: { id: documentId },
++      const doc = await prisma.document.findFirst({
++        where: { id: documentId, userId },
+       });
+ 
+       if (!doc) {
+diff --git a/src/controllers/document.controller.js b/src/controllers/document.controller.js
+index 9c5d092..328c17c 100644
+--- a/src/controllers/document.controller.js
++++ b/src/controllers/document.controller.js
+@@ -1,6 +1,11 @@
+ import { supabase } from "../config/supabase.js";
+ import * as documentService from "../services/document.service.js";
+-import { createSubscriber, getChannel } from "../config/uploadProgress.js";
++import {
++  createSubscriber,
++  getChannel,
++  getProgressHistory,
++} from "../config/uploadProgress.js";
++import { randomUUID } from "node:crypto";
+ import prisma from "../config/db.js";
+ 
+ export const streamProgress = async (req, res) => {
+@@ -24,13 +29,24 @@ export const streamProgress = async (req, res) => {
+   // 3. Start listening to this document's channel
+   const subscriber = createSubscriber();
+   let closed = false;
++  let replaying = true;
++  const waitingEvents = [];
++  const sentIds = new Set();
+   const cleanup = () => {
+     if (closed) return;
+     closed = true;
+     subscriber.disconnect();
+   };
+   const send = (event) => {
+-    if (!closed) res.write(`data: ${JSON.stringify(event)}\n\n`);
++    if (closed || (event.eventId && sentIds.has(event.eventId))) return;
++    const payload = {
++      documentId,
++      timestamp: new Date().toISOString(),
++      eventId: randomUUID(),
++      ...event,
++    };
++    sentIds.add(payload.eventId);
++    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+   };
+   const finish = (event) => {
+     if (closed) return;
+@@ -40,8 +56,8 @@ export const streamProgress = async (req, res) => {
+   };
+   res.on("close", cleanup);
+ 
+-  subscriber.on("message", (channel, message) => {
+-    const event = JSON.parse(message);
++  const dispatch = (event) => {
++    if (closed || (event.eventId && sentIds.has(event.eventId))) return;
+     if (
+       event.type === "completed" ||
+       event.type === "failed" ||
+@@ -51,10 +67,27 @@ export const streamProgress = async (req, res) => {
+     } else {
+       send(event);
+     }
++  };
++
++  subscriber.on("message", (channel, message) => {
++    const event = JSON.parse(message);
++    if (replaying) waitingEvents.push(event);
++    else dispatch(event);
+   });
+ 
+   await subscriber.subscribe(getChannel(documentId));
+ 
++  // Subscribe first, then replay: buffer live events and deduplicate their IDs.
++  try {
++    const history = await getProgressHistory(documentId);
++    for (const event of history) dispatch(event);
++  } catch (error) {
++    console.error("Reading progress history failed:", error.message);
++  }
++  replaying = false;
++  for (const event of waitingEvents) dispatch(event);
++  if (closed) return;
++
+   // 4. If it already finished before we connected, say so and stop
+   const fresh = await prisma.document.findUnique({ where: { id: documentId } });
+   if (closed) return;
+@@ -176,18 +209,23 @@ export const deleteDocument = async (req, res) => {
+ export const getAllParentChunks = async (req, res) => {
+   try {
+     const docId = req.params.docId;
+-    const parentChunks = await documentService.getAllParentChunks(docId);
++    const parentChunks = await documentService.getAllParentChunks(docId, req.user.id);
+     return res.status(200).json({
+       success: true,
+       data: parentChunks,
+     });
+-  } catch (error) {}
++  } catch (error) {
++    return res.status(error.statusCode || 500).json({
++      success: false,
++      error: error.message,
++    });
++  }
+ };
+ 
+ export const getChildChunksOfParent = async (req, res) => {
+   try {
+     const parentId = req.params.parentId;
+-    const result = await documentService.getChildChunksOfParent(parentId);
++    const result = await documentService.getChildChunksOfParent(parentId, req.user.id);
+     return res.status(200).json({
+       success: true,
+       data: result,
+diff --git a/src/repositories/chat.repository.js b/src/repositories/chat.repository.js
+index e3a3062..1c29edb 100644
+--- a/src/repositories/chat.repository.js
++++ b/src/repositories/chat.repository.js
+@@ -59,12 +59,12 @@ export const searchSingleDocument = async (
+       SELECT 
+         "parentId",
+         ROW_NUMBER() OVER (
+-          ORDER BY ts_rank_cd(to_tsvector('english', text), plainto_tsquery('english', ${queryText})) DESC
++          ORDER BY ts_rank_cd(to_tsvector('english', "searchText"), plainto_tsquery('english', ${queryText})) DESC
+         ) AS rank
+       FROM "ChildChunk"
+       WHERE "documentId" = ${documentId}
+-        AND to_tsvector('english', text) @@ plainto_tsquery('english', ${queryText})
+-      ORDER BY ts_rank_cd(to_tsvector('english', text), plainto_tsquery('english', ${queryText})) DESC
++        AND to_tsvector('english', "searchText") @@ plainto_tsquery('english', ${queryText})
++      ORDER BY ts_rank_cd(to_tsvector('english', "searchText"), plainto_tsquery('english', ${queryText})) DESC
+       LIMIT 20
+     ),
+     combined_scores AS (
+@@ -81,7 +81,14 @@ export const searchSingleDocument = async (
+       ORDER BY total_score DESC
+       LIMIT ${count}
+     )
+-    SELECT p.id, p.text, p.metadata
++    SELECT   p.id,
++  p.text,
++  p."searchText",
++  p."documentId",
++  p."prevParentId",
++  p."nextParentId",
++  p.metadata,
++  r.total_score::double precision AS "retrievalScore"
+     FROM ranked_parents r
+     JOIN "ParentChunk" p ON r."parentId" = p.id;
+   `;
+@@ -109,13 +116,13 @@ export const searchAllUserDocuments = async (
+       SELECT 
+         c."parentId",
+         ROW_NUMBER() OVER (
+-          ORDER BY ts_rank_cd(to_tsvector('english', c.text), plainto_tsquery('english', ${queryText})) DESC
++          ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
+         ) AS rank
+       FROM "ChildChunk" c
+       JOIN "Document" d ON c."documentId" = d.id
+       WHERE d."userId" = ${userId} AND d."status" = 'COMPLETED'
+-        AND to_tsvector('english', c.text) @@ plainto_tsquery('english', ${queryText})
+-      ORDER BY ts_rank_cd(to_tsvector('english', c.text), plainto_tsquery('english', ${queryText})) DESC
++        AND to_tsvector('english', c."searchText") @@ plainto_tsquery('english', ${queryText})
++      ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
+       LIMIT 20
+     ),
+     combined_scores AS (
+@@ -132,7 +139,14 @@ export const searchAllUserDocuments = async (
+       ORDER BY total_score DESC
+       LIMIT ${count}
+     )
+-    SELECT p.text
++    SELECT   p.id,
++  p.text,
++  p."searchText",
++  p."documentId",
++  p."prevParentId",
++  p."nextParentId",
++  p.metadata,
++  r.total_score::double precision AS "retrievalScore"
+     FROM ranked_parents r
+     JOIN "ParentChunk" p ON r."parentId" = p.id;
+   `;
+@@ -140,7 +154,7 @@ export const searchAllUserDocuments = async (
+ 
+ export const getChunksByPage = async (documentId, pageNumber) => {
+   const result = await prisma.$queryRaw`
+-    SELECT id, text, metadata 
++    SELECT id, text, "searchText", "documentId", metadata
+     FROM "ParentChunk" 
+     WHERE "documentId" = ${documentId}
+       AND (metadata->>'page_number')::int = ${pageNumber}
+@@ -228,3 +242,48 @@ export const clearConversationMessages = async (userId, documentId) => {
+   });
+   return result.count;
+ };
++
++export async function getParentNeighbors(parents, userId) {
++  const result = [...parents];
++  const addedIds = new Set(parents.map((parent) => parent.id));
++
++  for (const parent of parents) {
++    const neighborIds = [parent.prevParentId, parent.nextParentId].filter(
++      Boolean,
++    );
++
++    if (neighborIds.length === 0) continue;
++
++    const neighbors = await prisma.parentChunk.findMany({
++      where: {
++        id: { in: neighborIds },
++        documentId: parent.documentId,
++
++        // Check access inside the database query.
++        document: {
++          userId,
++          status: "COMPLETED",
++        },
++      },
++    });
++
++    for (const neighbor of neighbors) {
++      const sameSection =
++        neighbor.metadata?.section_id === parent.metadata.section_id;
++
++      if (sameSection && !addedIds.has(neighbor.id) && result.length < 24) {
++        addedIds.add(neighbor.id);
++        result.push({
++          ...neighbor,
++          retrievalOrigin: {
++            type: "neighbor",
++            seedParentId: parent.id,
++            direction: neighbor.id === parent.prevParentId ? "previous" : "next",
++          },
++        });
++      }
++    }
++  }
++
++  return result;
++}
+diff --git a/src/repositories/document.repository.js b/src/repositories/document.repository.js
+index 5256461..f8ecb2c 100644
+--- a/src/repositories/document.repository.js
++++ b/src/repositories/document.repository.js
+@@ -65,21 +65,29 @@ export const deleteOwnedDocument = async (id, userId) => {
+ export const getAllParentChunks = async (id) => {
+   return await prisma.$queryRaw`
+     SELECT
+-      id,
+-      text,
+-      metadata
+-    FROM "ParentChunk"
+-    WHERE "documentId" = ${id}
+-    ORDER BY (metadata->>'page_number')::int ASC
++      p.id,
++      p.text,
++      p."searchText",
++      p."documentId",
++      p."prevParentId",
++      p."nextParentId",
++      p.metadata,
++      (SELECT COUNT(*)::int FROM "ChildChunk" c WHERE c."parentId" = p.id) AS "totalChildren"
++    FROM "ParentChunk" p
++    WHERE p."documentId" = ${id}
++    ORDER BY (p.metadata->>'chunk_index')::int ASC
+   `;
+ };
+ 
+-export const getParentChunkById = async (parentId) => {
+-  return await prisma.parentChunk.findUnique({
+-    where: { id: parentId },
++export const getParentChunkById = async (parentId, userId) => {
++  return await prisma.parentChunk.findFirst({
++    where: { id: parentId, document: { userId } },
+     select: {
+       id: true,
+       text: true,
++      searchText: true,
++      prevParentId: true,
++      nextParentId: true,
+       documentId: true,
+       metadata: true,
+     },
+@@ -87,14 +95,78 @@ export const getParentChunkById = async (parentId) => {
+ };
+ 
+ export const getChildChunksByParentId = async (parentId) => {
+-  return await prisma.childChunk.findMany({
+-    where: { parentId },
+-    select: {
+-      id: true,
+-      text: true,
+-      parentId: true,
+-      documentId: true,
+-      metadata: true,
+-    },
++  const children = await prisma.$queryRaw`
++    SELECT id, text, "searchText", "parentId", "documentId", metadata,
++      embedding::text AS "embeddingText"
++    FROM "ChildChunk"
++    WHERE "parentId" = ${parentId}
++    ORDER BY (metadata->>'child_index')::int ASC
++  `;
++  return children.map(({ embeddingText, ...child }) => {
++    const embedding = JSON.parse(embeddingText);
++    return { ...child, embedding, embeddingDimensions: embedding.length };
+   });
+ };
++
++export async function saveDocumentChunks(documentId, parents) {
++  await prisma.$transaction(
++    async (tx) => {
++      // Prevent two replacements for this document from
++      // changing its chunks at the same time.
++      const documents = await tx.$queryRaw`
++        SELECT id
++        FROM "Document"
++        WHERE id = ${documentId}
++        FOR UPDATE
++      `;
++
++      if (documents.length === 0) {
++        throw new Error("Document no longer exists");
++      }
++
++      for (const parent of parents) {
++        await tx.parentChunk.create({
++          data: {
++            id: parent.id,
++            documentId,
++
++            text: parent.text,
++            searchText: parent.searchText,
++
++            prevParentId: parent.prevParentId,
++            nextParentId: parent.nextParentId,
++
++            metadata: parent.metadata,
++          },
++        });
++
++        for (const child of parent.children) {
++          await tx.$executeRaw`
++            INSERT INTO "ChildChunk" (
++              id,
++              text,
++              "searchText",
++              "parentId",
++              "documentId",
++              embedding,
++              metadata
++            )
++            VALUES (
++              ${child.id},
++              ${child.text},
++              ${child.searchText},
++              ${parent.id},
++              ${documentId},
++              ${child.embedding}::vector,
++              ${JSON.stringify(child.metadata)}::jsonb
++            )
++          `;
++        }
++      }
++    },
++    {
++      maxWait: 10000,
++      timeout: 120000,
++    },
++  );
++}
+diff --git a/src/routes/document.routes.js b/src/routes/document.routes.js
+index 6a2346a..fc1d210 100644
+--- a/src/routes/document.routes.js
++++ b/src/routes/document.routes.js
+@@ -17,8 +17,8 @@ const router = express.Router();
+ router.post("/upload", requireAuth, upload.single("file"), uploadDocument);
+ router.get("/", requireAuth, listDocuments);
+ router.get("/my-documents", requireAuth, getMyDocuments);
+-router.get("/get-all-parent-chunk/:docId", getAllParentChunks);
+-router.get("/get-all-child-chunk/:parentId", getChildChunksOfParent);
++router.get("/get-all-parent-chunk/:docId", requireAuth, getAllParentChunks);
++router.get("/get-all-child-chunk/:parentId", requireAuth, getChildChunksOfParent);
+ router.get("/progress/:docId", requireAuth, streamProgress);
+ router.delete("/:docId", requireAuth, deleteDocument);
+ 
+diff --git a/src/services/ai.service.js b/src/services/ai.service.js
+index ee459f0..9a14b83 100644
+--- a/src/services/ai.service.js
++++ b/src/services/ai.service.js
+@@ -25,7 +25,7 @@ import { chatCompletion, cohere, RERANK_MODEL } from "../config/ai.js";
+ 
+ export const rerankChunks = async (query, chunks, topN = 3) => {
+   // Cohere expects an array of strings (the text of our chunks)
+-  const documents = chunks.map((chunk) => chunk.text);
++  const documents = chunks.map((chunk) => chunk.searchText);
+   // console.log(documents, "documents");
+   const response = await cohere.rerank({
+     model: RERANK_MODEL,
+@@ -34,7 +34,10 @@ export const rerankChunks = async (query, chunks, topN = 3) => {
+     topN: topN, // We only want the top 3 back
+   });
+   // console.log(response.results, "results");
+-  const rerankedChunks = response.results.map((result) => chunks[result.index]);
++  const rerankedChunks = response.results.map((result) => ({
++    ...chunks[result.index],
++    rerankScore: result.relevanceScore,
++  }));
+ 
+   return rerankedChunks;
+ };
+@@ -170,22 +173,44 @@ export const extractDocPages = async (filepath, mimetype) => {
+ // We define this outside the function so the AI model only loads into memory once
+ let extractorPipeline;
+ 
+-export const getEmbedding = async (text) => {
++export const getEmbedding = async (text, { rejectTruncation = false, onDetails } = {}) => {
+   if (!extractorPipeline) {
+-    // This downloads a small (80MB) AI model perfectly tuned for vector search
+     extractorPipeline = await pipeline(
+       "feature-extraction",
+       "Xenova/all-MiniLM-L6-v2",
+     );
+   }
+ 
++  const details = { model: "Xenova/all-MiniLM-L6-v2" };
++  if (rejectTruncation) {
++    const tokens = await extractorPipeline.tokenizer(text, {
++      truncation: false,
++      padding: false,
++    });
++
++    const tokenCount = tokens.input_ids.data.length;
++
++    const modelLimit = Number(extractorPipeline.tokenizer.model_max_length);
++
++    // A conservative limit for indexing with this model.
++    const limit = Number.isFinite(modelLimit) ? Math.min(modelLimit, 256) : 256;
++    details.tokenCount = tokenCount;
++    details.tokenLimit = limit;
++    details.withinLimit = tokenCount <= limit;
++
++    if (tokenCount > limit) {
++      if (onDetails) onDetails(details);
++      throw new Error(`Chunk is too large for embedding: ${tokenCount} tokens`);
++    }
++  }
++
+   const output = await extractorPipeline(text, {
+     pooling: "mean",
+     normalize: true,
+   });
++  details.dimensions = output.data.length;
++  if (onDetails) onDetails(details);
+ 
+-  // The output is a Float32Array. We convert it to a standard JavaScript Array.
+-  // This will be exactly 384 numbers long.
+   return Array.from(output.data);
+ };
+ 
+diff --git a/src/services/crag.service.js b/src/services/crag.service.js
+index d8921a8..d919aae 100644
+--- a/src/services/crag.service.js
++++ b/src/services/crag.service.js
+@@ -9,7 +9,10 @@ export const GraphState = Annotation.Root({
+   question: Annotation({ reducer: (x, y) => y, default: () => "" }),
+   documents: Annotation({ reducer: (x, y) => y, default: () => [] }),
+   generation: Annotation({ reducer: (x, y) => y, default: () => "" }),
+-  summaryUnavailable: Annotation({ reducer: (x, y) => y, default: () => false }),
++  summaryUnavailable: Annotation({
++    reducer: (x, y) => y,
++    default: () => false,
++  }),
+   loopCount: Annotation({ reducer: (x, y) => x + y, default: () => 0 }),
+   documentId: Annotation({ reducer: (x, y) => y, default: () => null }),
+   userId: Annotation({ reducer: (x, y) => y, default: () => null }),
+@@ -19,7 +22,17 @@ export const GraphState = Annotation.Root({
+   subQueries: Annotation({ reducer: (x, y) => y, default: () => [] }),
+ });
+ 
+-const emit = (config, event) => config?.configurable?.onEvent?.(event);
++const emit = (config, event) => {
++  const payload = {
++    ...event,
++    eventId: crypto.randomUUID(),
++    timestamp: new Date().toISOString(),
++  };
++  if (process.env.RAG_DEBUG !== "false") {
++    console.log("[CRAG details]", JSON.stringify(payload));
++  }
++  config?.configurable?.onEvent?.(payload);
++};
+ 
+ const decomposeNode = async (state, config) => {
+   emit(config, {
+@@ -66,6 +79,7 @@ Respond ONLY with JSON: {"queries": ["...", "..."]}`;
+     type: "tool_finish",
+     tool: "Question Splitter",
+     message: `${queries.length} search(es): ${queries.join(" | ")}`,
++    queries,
+   });
+   return { subQueries: queries };
+ };
+@@ -110,6 +124,8 @@ const analyzeIntentNode = async (state, config) => {
+     type: "tool_finish",
+     tool: "Intent Classifier",
+     message: intentMessages[result.intent] || intentMessages.search,
++    intent: result.intent,
++    pageNumber: result.page_number || null,
+   });
+ 
+   return { intent: result.intent, page_number: result.page_number || null };
+@@ -131,7 +147,9 @@ const fetchSummaryNode = async (state, config) => {
+     return unavailable("Select a document before requesting its summary.");
+   }
+ 
+-  const document = await chatRepository.getDocumentSummaryState(state.documentId);
++  const document = await chatRepository.getDocumentSummaryState(
++    state.documentId,
++  );
+   if (!document) {
+     return unavailable("Document not found.");
+   }
+@@ -160,7 +178,9 @@ const fetchSummaryNode = async (state, config) => {
+ 
+   // Package the ready summary as a document so the answer can cite it.
+   return {
+-    documents: [{ text: document.summary, metadata: { page_number: "Summary" } }],
++    documents: [
++      { text: document.summary, metadata: { page_number: "Summary" } },
++    ],
+   };
+ };
+ 
+@@ -227,9 +247,23 @@ const retrieveNode = async (state, config) => {
+           15,
+         );
+ 
++    emit(config, {
++      type: "retrieval_candidates",
++      attempt: state.loopCount + 1,
++      query,
++      documents: matched,
++    });
+     const best =
+       matched.length > 0 ? await aiService.rerankChunks(query, matched, 3) : [];
+-    for (const chunk of best) collected.set(chunk.id || chunk.text, chunk);
++    emit(config, {
++      type: "rerank_result",
++      attempt: state.loopCount + 1,
++      query,
++      documents: best,
++    });
++    for (const chunk of best) {
++      collected.set(chunk.id, { ...chunk, retrievalOrigin: { type: "search" } });
++    }
+ 
+     emit(config, {
+       type: "tool_finish",
+@@ -238,7 +272,19 @@ const retrieveNode = async (state, config) => {
+     });
+   }
+ 
+-  const documents = [...collected.values()];
++  const seeds = [...collected.values()];
++  const documents = await chatRepository.getParentNeighbors(
++    seeds,
++    state.userId,
++  );
++  emit(config, {
++    type: "neighbor_expansion",
++    attempt: state.loopCount + 1,
++    seedParentIds: seeds.map((parent) => parent.id),
++    addedParentIds: documents.filter((parent) => !collected.has(parent.id)).map((parent) => parent.id),
++    documents,
++  });
++
+   emit(config, {
+     type: "status",
+     message: `Collected ${documents.length} unique chunks from ${queries.length} search(es).`,
+@@ -266,10 +312,12 @@ const gradeDocumentsNode = async (state, config) => {
+   }
+ 
+   const numberedChunks = state.documents
+-    .map(
+-      (doc, i) =>
+-        `[Chunk ${i + 1}] (Page ${doc.metadata?.page_number || "Unknown"})\n${doc.text}`,
+-    )
++    .map((doc, index) => {
++      const page = doc.metadata?.page_number || "Unknown";
++      const text = doc.searchText;
++
++      return `[Chunk ${index + 1}] (Page ${page})\n${text}`;
++    })
+     .join("\n\n---\n\n");
+ 
+   const prompt = `You are selecting which document chunks are useful for answering a question.
+@@ -292,6 +340,7 @@ Drop a chunk only if it has nothing to do with the question.
+ Respond ONLY with a JSON object: {"relevant_chunks": [chunk numbers]}. Example: {"relevant_chunks": [1, 3]}`;
+ 
+   let keep;
++  let decisionSource = "model";
+   try {
+     const response = await chatCompletion("fast", {
+       messages: [{ role: "user", content: prompt }],
+@@ -303,9 +352,23 @@ Respond ONLY with a JSON object: {"relevant_chunks": [chunk numbers]}. Example:
+   } catch (error) {
+     console.error(`[CRAG] Grader failed, keeping all chunks:`, error.message);
+     keep = new Set(state.documents.map((_, i) => i + 1));
++    decisionSource = "grader_error_fallback";
+   }
+ 
+   const relevantDocs = state.documents.filter((_, i) => keep.has(i + 1));
++  emit(config, {
++    type: "grading_result",
++    attempt: state.loopCount,
++    decisionSource,
++    keptParentIds: relevantDocs.map((parent) => parent.id),
++    decisions: state.documents.map((parent, index) => ({
++      parentId: parent.id,
++      documentId: parent.documentId,
++      page: parent.metadata.page_number,
++      sectionId: parent.metadata.section_id,
++      relevant: keep.has(index + 1),
++    })),
++  });
+ 
+   state.documents.forEach((doc, i) => {
+     emit(config, {
+@@ -390,11 +453,11 @@ const rewriteQueryNode = async (state, config) => {
+     type: "tool_finish",
+     tool: "Query Rewriter",
+     message: `New query: ${newQuery}`,
++    query: newQuery,
+   });
+   return { subQueries: [newQuery] };
+ };
+ 
+-
+ // 5. Node: Generate Final Answer
+ const generateNode = async (state, config) => {
+   console.log(`[CRAG] Generating final answer...`);
+@@ -425,10 +488,18 @@ const generateNode = async (state, config) => {
+       ? state.documents
+           .map((chunk) => {
+             const page = chunk.metadata?.page_number || "Unknown";
+-            return `<${docTag} source_id="Page ${page}">\n${chunk.text}\n</${docTag}>`;
++            const text =
++              state.intent === "summary" ? chunk.text : chunk.searchText;
++            return `<${docTag} source_id="Page ${page}">\n${text}\n</${docTag}>`;
+           })
+           .join("\n\n---\n\n")
+       : "SEARCH_RESULT: Empty. The document does not contain the complete answer.";
++  emit(config, {
++    type: "generation_context",
++    intent: state.intent,
++    documents: state.documents,
++    contextText,
++  });
+ 
+   let systemPromptContent = "";
+ 
+diff --git a/src/services/document.service.js b/src/services/document.service.js
+index e69390e..8405c27 100644
+--- a/src/services/document.service.js
++++ b/src/services/document.service.js
+@@ -89,16 +89,18 @@ export const deleteDocument = async (documentId, userId) => {
+   return { documentId };
+ };
+ 
+-export const getAllParentChunks = async (docId) => {
++export const getAllParentChunks = async (docId, userId) => {
++  const document = await documentRepository.getOwnedDocument(docId, userId);
++  if (!document) throw deletionError(404, "Document not found");
+   return await documentRepository.getAllParentChunks(docId);
+ };
+ 
+-export const getChildChunksOfParent = async (parentId) => {
++export const getChildChunksOfParent = async (parentId, userId) => {
+   if (!parentId) {
+     throw new Error("Parent chunk id is required");
+   }
+ 
+-  const parent = await documentRepository.getParentChunkById(parentId);
++  const parent = await documentRepository.getParentChunkById(parentId, userId);
+ 
+   if (!parent) {
+     throw new Error("Parent chunk not found");
+@@ -110,6 +112,7 @@ export const getChildChunksOfParent = async (parentId) => {
+     parentId: parent.id,
+     documentId: parent.documentId,
+     parentText: parent.text,
++    parent: { ...parent, totalChildren: children.length },
+     totalChildren: children.length,
+     children,
+   };
+diff --git a/src/workers/document.worker.js b/src/workers/document.worker.js
+index 605e603..c7c23d8 100644
+--- a/src/workers/document.worker.js
++++ b/src/workers/document.worker.js
+@@ -2,16 +2,16 @@ import { Worker } from "bullmq";
+ import Redis from "ioredis";
+ import prisma from "../config/db.js";
+ import * as aiService from "../services/ai.service.js";
+-import { randomUUID } from "crypto";
+ import "dotenv/config";
+ import { encode } from "gpt-tokenizer";
+-import {
+-  MarkdownTextSplitter,
+-  RecursiveCharacterTextSplitter,
+-} from "@langchain/textsplitters";
+ import { chatCompletion } from "../config/ai.js";
+-import { publishProgress } from "../config/uploadProgress.js";
++import {
++  publishProgress,
++  clearProgressHistory,
++} from "../config/uploadProgress.js";
++import { buildDocumentChunks } from "../services/chunking.service.js";
+ 
++import { saveDocumentChunks } from "../repositories/document.repository.js";
+ const redisConnection = new Redis(process.env.REDIS_URL, {
+   // host: "localhost",
+   // port: 6379,
+@@ -19,18 +19,6 @@ const redisConnection = new Redis(process.env.REDIS_URL, {
+   tls: {},
+ });
+ 
+-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+-
+-const parentSplitter = new RecursiveCharacterTextSplitter({
+-  chunkSize: 1200,
+-  chunkOverlap: 200,
+-});
+-
+-const childSplitter = new RecursiveCharacterTextSplitter({
+-  chunkSize: 400,
+-  chunkOverlap: 50,
+-});
+-
+ export const startWorker = () => {
+   console.log("≡ƒæ╖ Background Worker started, listening to Redis...");
+ 
+@@ -43,79 +31,147 @@ export const startWorker = () => {
+ 
+       let fullDocumentText = "";
+       try {
++        await clearProgressHistory(documentId);
++        await publishProgress(documentId, {
++          type: "extraction_start",
++          jobId: String(job.id),
++        });
+         // 1. Read the PDF
+         const pages = await aiService.extractDocPages(filepath, mimetype);
+-
+-        let globalChunkIndex = 0;
+-      
+-        for (let i = 0; i < pages.length; i++) {
+-          const pageNumber = i + 1;
+-          const pageText = pages[i].text || "";
+-          if (!pageText.trim()) continue;
+-          fullDocumentText += pageText + "\n\n"; // Keep building this for your summarizer loop
+-
++        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
++          const text = String(pages[pageIndex].text || "");
+           await publishProgress(documentId, {
+-            type: "page_start",
+-            page: pageNumber,
++            type: "page_extracted",
++            page: pageIndex + 1,
+             totalPages: pages.length,
++            text,
++            textLength: text.length,
+           });
++        }
++        const document = await prisma.document.findUniqueOrThrow({
++          where: { id: documentId },
++          select: { filename: true },
++        });
+ 
+-          const parentDocs = await parentSplitter.createDocuments([pageText]);
+-          let parentNumber = 0;
++        // Remember which pages already had a progress event.
++        const announcedPages = new Set();
+ 
+-          for (const parentDoc of parentDocs) {
+-            parentNumber++;
++        // Count the parents on each page.
++        const pageParentCounts = {};
++        fullDocumentText = pages.map((page) => page.text || "").join("\n\n");
+ 
+-            const parent = await prisma.parentChunk.create({
+-              data: {
+-                documentId: documentId,
+-                text: parentDoc.pageContent,
+-                metadata: {
+-                  page_number: pageNumber,
+-                  chunk_index: globalChunkIndex++,
+-                },
+-              },
+-            });
++        const parents = await buildDocumentChunks(
++          pages,
++          documentId,
++          document.filename,
++          (event) => publishProgress(documentId, event),
++        );
++
++        for (const parent of parents) {
++          const pageNumber = parent.metadata.page_number;
++
++          if (!announcedPages.has(pageNumber)) {
++            announcedPages.add(pageNumber);
+ 
+             await publishProgress(documentId, {
+-              type: "parent",
++              type: "page_start",
+               page: pageNumber,
+-              parent: parentNumber,
++              totalPages: pages.length,
++            });
++          }
++
++          pageParentCounts[pageNumber] =
++            (pageParentCounts[pageNumber] || 0) + 1;
++
++          const parentNumber = pageParentCounts[pageNumber];
++
++          await publishProgress(documentId, {
++            type: "parent",
++            page: pageNumber,
++            parent: parentNumber,
++            parentId: parent.id,
++            preview: parent.text.slice(0, 100),
++            stage: "preparing",
++            sectionId: parent.metadata.section_id,
++            headingPath: parent.metadata.heading_path,
++            text: parent.text,
++            searchText: parent.searchText,
++            metadata: parent.metadata,
++            prevParentId: parent.prevParentId,
++            nextParentId: parent.nextParentId,
++            totalChildren: parent.children.length,
++          });
++
++          for (
++            let childIndex = 0;
++            childIndex < parent.children.length;
++            childIndex++
++          ) {
++            const child = parent.children[childIndex];
++            await publishProgress(documentId, {
++              type: "embedding_start",
+               parentId: parent.id,
+-              preview: parentDoc.pageContent.slice(0, 100),
++              childId: child.id,
++              searchText: child.searchText,
++              searchTextLength: child.searchText.length,
+             });
+ 
+-            const childDocs = await childSplitter.createDocuments([
+-              parentDoc.pageContent,
+-            ]);
+-            let childNumber = 0;
+-
+-            for (const childDoc of childDocs) {
+-              childNumber++;
+-
+-              const embeddingArray = await aiService.getEmbedding(
+-                childDoc.pageContent,
+-              );
+-              const embeddingString = `[${embeddingArray.join(",")}]`;
+-              const childId = randomUUID();
+-              await prisma.$executeRaw`
+-    INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding, metadata)
+-    VALUES (${childId}, ${childDoc.pageContent}, ${parent.id}, ${documentId}, ${embeddingString}::vector, ${JSON.stringify({ page_number: pageNumber })}::jsonb)
+-    `;
++            // Embed the labelled text, not the bare passage.
++            let embeddingDetails;
++            let embeddingArray;
++            try {
++              embeddingArray = await aiService.getEmbedding(child.searchText, {
++                rejectTruncation: true,
++                onDetails: (details) => {
++                  embeddingDetails = details;
++                },
++              });
++            } catch (error) {
+               await publishProgress(documentId, {
+-                type: "child",
+-                page: pageNumber,
+-                parent: parentNumber,
+-                child: childNumber,
+-                totalChildren: childDocs.length,
++                type: "embedding_failed",
++                parentId: parent.id,
++                childId: child.id,
++                embeddingDetails,
++                message: error.message,
+               });
++              throw error;
+             }
++
++            child.metadata.embedding = embeddingDetails;
++
++            child.embedding = `[${embeddingArray.join(",")}]`;
++
++            await publishProgress(documentId, {
++              type: "child",
++              page: pageNumber,
++              parent: parentNumber,
++              child: childIndex + 1,
++              totalChildren: parent.children.length,
++              stage: "preparing",
++              parentId: parent.id,
++              childId: child.id,
++              text: child.text,
++              searchText: child.searchText,
++              metadata: child.metadata,
++              embeddingDetails,
++            });
+           }
+         }
+ 
+-        if (globalChunkIndex === 0) {
+-          throw new Error("Document contains no extractable text");
+-        }
++        const totals = {
++          totalParents: parents.length,
++          totalChildren: parents.reduce(
++            (count, parent) => count + parent.children.length,
++            0,
++          ),
++        };
++        await publishProgress(documentId, { type: "saving_chunks", ...totals });
++        await saveDocumentChunks(documentId, parents);
++        await publishProgress(documentId, {
++          type: "chunks_saved",
++          stage: "saved",
++          ...totals,
++        });
+ 
+         await prisma.document.update({
+           where: { id: documentId },
+@@ -270,6 +326,245 @@ export const startWorker = () => {
+     { connection: redisConnection },
+   );
+ };
++// export const startWorker = () => {
++//   console.log("≡ƒæ╖ Background Worker started, listening to Redis...");
++
++//   // Listen to the 'document-processing' queue we created earlier
++//   new Worker(
++//     "document-processing",
++//     async (job) => {
++//       const { documentId, filepath, mimetype } = job.data;
++//       console.log(`[Job ${job.id}] Started processing document...`);
++
++//       let fullDocumentText = "";
++//       try {
++//         // 1. Read the PDF
++//         const pages = await aiService.extractDocPages(filepath, mimetype);
++
++//         let globalChunkIndex = 0;
++
++//         for (let i = 0; i < pages.length; i++) {
++//           const pageNumber = i + 1;
++//           const pageText = pages[i].text || "";
++//           if (!pageText.trim()) continue;
++//           fullDocumentText += pageText + "\n\n"; // Keep building this for your summarizer loop
++
++//           await publishProgress(documentId, {
++//             type: "page_start",
++//             page: pageNumber,
++//             totalPages: pages.length,
++//           });
++
++//           const parentDocs = await parentSplitter.createDocuments([pageText]);
++//           let parentNumber = 0;
++
++//           for (const parentDoc of parentDocs) {
++//             parentNumber++;
++
++//             const parent = await prisma.parentChunk.create({
++//               data: {
++//                 documentId: documentId,
++//                 text: parentDoc.pageContent,
++//                 metadata: {
++//                   page_number: pageNumber,
++//                   chunk_index: globalChunkIndex++,
++//                 },
++//               },
++//             });
++
++//             await publishProgress(documentId, {
++//               type: "parent",
++//               page: pageNumber,
++//               parent: parentNumber,
++//               parentId: parent.id,
++//               preview: parentDoc.pageContent.slice(0, 100),
++//             });
++
++//             const childDocs = await childSplitter.createDocuments([
++//               parentDoc.pageContent,
++//             ]);
++//             let childNumber = 0;
++
++//             for (const childDoc of childDocs) {
++//               childNumber++;
++
++//               const embeddingArray = await aiService.getEmbedding(
++//                 childDoc.pageContent,
++//               );
++//               const embeddingString = `[${embeddingArray.join(",")}]`;
++//               const childId = randomUUID();
++//               await prisma.$executeRaw`
++//     INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding, metadata)
++//     VALUES (${childId}, ${childDoc.pageContent}, ${parent.id}, ${documentId}, ${embeddingString}::vector, ${JSON.stringify({ page_number: pageNumber })}::jsonb)
++//     `;
++//               await publishProgress(documentId, {
++//                 type: "child",
++//                 page: pageNumber,
++//                 parent: parentNumber,
++//                 child: childNumber,
++//                 totalChildren: childDocs.length,
++//               });
++//             }
++//           }
++//         }
++
++//         if (globalChunkIndex === 0) {
++//           throw new Error("Document contains no extractable text");
++//         }
++
++//         await prisma.document.update({
++//           where: { id: documentId },
++//           data: {
++//             status: "COMPLETED",
++//             summaryStatus: "PROCESSING",
++//           },
++//         });
++//         await publishProgress(documentId, { type: "chunks_ready" });
++//       } catch (error) {
++//         console.error(`[Job ${job.id}] Chunking failed:`, error);
++//         await prisma.document.update({
++//           where: { id: documentId },
++//           data: { status: "FAILED" },
++//         });
++//         await publishProgress(documentId, {
++//           type: "failed",
++//           message: "Document processing failed",
++//         });
++//         return;
++//       }
++
++//       try {
++//         await publishProgress(documentId, { type: "summarizing" });
++
++//         console.log(`[Job ${job.id}] Vectors saved. Starting summarization...`);
++
++//         const MAX_TOKENS_PER_BATCH = 5000;
++//         const batches = [];
++//         let currentBatch = "";
++//         let currentTokenCount = 0;
++
++//         const addToBatch = (text) => {
++//           const textTokens = encode(text).length;
++
++//           if (
++//             currentTokenCount + textTokens > MAX_TOKENS_PER_BATCH &&
++//             currentBatch.length > 0
++//           ) {
++//             batches.push(currentBatch.trim());
++//             currentBatch = "";
++//             currentTokenCount = 0;
++//           }
++
++//           currentBatch += text + " ";
++//           currentTokenCount += textTokens;
++//         };
++//         const paragraphs = fullDocumentText
++//           .split("\n\n")
++//           .filter((p) => p.trim().length > 40);
++
++//         for (const paragraph of paragraphs) {
++//           const paragraphTokens = encode(paragraph).length;
++
++//           if (paragraphTokens <= MAX_TOKENS_PER_BATCH) {
++//             // Standard Case: Paragraph is safe, add it directly
++//             addToBatch(paragraph + "\n\n");
++//           } else {
++//             // Edge Case 1: Paragraph is massive. Split it into sentences.
++//             console.log(
++//               `[Job] Warning: Found massive paragraph (${paragraphTokens} tokens). Splitting by sentence...`,
++//             );
++//             const sentences = paragraph.split(/(?<=[.?!])\s+/);
++
++//             for (const sentence of sentences) {
++//               const sentenceTokens = encode(sentence).length;
++
++//               if (sentenceTokens <= MAX_TOKENS_PER_BATCH) {
++//                 addToBatch(sentence);
++//               } else {
++//                 // Edge Case 2: A single sentence is STILL too big (e.g., minified code).
++//                 // Hard-slice by ~12,000 characters (roughly 3,000 - 4,000 tokens).
++//                 console.log(
++//                   `[Job] Warning: Found massive sentence. Hard-slicing...`,
++//                 );
++//                 const hardSlices = sentence.match(/.{1,12000}/g) || [];
++//                 for (const slice of hardSlices) {
++//                   addToBatch(slice);
++//                 }
++//               }
++//             }
++//             // Add paragraph break after the giant block is resolved
++//             currentBatch += "\n\n";
++//           }
++//         }
++//         if (currentBatch.trim().length > 0) {
++//           batches.push(currentBatch);
++//         }
++
++//         console.log(
++//           `[Job ${job.id}] Document split into ${batches.length} token-optimized batches.`,
++//         );
++
++//         const batchSummaries = [];
++//         for (const [index, batchText] of batches.entries()) {
++//           console.log(
++//             `[Job ${job.id}] Summarizing batch ${index + 1}/${batches.length}...`,
++//           );
++
++//           const prompt = `Summarize the following document section comprehensively using bullet points:\n\n${batchText}`;
++
++//           const response = await chatCompletion("summary", {
++//             messages: [{ role: "user", content: prompt }],
++//             temperature: 0,
++//           });
++
++//           batchSummaries.push(response.choices[0].message.content);
++
++//           // await delay(60000); // Respect Groq rate limits
++//         }
++
++//         let masterSummary = batchSummaries[0];
++//         if (batches.length > 1) {
++//           console.log(`[Job ${job.id}] Generating final master summary...`);
++//           const combinedSummariesText = batchSummaries.join("\n\n---\n\n");
++
++//           const masterPrompt = `Synthesize these section summaries into one cohesive, master summary of the entire document:\n\n${combinedSummariesText}`;
++
++//           const masterResponse = await chatCompletion("summary", {
++//             messages: [{ role: "user", content: masterPrompt }],
++//             temperature: 0,
++//           });
++
++//           masterSummary = masterResponse.choices[0].message.content;
++//         }
++//         if (!masterSummary?.trim()) {
++//           throw new Error("Document summary is empty");
++//         }
++//         await prisma.document.update({
++//           where: { id: documentId },
++//           data: {
++//             summaryStatus: "COMPLETED",
++//             summary: masterSummary,
++//           },
++//         });
++//         await publishProgress(documentId, { type: "completed" });
++//         console.log(
++//           `Γ£à [Job ${job.id}] Finished saving vectors and master summary!`,
++//         );
++//       } catch (error) {
++//         console.error(`Γ¥î [Job ${job.id}] Summarization failed:`, error);
++//         await prisma.document.update({
++//           where: { id: documentId },
++//           data: { summaryStatus: "FAILED" },
++//         });
++//         await publishProgress(documentId, {
++//           type: "summary_failed",
++//           message: "Document summary failed",
++//         });
++//       }
++//     },
++//     { connection: redisConnection },
++//   );
++// };
+ 
+ // export const startWorker = () => {
+ //   console.log("≡ƒæ╖ Background Worker started, listening to Redis...");

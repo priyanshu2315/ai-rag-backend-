@@ -65,21 +65,29 @@ export const deleteOwnedDocument = async (id, userId) => {
 export const getAllParentChunks = async (id) => {
   return await prisma.$queryRaw`
     SELECT
-      id,
-      text,
-      metadata
-    FROM "ParentChunk"
-    WHERE "documentId" = ${id}
-    ORDER BY (metadata->>'page_number')::int ASC
+      p.id,
+      p.text,
+      p."searchText",
+      p."documentId",
+      p."prevParentId",
+      p."nextParentId",
+      p.metadata,
+      (SELECT COUNT(*)::int FROM "ChildChunk" c WHERE c."parentId" = p.id) AS "totalChildren"
+    FROM "ParentChunk" p
+    WHERE p."documentId" = ${id}
+    ORDER BY (p.metadata->>'chunk_index')::int ASC
   `;
 };
 
-export const getParentChunkById = async (parentId) => {
-  return await prisma.parentChunk.findUnique({
-    where: { id: parentId },
+export const getParentChunkById = async (parentId, userId) => {
+  return await prisma.parentChunk.findFirst({
+    where: { id: parentId, document: { userId } },
     select: {
       id: true,
       text: true,
+      searchText: true,
+      prevParentId: true,
+      nextParentId: true,
       documentId: true,
       metadata: true,
     },
@@ -87,14 +95,78 @@ export const getParentChunkById = async (parentId) => {
 };
 
 export const getChildChunksByParentId = async (parentId) => {
-  return await prisma.childChunk.findMany({
-    where: { parentId },
-    select: {
-      id: true,
-      text: true,
-      parentId: true,
-      documentId: true,
-      metadata: true,
-    },
+  const children = await prisma.$queryRaw`
+    SELECT id, text, "searchText", "parentId", "documentId", metadata,
+      embedding::text AS "embeddingText"
+    FROM "ChildChunk"
+    WHERE "parentId" = ${parentId}
+    ORDER BY (metadata->>'child_index')::int ASC
+  `;
+  return children.map(({ embeddingText, ...child }) => {
+    const embedding = JSON.parse(embeddingText);
+    return { ...child, embedding, embeddingDimensions: embedding.length };
   });
 };
+
+export async function saveDocumentChunks(documentId, parents) {
+  await prisma.$transaction(
+    async (tx) => {
+      // Prevent two replacements for this document from
+      // changing its chunks at the same time.
+      const documents = await tx.$queryRaw`
+        SELECT id
+        FROM "Document"
+        WHERE id = ${documentId}
+        FOR UPDATE
+      `;
+
+      if (documents.length === 0) {
+        throw new Error("Document no longer exists");
+      }
+
+      for (const parent of parents) {
+        await tx.parentChunk.create({
+          data: {
+            id: parent.id,
+            documentId,
+
+            text: parent.text,
+            searchText: parent.searchText,
+
+            prevParentId: parent.prevParentId,
+            nextParentId: parent.nextParentId,
+
+            metadata: parent.metadata,
+          },
+        });
+
+        for (const child of parent.children) {
+          await tx.$executeRaw`
+            INSERT INTO "ChildChunk" (
+              id,
+              text,
+              "searchText",
+              "parentId",
+              "documentId",
+              embedding,
+              metadata
+            )
+            VALUES (
+              ${child.id},
+              ${child.text},
+              ${child.searchText},
+              ${parent.id},
+              ${documentId},
+              ${child.embedding}::vector,
+              ${JSON.stringify(child.metadata)}::jsonb
+            )
+          `;
+        }
+      }
+    },
+    {
+      maxWait: 10000,
+      timeout: 120000,
+    },
+  );
+}

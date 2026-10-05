@@ -2,33 +2,21 @@ import { Worker } from "bullmq";
 import Redis from "ioredis";
 import prisma from "../config/db.js";
 import * as aiService from "../services/ai.service.js";
-import { randomUUID } from "crypto";
 import "dotenv/config";
 import { encode } from "gpt-tokenizer";
-import {
-  MarkdownTextSplitter,
-  RecursiveCharacterTextSplitter,
-} from "@langchain/textsplitters";
 import { chatCompletion } from "../config/ai.js";
-import { publishProgress } from "../config/uploadProgress.js";
+import {
+  publishProgress,
+  clearProgressHistory,
+} from "../config/uploadProgress.js";
+import { buildDocumentChunks } from "../services/chunking.service.js";
 
+import { saveDocumentChunks } from "../repositories/document.repository.js";
 const redisConnection = new Redis(process.env.REDIS_URL, {
   // host: "localhost",
   // port: 6379,
   maxRetriesPerRequest: null,
   tls: {},
-});
-
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const parentSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 1200,
-  chunkOverlap: 200,
-});
-
-const childSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 400,
-  chunkOverlap: 50,
 });
 
 export const startWorker = () => {
@@ -43,79 +31,146 @@ export const startWorker = () => {
 
       let fullDocumentText = "";
       try {
+        await publishProgress(documentId, {
+          type: "extraction_start",
+          jobId: String(job.id),
+        });
         // 1. Read the PDF
         const pages = await aiService.extractDocPages(filepath, mimetype);
-
-        let globalChunkIndex = 0;
-      
-        for (let i = 0; i < pages.length; i++) {
-          const pageNumber = i + 1;
-          const pageText = pages[i].text || "";
-          if (!pageText.trim()) continue;
-          fullDocumentText += pageText + "\n\n"; // Keep building this for your summarizer loop
-
+        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+          const text = String(pages[pageIndex].text || "");
           await publishProgress(documentId, {
-            type: "page_start",
-            page: pageNumber,
+            type: "page_extracted",
+            page: pageIndex + 1,
             totalPages: pages.length,
+            text,
+            textLength: text.length,
           });
+        }
+        const document = await prisma.document.findUniqueOrThrow({
+          where: { id: documentId },
+          select: { filename: true },
+        });
 
-          const parentDocs = await parentSplitter.createDocuments([pageText]);
-          let parentNumber = 0;
+        // Remember which pages already had a progress event.
+        const announcedPages = new Set();
 
-          for (const parentDoc of parentDocs) {
-            parentNumber++;
+        // Count the parents on each page.
+        const pageParentCounts = {};
+        fullDocumentText = pages.map((page) => page.text || "").join("\n\n");
 
-            const parent = await prisma.parentChunk.create({
-              data: {
-                documentId: documentId,
-                text: parentDoc.pageContent,
-                metadata: {
-                  page_number: pageNumber,
-                  chunk_index: globalChunkIndex++,
-                },
-              },
-            });
+        const parents = await buildDocumentChunks(
+          pages,
+          documentId,
+          document.filename,
+          (event) => publishProgress(documentId, event),
+        );
+
+        for (const parent of parents) {
+          const pageNumber = parent.metadata.page_number;
+
+          if (!announcedPages.has(pageNumber)) {
+            announcedPages.add(pageNumber);
 
             await publishProgress(documentId, {
-              type: "parent",
+              type: "page_start",
               page: pageNumber,
-              parent: parentNumber,
+              totalPages: pages.length,
+            });
+          }
+
+          pageParentCounts[pageNumber] =
+            (pageParentCounts[pageNumber] || 0) + 1;
+
+          const parentNumber = pageParentCounts[pageNumber];
+
+          await publishProgress(documentId, {
+            type: "parent",
+            page: pageNumber,
+            parent: parentNumber,
+            parentId: parent.id,
+            preview: parent.text.slice(0, 100),
+            stage: "preparing",
+            sectionId: parent.metadata.section_id,
+            headingPath: parent.metadata.heading_path,
+            text: parent.text,
+            searchText: parent.searchText,
+            metadata: parent.metadata,
+            prevParentId: parent.prevParentId,
+            nextParentId: parent.nextParentId,
+            totalChildren: parent.children.length,
+          });
+
+          for (
+            let childIndex = 0;
+            childIndex < parent.children.length;
+            childIndex++
+          ) {
+            const child = parent.children[childIndex];
+            await publishProgress(documentId, {
+              type: "embedding_start",
               parentId: parent.id,
-              preview: parentDoc.pageContent.slice(0, 100),
+              childId: child.id,
+              searchText: child.searchText,
+              searchTextLength: child.searchText.length,
             });
 
-            const childDocs = await childSplitter.createDocuments([
-              parentDoc.pageContent,
-            ]);
-            let childNumber = 0;
-
-            for (const childDoc of childDocs) {
-              childNumber++;
-
-              const embeddingArray = await aiService.getEmbedding(
-                childDoc.pageContent,
-              );
-              const embeddingString = `[${embeddingArray.join(",")}]`;
-              const childId = randomUUID();
-              await prisma.$executeRaw`
-    INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding, metadata)
-    VALUES (${childId}, ${childDoc.pageContent}, ${parent.id}, ${documentId}, ${embeddingString}::vector, ${JSON.stringify({ page_number: pageNumber })}::jsonb)
-    `;
-              await publishProgress(documentId, {
-                type: "child",
-                page: pageNumber,
-                parent: parentNumber,
-                child: childNumber,
-                totalChildren: childDocs.length,
+            // Embed the labelled text, not the bare passage.
+            let embeddingDetails;
+            let embeddingArray;
+            try {
+              embeddingArray = await aiService.getEmbedding(child.searchText, {
+                rejectTruncation: true,
+                onDetails: (details) => {
+                  embeddingDetails = details;
+                },
               });
+            } catch (error) {
+              await publishProgress(documentId, {
+                type: "embedding_failed",
+                parentId: parent.id,
+                childId: child.id,
+                embeddingDetails,
+                message: error.message,
+              });
+              throw error;
             }
+
+            child.metadata.embedding = embeddingDetails;
+
+            child.embedding = `[${embeddingArray.join(",")}]`;
+
+            await publishProgress(documentId, {
+              type: "child",
+              page: pageNumber,
+              parent: parentNumber,
+              child: childIndex + 1,
+              totalChildren: parent.children.length,
+              stage: "preparing",
+              parentId: parent.id,
+              childId: child.id,
+              text: child.text,
+              searchText: child.searchText,
+              metadata: child.metadata,
+              embeddingDetails,
+            });
           }
         }
 
-        if (globalChunkIndex === 0) {
-          throw new Error("Document contains no extractable text");
-        }
+        const totals = {
+          totalParents: parents.length,
+          totalChildren: parents.reduce(
+            (count, parent) => count + parent.children.length,
+            0,
+          ),
+        };
+        await publishProgress(documentId, { type: "saving_chunks", ...totals });
+        await saveDocumentChunks(documentId, parents);
+        await publishProgress(documentId, {
+          type: "chunks_saved",
+          stage: "saved",
+          ...totals,
+        });
 
         await prisma.document.update({
           where: { id: documentId },
@@ -270,6 +325,245 @@ export const startWorker = () => {
     { connection: redisConnection },
   );
 };
+// export const startWorker = () => {
+//   console.log("👷 Background Worker started, listening to Redis...");
+
+//   // Listen to the 'document-processing' queue we created earlier
+//   new Worker(
+//     "document-processing",
+//     async (job) => {
+//       const { documentId, filepath, mimetype } = job.data;
+//       console.log(`[Job ${job.id}] Started processing document...`);
+
+//       let fullDocumentText = "";
+//       try {
+//         // 1. Read the PDF
+//         const pages = await aiService.extractDocPages(filepath, mimetype);
+
+//         let globalChunkIndex = 0;
+
+//         for (let i = 0; i < pages.length; i++) {
+//           const pageNumber = i + 1;
+//           const pageText = pages[i].text || "";
+//           if (!pageText.trim()) continue;
+//           fullDocumentText += pageText + "\n\n"; // Keep building this for your summarizer loop
+
+//           await publishProgress(documentId, {
+//             type: "page_start",
+//             page: pageNumber,
+//             totalPages: pages.length,
+//           });
+
+//           const parentDocs = await parentSplitter.createDocuments([pageText]);
+//           let parentNumber = 0;
+
+//           for (const parentDoc of parentDocs) {
+//             parentNumber++;
+
+//             const parent = await prisma.parentChunk.create({
+//               data: {
+//                 documentId: documentId,
+//                 text: parentDoc.pageContent,
+//                 metadata: {
+//                   page_number: pageNumber,
+//                   chunk_index: globalChunkIndex++,
+//                 },
+//               },
+//             });
+
+//             await publishProgress(documentId, {
+//               type: "parent",
+//               page: pageNumber,
+//               parent: parentNumber,
+//               parentId: parent.id,
+//               preview: parentDoc.pageContent.slice(0, 100),
+//             });
+
+//             const childDocs = await childSplitter.createDocuments([
+//               parentDoc.pageContent,
+//             ]);
+//             let childNumber = 0;
+
+//             for (const childDoc of childDocs) {
+//               childNumber++;
+
+//               const embeddingArray = await aiService.getEmbedding(
+//                 childDoc.pageContent,
+//               );
+//               const embeddingString = `[${embeddingArray.join(",")}]`;
+//               const childId = randomUUID();
+//               await prisma.$executeRaw`
+//     INSERT INTO "ChildChunk" (id, text, "parentId", "documentId", embedding, metadata)
+//     VALUES (${childId}, ${childDoc.pageContent}, ${parent.id}, ${documentId}, ${embeddingString}::vector, ${JSON.stringify({ page_number: pageNumber })}::jsonb)
+//     `;
+//               await publishProgress(documentId, {
+//                 type: "child",
+//                 page: pageNumber,
+//                 parent: parentNumber,
+//                 child: childNumber,
+//                 totalChildren: childDocs.length,
+//               });
+//             }
+//           }
+//         }
+
+//         if (globalChunkIndex === 0) {
+//           throw new Error("Document contains no extractable text");
+//         }
+
+//         await prisma.document.update({
+//           where: { id: documentId },
+//           data: {
+//             status: "COMPLETED",
+//             summaryStatus: "PROCESSING",
+//           },
+//         });
+//         await publishProgress(documentId, { type: "chunks_ready" });
+//       } catch (error) {
+//         console.error(`[Job ${job.id}] Chunking failed:`, error);
+//         await prisma.document.update({
+//           where: { id: documentId },
+//           data: { status: "FAILED" },
+//         });
+//         await publishProgress(documentId, {
+//           type: "failed",
+//           message: "Document processing failed",
+//         });
+//         return;
+//       }
+
+//       try {
+//         await publishProgress(documentId, { type: "summarizing" });
+
+//         console.log(`[Job ${job.id}] Vectors saved. Starting summarization...`);
+
+//         const MAX_TOKENS_PER_BATCH = 5000;
+//         const batches = [];
+//         let currentBatch = "";
+//         let currentTokenCount = 0;
+
+//         const addToBatch = (text) => {
+//           const textTokens = encode(text).length;
+
+//           if (
+//             currentTokenCount + textTokens > MAX_TOKENS_PER_BATCH &&
+//             currentBatch.length > 0
+//           ) {
+//             batches.push(currentBatch.trim());
+//             currentBatch = "";
+//             currentTokenCount = 0;
+//           }
+
+//           currentBatch += text + " ";
+//           currentTokenCount += textTokens;
+//         };
+//         const paragraphs = fullDocumentText
+//           .split("\n\n")
+//           .filter((p) => p.trim().length > 40);
+
+//         for (const paragraph of paragraphs) {
+//           const paragraphTokens = encode(paragraph).length;
+
+//           if (paragraphTokens <= MAX_TOKENS_PER_BATCH) {
+//             // Standard Case: Paragraph is safe, add it directly
+//             addToBatch(paragraph + "\n\n");
+//           } else {
+//             // Edge Case 1: Paragraph is massive. Split it into sentences.
+//             console.log(
+//               `[Job] Warning: Found massive paragraph (${paragraphTokens} tokens). Splitting by sentence...`,
+//             );
+//             const sentences = paragraph.split(/(?<=[.?!])\s+/);
+
+//             for (const sentence of sentences) {
+//               const sentenceTokens = encode(sentence).length;
+
+//               if (sentenceTokens <= MAX_TOKENS_PER_BATCH) {
+//                 addToBatch(sentence);
+//               } else {
+//                 // Edge Case 2: A single sentence is STILL too big (e.g., minified code).
+//                 // Hard-slice by ~12,000 characters (roughly 3,000 - 4,000 tokens).
+//                 console.log(
+//                   `[Job] Warning: Found massive sentence. Hard-slicing...`,
+//                 );
+//                 const hardSlices = sentence.match(/.{1,12000}/g) || [];
+//                 for (const slice of hardSlices) {
+//                   addToBatch(slice);
+//                 }
+//               }
+//             }
+//             // Add paragraph break after the giant block is resolved
+//             currentBatch += "\n\n";
+//           }
+//         }
+//         if (currentBatch.trim().length > 0) {
+//           batches.push(currentBatch);
+//         }
+
+//         console.log(
+//           `[Job ${job.id}] Document split into ${batches.length} token-optimized batches.`,
+//         );
+
+//         const batchSummaries = [];
+//         for (const [index, batchText] of batches.entries()) {
+//           console.log(
+//             `[Job ${job.id}] Summarizing batch ${index + 1}/${batches.length}...`,
+//           );
+
+//           const prompt = `Summarize the following document section comprehensively using bullet points:\n\n${batchText}`;
+
+//           const response = await chatCompletion("summary", {
+//             messages: [{ role: "user", content: prompt }],
+//             temperature: 0,
+//           });
+
+//           batchSummaries.push(response.choices[0].message.content);
+
+//           // await delay(60000); // Respect Groq rate limits
+//         }
+
+//         let masterSummary = batchSummaries[0];
+//         if (batches.length > 1) {
+//           console.log(`[Job ${job.id}] Generating final master summary...`);
+//           const combinedSummariesText = batchSummaries.join("\n\n---\n\n");
+
+//           const masterPrompt = `Synthesize these section summaries into one cohesive, master summary of the entire document:\n\n${combinedSummariesText}`;
+
+//           const masterResponse = await chatCompletion("summary", {
+//             messages: [{ role: "user", content: masterPrompt }],
+//             temperature: 0,
+//           });
+
+//           masterSummary = masterResponse.choices[0].message.content;
+//         }
+//         if (!masterSummary?.trim()) {
+//           throw new Error("Document summary is empty");
+//         }
+//         await prisma.document.update({
+//           where: { id: documentId },
+//           data: {
+//             summaryStatus: "COMPLETED",
+//             summary: masterSummary,
+//           },
+//         });
+//         await publishProgress(documentId, { type: "completed" });
+//         console.log(
+//           `✅ [Job ${job.id}] Finished saving vectors and master summary!`,
+//         );
+//       } catch (error) {
+//         console.error(`❌ [Job ${job.id}] Summarization failed:`, error);
+//         await prisma.document.update({
+//           where: { id: documentId },
+//           data: { summaryStatus: "FAILED" },
+//         });
+//         await publishProgress(documentId, {
+//           type: "summary_failed",
+//           message: "Document summary failed",
+//         });
+//       }
+//     },
+//     { connection: redisConnection },
+//   );
+// };
 
 // export const startWorker = () => {
 //   console.log("👷 Background Worker started, listening to Redis...");

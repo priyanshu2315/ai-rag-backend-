@@ -37,6 +37,9 @@ model Document {
 model ParentChunk {
   id         String       @id @default(uuid())
   text       String
+  searchText   String
+  prevParentId String?
+  nextParentId String?
   documentId String
   metadata   Json?
   children   ChildChunk[]
@@ -46,6 +49,8 @@ model ParentChunk {
 model ChildChunk {
   id         String                @id @default(uuid())
   text       String
+  searchText String
+
   parentId   String
   documentId String
   embedding  Unsupported("vector(384)")

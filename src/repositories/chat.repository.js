@@ -59,12 +59,12 @@ export const searchSingleDocument = async (
       SELECT 
         "parentId",
         ROW_NUMBER() OVER (
-          ORDER BY ts_rank_cd(to_tsvector('english', text), plainto_tsquery('english', ${queryText})) DESC
+          ORDER BY ts_rank_cd(to_tsvector('english', "searchText"), plainto_tsquery('english', ${queryText})) DESC
         ) AS rank
       FROM "ChildChunk"
       WHERE "documentId" = ${documentId}
-        AND to_tsvector('english', text) @@ plainto_tsquery('english', ${queryText})
-      ORDER BY ts_rank_cd(to_tsvector('english', text), plainto_tsquery('english', ${queryText})) DESC
+        AND to_tsvector('english', "searchText") @@ plainto_tsquery('english', ${queryText})
+      ORDER BY ts_rank_cd(to_tsvector('english', "searchText"), plainto_tsquery('english', ${queryText})) DESC
       LIMIT 20
     ),
     combined_scores AS (
@@ -81,7 +81,14 @@ export const searchSingleDocument = async (
       ORDER BY total_score DESC
       LIMIT ${count}
     )
-    SELECT p.id, p.text, p.metadata
+    SELECT   p.id,
+  p.text,
+  p."searchText",
+  p."documentId",
+  p."prevParentId",
+  p."nextParentId",
+  p.metadata,
+  r.total_score::double precision AS "retrievalScore"
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id;
   `;
@@ -109,13 +116,13 @@ export const searchAllUserDocuments = async (
       SELECT 
         c."parentId",
         ROW_NUMBER() OVER (
-          ORDER BY ts_rank_cd(to_tsvector('english', c.text), plainto_tsquery('english', ${queryText})) DESC
+          ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
         ) AS rank
       FROM "ChildChunk" c
       JOIN "Document" d ON c."documentId" = d.id
       WHERE d."userId" = ${userId} AND d."status" = 'COMPLETED'
-        AND to_tsvector('english', c.text) @@ plainto_tsquery('english', ${queryText})
-      ORDER BY ts_rank_cd(to_tsvector('english', c.text), plainto_tsquery('english', ${queryText})) DESC
+        AND to_tsvector('english', c."searchText") @@ plainto_tsquery('english', ${queryText})
+      ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
       LIMIT 20
     ),
     combined_scores AS (
@@ -132,7 +139,14 @@ export const searchAllUserDocuments = async (
       ORDER BY total_score DESC
       LIMIT ${count}
     )
-    SELECT p.text
+    SELECT   p.id,
+  p.text,
+  p."searchText",
+  p."documentId",
+  p."prevParentId",
+  p."nextParentId",
+  p.metadata,
+  r.total_score::double precision AS "retrievalScore"
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id;
   `;
@@ -140,7 +154,7 @@ export const searchAllUserDocuments = async (
 
 export const getChunksByPage = async (documentId, pageNumber) => {
   const result = await prisma.$queryRaw`
-    SELECT id, text, metadata 
+    SELECT id, text, "searchText", "documentId", metadata
     FROM "ParentChunk" 
     WHERE "documentId" = ${documentId}
       AND (metadata->>'page_number')::int = ${pageNumber}
@@ -228,3 +242,48 @@ export const clearConversationMessages = async (userId, documentId) => {
   });
   return result.count;
 };
+
+export async function getParentNeighbors(parents, userId) {
+  const result = [...parents];
+  const addedIds = new Set(parents.map((parent) => parent.id));
+
+  for (const parent of parents) {
+    const neighborIds = [parent.prevParentId, parent.nextParentId].filter(
+      Boolean,
+    );
+
+    if (neighborIds.length === 0) continue;
+
+    const neighbors = await prisma.parentChunk.findMany({
+      where: {
+        id: { in: neighborIds },
+        documentId: parent.documentId,
+
+        // Check access inside the database query.
+        document: {
+          userId,
+          status: "COMPLETED",
+        },
+      },
+    });
+
+    for (const neighbor of neighbors) {
+      const sameSection =
+        neighbor.metadata?.section_id === parent.metadata.section_id;
+
+      if (sameSection && !addedIds.has(neighbor.id) && result.length < 24) {
+        addedIds.add(neighbor.id);
+        result.push({
+          ...neighbor,
+          retrievalOrigin: {
+            type: "neighbor",
+            seedParentId: parent.id,
+            direction: neighbor.id === parent.prevParentId ? "previous" : "next",
+          },
+        });
+      }
+    }
+  }
+
+  return result;
+}

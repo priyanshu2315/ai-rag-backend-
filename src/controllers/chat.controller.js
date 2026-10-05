@@ -11,8 +11,8 @@ export const askQuestion = async (req, res) => {
     }
 
     if (documentId) {
-      const doc = await prisma.document.findUnique({
-        where: { id: documentId },
+      const doc = await prisma.document.findFirst({
+        where: { id: documentId, userId },
       });
 
       if (!doc) {

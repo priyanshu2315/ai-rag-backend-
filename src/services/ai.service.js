@@ -25,7 +25,7 @@ import { chatCompletion, cohere, RERANK_MODEL } from "../config/ai.js";
 
 export const rerankChunks = async (query, chunks, topN = 3) => {
   // Cohere expects an array of strings (the text of our chunks)
-  const documents = chunks.map((chunk) => chunk.text);
+  const documents = chunks.map((chunk) => chunk.searchText);
   // console.log(documents, "documents");
   const response = await cohere.rerank({
     model: RERANK_MODEL,
@@ -34,7 +34,10 @@ export const rerankChunks = async (query, chunks, topN = 3) => {
     topN: topN, // We only want the top 3 back
   });
   // console.log(response.results, "results");
-  const rerankedChunks = response.results.map((result) => chunks[result.index]);
+  const rerankedChunks = response.results.map((result) => ({
+    ...chunks[result.index],
+    rerankScore: result.relevanceScore,
+  }));
 
   return rerankedChunks;
 };
@@ -77,7 +80,14 @@ export const extractDocPages = async (filepath, mimetype) => {
         3. TABULAR DATA: Convert all grids, financial statements, and borderless tabular layouts into standard Markdown tables with column headers.
         4. DATA VISUALIZATIONS: If you encounter quantitative charts (bar, line, pie, scatter), extract the underlying axes, labels, and exact coordinate data points into a Markdown table. Do not write a generic summary of the trend.
         5. DIAGRAMS & SCHEMATICS: For flowcharts, organizational hierarchies, process maps, or spatial plans, transcribe the structural relationships, flow directions, and textual labels into hierarchical bullet points.
-      `,
+        6. TEXT & HIERARCHY: Extract all content into semantic Markdown. You MUST enforce a strict, logical heading hierarchy regardless of visual font size:
+           - Use Level 1 (#) ONLY for the overarching organization name or main document title (e.g., "TESSALY PARCEL NETWORK").
+           - Use Level 2 (##) ONLY for document subtitles, document IDs, or version numbers (e.g., "DEPOT HANDBOOK TPN-SH-2026-10").
+           - Use Level 3 (###) for numbered chapters and primary sections (e.g., "1. PURPOSE AND SCOPE", "2. CONVENTIONS").
+           - Use Level 4 (####) and below for nested sub-sections (e.g., "1.1 Internal Rules").
+           Never put a numbered section at the same heading level as the document title or subtitle. Preserve all paragraphs, lists, and fine print. Do not summarize or omit text.
+
+        `,
     });
 
     // LlamaParse processes the buffer and returns Markdown
@@ -170,22 +180,44 @@ export const extractDocPages = async (filepath, mimetype) => {
 // We define this outside the function so the AI model only loads into memory once
 let extractorPipeline;
 
-export const getEmbedding = async (text) => {
+export const getEmbedding = async (text, { rejectTruncation = false, onDetails } = {}) => {
   if (!extractorPipeline) {
-    // This downloads a small (80MB) AI model perfectly tuned for vector search
     extractorPipeline = await pipeline(
       "feature-extraction",
       "Xenova/all-MiniLM-L6-v2",
     );
   }
 
+  const details = { model: "Xenova/all-MiniLM-L6-v2" };
+  if (rejectTruncation) {
+    const tokens = await extractorPipeline.tokenizer(text, {
+      truncation: false,
+      padding: false,
+    });
+
+    const tokenCount = tokens.input_ids.data.length;
+
+    const modelLimit = Number(extractorPipeline.tokenizer.model_max_length);
+
+    // A conservative limit for indexing with this model.
+    const limit = Number.isFinite(modelLimit) ? Math.min(modelLimit, 256) : 256;
+    details.tokenCount = tokenCount;
+    details.tokenLimit = limit;
+    details.withinLimit = tokenCount <= limit;
+
+    if (tokenCount > limit) {
+      if (onDetails) onDetails(details);
+      throw new Error(`Chunk is too large for embedding: ${tokenCount} tokens`);
+    }
+  }
+
   const output = await extractorPipeline(text, {
     pooling: "mean",
     normalize: true,
   });
+  details.dimensions = output.data.length;
+  if (onDetails) onDetails(details);
 
-  // The output is a Float32Array. We convert it to a standard JavaScript Array.
-  // This will be exactly 384 numbers long.
   return Array.from(output.data);
 };
 
