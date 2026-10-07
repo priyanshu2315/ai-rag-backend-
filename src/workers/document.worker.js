@@ -10,7 +10,7 @@ import {
   clearProgressHistory,
 } from "../config/uploadProgress.js";
 import { buildDocumentChunks } from "../services/chunking.service.js";
-
+import { getEmbedding } from "../services/embedding.service.js";
 import { saveDocumentChunks } from "../repositories/document.repository.js";
 const redisConnection = new Redis(process.env.REDIS_URL, {
   // host: "localhost",
@@ -36,56 +36,103 @@ export const startWorker = () => {
           jobId: String(job.id),
         });
         // 1. Read the PDF
-        const pages = await aiService.extractDocPages(filepath, mimetype);
-        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-          const text = String(pages[pageIndex].text || "");
-          await publishProgress(documentId, {
-            type: "page_extracted",
-            page: pageIndex + 1,
-            totalPages: pages.length,
-            text,
-            textLength: text.length,
-          });
-        }
         const document = await prisma.document.findUniqueOrThrow({
           where: { id: documentId },
           select: { filename: true },
         });
 
-        // Remember which pages already had a progress event.
-        const announcedPages = new Set();
+        const extraction = await aiService.extractDocument({
+          filepath,
+          filename: document.filename,
+          mimetype,
+        });
 
-        // Count the parents on each page.
-        const pageParentCounts = {};
-        fullDocumentText = pages.map((page) => page.text || "").join("\n\n");
+        const pages = extraction.pages;
+
+        const reportedPageCount = extraction.rawResult?.job_metadata?.job_pages;
+
+        const totalPages =
+          extraction.source.mimetype === "application/pdf" &&
+          Number.isSafeInteger(reportedPageCount) &&
+          reportedPageCount >= 0
+            ? reportedPageCount
+            : null;
+
+        const sourceStats = {
+          totalSources: pages.length,
+          totalPages,
+        };
+
+        await publishProgress(documentId, {
+          type: "extraction_complete",
+          stage: "preparing",
+          schemaVersion: extraction.schemaVersion,
+          provider: extraction.provider,
+          parserJobId: extraction.jobId,
+          warnings: extraction.warnings,
+          ...sourceStats,
+        });
+
+        for (const page of pages) {
+          await publishProgress(documentId, {
+            type: "page_extracted",
+            stage: "preparing",
+
+            page: page.sourcePageNumber,
+
+            source: {
+              id: page.id,
+              kind: page.sourceKind,
+              sequenceIndex: page.sequenceIndex,
+              parserPageNumber: page.parserPageNumber,
+              sourcePageNumber: page.sourcePageNumber,
+              textFormat: page.textFormat,
+              warnings: page.warnings,
+            },
+
+            ...sourceStats,
+
+            text: page.text,
+            textLength: page.text.length,
+
+            parserItemCount: page.items?.length ?? null,
+          });
+        }
+
+        fullDocumentText = pages.map((page) => page.text).join("\n\n");
+
+        const announcedSources = new Set();
+        const sourceParentCounts = new Map();
 
         const parents = await buildDocumentChunks(
-          pages,
+          extraction,
           documentId,
           document.filename,
           (event) => publishProgress(documentId, event),
         );
 
         for (const parent of parents) {
+          const source = parent.metadata.source;
           const pageNumber = parent.metadata.page_number;
 
-          if (!announcedPages.has(pageNumber)) {
-            announcedPages.add(pageNumber);
+          if (!announcedSources.has(source.id)) {
+            announcedSources.add(source.id);
 
             await publishProgress(documentId, {
               type: "page_start",
               page: pageNumber,
-              totalPages: pages.length,
+              source,
+              ...sourceStats,
             });
           }
 
-          pageParentCounts[pageNumber] =
-            (pageParentCounts[pageNumber] || 0) + 1;
+          const parentNumber = (sourceParentCounts.get(source.id) ?? 0) + 1;
 
-          const parentNumber = pageParentCounts[pageNumber];
+          sourceParentCounts.set(source.id, parentNumber);
 
           await publishProgress(documentId, {
             type: "parent",
+            source,
             page: pageNumber,
             parent: parentNumber,
             parentId: parent.id,
@@ -119,7 +166,7 @@ export const startWorker = () => {
             let embeddingDetails;
             let embeddingArray;
             try {
-              embeddingArray = await aiService.getEmbedding(child.searchText, {
+              embeddingArray = await getEmbedding(child.searchText, {
                 rejectTruncation: true,
                 onDetails: (details) => {
                   embeddingDetails = details;
@@ -144,6 +191,7 @@ export const startWorker = () => {
               type: "child",
               page: pageNumber,
               parent: parentNumber,
+              source,
               child: childIndex + 1,
               totalChildren: parent.children.length,
               stage: "preparing",

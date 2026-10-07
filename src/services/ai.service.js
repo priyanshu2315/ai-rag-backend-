@@ -10,6 +10,13 @@ import * as cheerio from "cheerio"; // <-- 1. Import Cheerio at the top of your 
 import { traceable } from "langsmith/traceable";
 import { LlamaParseReader } from "llama-cloud-services";
 import { chatCompletion, cohere, RERANK_MODEL } from "../config/ai.js";
+import {
+  normalizeLlamaParseResult,
+  normalizeTextDocument,
+} from "./extraction-normalizer.service.js";
+export {
+  getEmbedding,
+} from "./embedding.service.js";
 
 // 1. Extract text from the physical file
 // export const extractTextFromPDF = async (filepath) => {
@@ -22,6 +29,45 @@ import { chatCompletion, cohere, RERANK_MODEL } from "../config/ai.js";
 
 //   return data.text; // Returns all the text from the PDF
 // };
+
+const LLAMA_PARSE_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+const NATIVE_TEXT_MIME_TYPES = new Set(["text/plain", "text/markdown"]);
+
+const DOCUMENT_EXTRACTION_INSTRUCTIONS = `
+Preserve the document's content and structural evidence.
+
+1. Preserve headings, paragraphs, numbered and bulleted lists,
+   captions, footnotes, and text inside embedded exhibits.
+
+2. Preserve the observed heading hierarchy. Do not impose a fixed
+   heading level based only on numbering. Distinguish numbered
+   list items from section headings.
+
+3. Preserve tables with their row labels, column headers,
+   multi-level headers, dates, units, captions, and footnotes.
+   Preserve merged-cell relationships where the output supports them.
+
+4. Preserve explicit references to sections, tables, figures,
+   appendices, and other document elements.
+
+5. Preserve reading order as accurately as possible, including
+   multi-column layouts. Retain continuation labels.
+
+6. Do not summarize, omit content, or invent missing text,
+   column labels, dates, units, or numbers. Mark unreadable
+   or uncertain content explicitly.
+
+7. For charts, preserve visible labels, legends, axes, and
+   explicitly stated values. Clearly distinguish visual estimates
+   from printed values; do not invent exact underlying data.
+`;
 
 export const rerankChunks = async (query, chunks, topN = 3) => {
   // Cohere expects an array of strings (the text of our chunks)
@@ -40,6 +86,109 @@ export const rerankChunks = async (query, chunks, topN = 3) => {
   }));
 
   return rerankedChunks;
+};
+
+export const extractDocument = async ({
+  filepath,
+  filename,
+  mimetype,
+} = {}) => {
+  // 1. Validate the information supplied by the caller.
+  const requiredFields = {
+    filepath,
+    filename,
+    mimetype,
+  };
+
+  for (const [name, value] of Object.entries(requiredFields)) {
+    if (typeof value !== "string" || !value.trim()) {
+      throw new TypeError(`extractDocument requires a non-empty ${name}`);
+    }
+  }
+
+  // 2. Normalize MIME formatting.
+  // Example: "text/plain; charset=utf-8" becomes "text/plain".
+  const normalizedMimetype = mimetype.split(";")[0].trim().toLowerCase();
+
+  const usesNativeText = NATIVE_TEXT_MIME_TYPES.has(normalizedMimetype);
+
+  const usesLlamaParse = LLAMA_PARSE_MIME_TYPES.has(normalizedMimetype);
+
+  if (!usesNativeText && !usesLlamaParse) {
+    throw new Error(`Unsupported file type: ${normalizedMimetype}`);
+  }
+
+  const source = {
+    filename,
+    mimetype: normalizedMimetype,
+  };
+
+  // 3. Download the uploaded file from Supabase Storage.
+  const { data, error } = await supabase.storage
+    .from("documents")
+    .download(filepath);
+
+  if (error) {
+    throw new Error(`Failed to download document: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Document download returned no data");
+  }
+
+  const buffer = Buffer.from(await data.arrayBuffer());
+
+  if (buffer.length === 0) {
+    throw new Error("The uploaded document is empty");
+  }
+
+  // 4. Decode plain-text inputs locally.
+  if (usesNativeText) {
+    let text;
+
+    try {
+      text = new TextDecoder("utf-8", {
+        fatal: true,
+      }).decode(buffer);
+    } catch {
+      throw new Error("Text documents must use valid UTF-8 encoding");
+    }
+
+    return normalizeTextDocument(text, source);
+  }
+
+  // 5. Request structured results for PDFs, DOCX, and images.
+  const reader = new LlamaParseReader({
+    apiKey: process.env.LLAMA_CLOUD_API_KEY,
+    resultType: "json",
+    premiumMode: true,
+
+    // Propagate parser errors to the worker.
+    ignoreErrors: false,
+
+    // Request available layout information.
+    extract_layout: true,
+
+    // Preserve page-local output for our structure pass.
+    merge_tables_across_pages_in_markdown: false,
+
+    parsingInstruction: DOCUMENT_EXTRACTION_INSTRUCTIONS,
+  });
+
+  const rawResults = await reader.loadJson(buffer);
+
+  // 6. Convert provider output into our application contract.
+  const extraction = normalizeLlamaParseResult(rawResults, source);
+
+  // 7. Reject a known page-count discrepancy.
+  if (extraction.warnings.includes("REPORTED_PAGE_COUNT_MISMATCH")) {
+    throw new Error(
+      "Extraction returned a different number of pages " +
+        "than the parser reported",
+    );
+  }
+
+  return extraction;
 };
 
 export const extractDocPages = async (filepath, mimetype) => {
@@ -180,46 +329,49 @@ export const extractDocPages = async (filepath, mimetype) => {
 // We define this outside the function so the AI model only loads into memory once
 let extractorPipeline;
 
-export const getEmbedding = async (text, { rejectTruncation = false, onDetails } = {}) => {
-  if (!extractorPipeline) {
-    extractorPipeline = await pipeline(
-      "feature-extraction",
-      "Xenova/all-MiniLM-L6-v2",
-    );
-  }
+// export const getEmbedding = async (
+//   text,
+//   { rejectTruncation = false, onDetails } = {},
+// ) => {
+//   if (!extractorPipeline) {
+//     extractorPipeline = await pipeline(
+//       "feature-extraction",
+//       "Xenova/all-MiniLM-L6-v2",
+//     );
+//   }
 
-  const details = { model: "Xenova/all-MiniLM-L6-v2" };
-  if (rejectTruncation) {
-    const tokens = await extractorPipeline.tokenizer(text, {
-      truncation: false,
-      padding: false,
-    });
+//   const details = { model: "Xenova/all-MiniLM-L6-v2" };
+//   if (rejectTruncation) {
+//     const tokens = await extractorPipeline.tokenizer(text, {
+//       truncation: false,
+//       padding: false,
+//     });
 
-    const tokenCount = tokens.input_ids.data.length;
+//     const tokenCount = tokens.input_ids.data.length;
 
-    const modelLimit = Number(extractorPipeline.tokenizer.model_max_length);
+//     const modelLimit = Number(extractorPipeline.tokenizer.model_max_length);
 
-    // A conservative limit for indexing with this model.
-    const limit = Number.isFinite(modelLimit) ? Math.min(modelLimit, 256) : 256;
-    details.tokenCount = tokenCount;
-    details.tokenLimit = limit;
-    details.withinLimit = tokenCount <= limit;
+//     // A conservative limit for indexing with this model.
+//     const limit = Number.isFinite(modelLimit) ? Math.min(modelLimit, 256) : 256;
+//     details.tokenCount = tokenCount;
+//     details.tokenLimit = limit;
+//     details.withinLimit = tokenCount <= limit;
 
-    if (tokenCount > limit) {
-      if (onDetails) onDetails(details);
-      throw new Error(`Chunk is too large for embedding: ${tokenCount} tokens`);
-    }
-  }
+//     if (tokenCount > limit) {
+//       if (onDetails) onDetails(details);
+//       throw new Error(`Chunk is too large for embedding: ${tokenCount} tokens`);
+//     }
+//   }
 
-  const output = await extractorPipeline(text, {
-    pooling: "mean",
-    normalize: true,
-  });
-  details.dimensions = output.data.length;
-  if (onDetails) onDetails(details);
+//   const output = await extractorPipeline(text, {
+//     pooling: "mean",
+//     normalize: true,
+//   });
+//   details.dimensions = output.data.length;
+//   if (onDetails) onDetails(details);
 
-  return Array.from(output.data);
-};
+//   return Array.from(output.data);
+// };
 
 // export const askOllama = async (prompt) => {
 //   // Ollama runs on port 11434 by default
