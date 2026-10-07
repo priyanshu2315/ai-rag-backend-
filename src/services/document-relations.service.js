@@ -1,4 +1,4 @@
-﻿// Resolve only relationships supported by extracted source evidence.
+// Resolve only relationships supported by extracted source evidence.
 const key = (value) => value.trim().replace(/\s+/g, " ").toLowerCase();
 const sectionNumber = (section) =>
   section.structure.boundary?.numbering?.label.toUpperCase() ?? null;
@@ -55,8 +55,8 @@ function fragmentRows(block) {
 }
 
 function consecutive(previous, next) {
-  const a = /^([A-Za-z_-]+)(\d+)$/.exec(previous?.cells[0]?.text ?? "");
-  const b = /^([A-Za-z_-]+)(\d+)$/.exec(next?.cells[0]?.text ?? "");
+  const a = /([A-Za-z_-]+)(\d+)/.exec(previous?.cells[0]?.text || "");
+  const b = /([A-Za-z_-]+)(\d+)/.exec(next?.cells[0]?.text || "");
   return Boolean(
     a &&
     b &&
@@ -167,9 +167,27 @@ export function resolveDocumentRelations(blockPlan, sections) {
         ],
       });
     } else if (block.table) {
+      let actualHeader = block.table.header;
+
+      // If the parsed header is actually the first data row
+
+      const firstDataRow = block.table.rows.find(row => row.cells.some(c => c.text.trim()));
+      if (
+        firstDataRow &&
+        consecutive(block.table.header, firstDataRow)
+      ) {
+        rowsToUse.unshift(block.table.header);
+        actualHeader = {
+          cells: block.table.header.cells.map((_, i) => ({
+            text: `Column ${i + 1}`,
+          })),
+          locations: block.locations || [],
+        };
+      }
+
       table = {
         id: "table-" + (tables.length + 1),
-        header: block.table.header,
+        header: actualHeader,
         sectionId:
           block.sectionContext.readingOrderSectionIds.length === 1
             ? block.sectionContext.readingOrderSectionIds[0]
