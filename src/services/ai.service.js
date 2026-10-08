@@ -14,9 +14,7 @@ import {
   normalizeLlamaParseResult,
   normalizeTextDocument,
 } from "./extraction-normalizer.service.js";
-export {
-  getEmbedding,
-} from "./embedding.service.js";
+export { getEmbedding } from "./embedding.service.js";
 
 // 1. Extract text from the physical file
 // export const extractTextFromPDF = async (filepath) => {
@@ -93,170 +91,245 @@ export const extractDocument = async ({
   filename,
   mimetype,
 } = {}) => {
-  // 1. Validate the information supplied by the caller.
-  const requiredFields = {
-    filepath,
-    filename,
-    mimetype,
-  };
-
+  const requiredFields = { filepath, filename, mimetype };
   for (const [name, value] of Object.entries(requiredFields)) {
     if (typeof value !== "string" || !value.trim()) {
       throw new TypeError(`extractDocument requires a non-empty ${name}`);
     }
   }
 
-  // 2. Normalize MIME formatting.
-  // Example: "text/plain; charset=utf-8" becomes "text/plain".
   const normalizedMimetype = mimetype.split(";")[0].trim().toLowerCase();
-
   const usesNativeText = NATIVE_TEXT_MIME_TYPES.has(normalizedMimetype);
-
   const usesLlamaParse = LLAMA_PARSE_MIME_TYPES.has(normalizedMimetype);
-
   if (!usesNativeText && !usesLlamaParse) {
     throw new Error(`Unsupported file type: ${normalizedMimetype}`);
   }
 
-  const source = {
-    filename,
-    mimetype: normalizedMimetype,
-  };
-
-  // 3. Download the uploaded file from Supabase Storage.
+  const source = { filename, mimetype: normalizedMimetype };
   const { data, error } = await supabase.storage
     .from("documents")
     .download(filepath);
-
-  if (error) {
-    throw new Error(`Failed to download document: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error("Document download returned no data");
-  }
+  if (error) throw new Error(`Failed to download document: ${error.message}`);
+  if (!data) throw new Error("Document download returned no data");
 
   const buffer = Buffer.from(await data.arrayBuffer());
+  if (!buffer.length) throw new Error("The uploaded document is empty");
 
-  if (buffer.length === 0) {
-    throw new Error("The uploaded document is empty");
-  }
-
-  // 4. Decode plain-text inputs locally.
   if (usesNativeText) {
     let text;
-
     try {
-      text = new TextDecoder("utf-8", {
-        fatal: true,
-      }).decode(buffer);
+      text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
     } catch {
       throw new Error("Text documents must use valid UTF-8 encoding");
     }
-
     return normalizeTextDocument(text, source);
   }
 
-  // 5. Request structured results for PDFs, DOCX, and images.
+  if (!process.env.LLAMA_CLOUD_API_KEY?.trim()) {
+    throw new Error("LLAMA_CLOUD_API_KEY is required for document parsing");
+  }
+
+  console.log(`[LlamaParse] Extracting ${filename}`);
   const reader = new LlamaParseReader({
     apiKey: process.env.LLAMA_CLOUD_API_KEY,
     resultType: "json",
     premiumMode: true,
-
-    // Propagate parser errors to the worker.
     ignoreErrors: false,
-
-    // Request available layout information.
     extract_layout: true,
-
-    // Preserve page-local output for our structure pass.
     merge_tables_across_pages_in_markdown: false,
-
     parsingInstruction: DOCUMENT_EXTRACTION_INSTRUCTIONS,
   });
 
   const rawResults = await reader.loadJson(buffer);
-
-  // 6. Convert provider output into our application contract.
   const extraction = normalizeLlamaParseResult(rawResults, source);
-
-  // 7. Reject a known page-count discrepancy.
   if (extraction.warnings.includes("REPORTED_PAGE_COUNT_MISMATCH")) {
     throw new Error(
-      "Extraction returned a different number of pages " +
-        "than the parser reported",
+      "Extraction returned a different number of pages than the parser reported",
     );
   }
-
   return extraction;
 };
 
+// Preserve the legacy page-array API for any callers outside the worker.
 export const extractDocPages = async (filepath, mimetype) => {
-  const { data, error } = await supabase.storage
-    .from("documents")
-    .download(filepath);
-
-  if (error) {
-    throw new Error(`Failed to download from Supabase: ${error.message}`);
-  }
-
-  const arrayBuffer = await data.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  const supportedVisionTypes = [
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ];
-
-  // ==========================================
-  // 1. PDFs, Word Docs, AND Images (LlamaParse Vision)
-  // ==========================================
-  if (supportedVisionTypes.includes(mimetype)) {
-    console.log(`👁️ Extracting ${mimetype} using LlamaParse Premium Vision...`);
-
-    const reader = new LlamaParseReader({
-      resultType: "markdown",
-      apiKey: process.env.LLAMA_CLOUD_API_KEY,
-      premiumMode: true, // Handles OCR and Vision for images AND documents automatically
-      parsingInstruction: `
-        You are a universal document extraction AI. Extract all content into clean, semantic Markdown.
-        
-        1. TEXT & HIERARCHY: Preserve all headings, paragraphs, lists, footnotes, and fine print exactly as they appear. Do not summarize or omit text.
-        2. EMBEDDED SCANS & EXHIBITS: If a page contains a scanned image of another document (e.g., an invoice, receipt, or specimen exhibit), you MUST transcribe all text, addresses, and line items INSIDE that image as if it were standard page text. Do not skip it.
-        3. TABULAR DATA: Convert all grids, financial statements, and borderless tabular layouts into standard Markdown tables with column headers.
-        4. DATA VISUALIZATIONS: If you encounter quantitative charts (bar, line, pie, scatter), extract the underlying axes, labels, and exact coordinate data points into a Markdown table. Do not write a generic summary of the trend.
-        5. DIAGRAMS & SCHEMATICS: For flowcharts, organizational hierarchies, process maps, or spatial plans, transcribe the structural relationships, flow directions, and textual labels into hierarchical bullet points.
-        6. TEXT & HIERARCHY: Extract all content into semantic Markdown. You MUST enforce a strict, logical heading hierarchy regardless of visual font size:
-           - Use Level 1 (#) ONLY for the overarching organization name or main document title (e.g., "TESSALY PARCEL NETWORK").
-           - Use Level 2 (##) ONLY for document subtitles, document IDs, or version numbers (e.g., "DEPOT HANDBOOK TPN-SH-2026-10").
-           - Use Level 3 (###) for numbered chapters and primary sections (e.g., "1. PURPOSE AND SCOPE", "2. CONVENTIONS").
-           - Use Level 4 (####) and below for nested sub-sections (e.g., "1.1 Internal Rules").
-           Never put a numbered section at the same heading level as the document title or subtitle. Preserve all paragraphs, lists, and fine print. Do not summarize or omit text.
-
-        `,
-    });
-
-    // LlamaParse processes the buffer and returns Markdown
-    const documents = await reader.loadDataAsContent(buffer);
-    return documents;
-    // const markdownText = documents.map((doc) => doc.text).join("\n\n");
-
-    // return markdownText;
-  }
-
-  // ==========================================
-  // 2. Plain Text / Markdown (.txt, .md)
-  // ==========================================
-  if (mimetype === "text/plain" || mimetype === "text/markdown") {
-    return [{ text: buffer.toString("utf-8") }];
-  }
-
-  throw new Error(`Unsupported file type: ${mimetype}`);
+  const extraction = await extractDocument({
+    filepath,
+    mimetype,
+    filename: filepath.split(/[\\/]/).pop(),
+  });
+  return extraction.pages.map((page) => ({ text: page.text }));
 };
-// export const extractText = async (filepath, mimetype) => {
+
+// Previous verbose LlamaParse implementation retained for reference.
+// export const extractDocument = async ({
+//   filepath,
+//   filename,
+//   mimetype,
+// } = {}) => {
+//   // 1. Validate the information supplied by the caller.
+//   const requiredFields = {
+//     filepath,
+//     filename,
+//     mimetype,
+//   };
+//
+//   for (const [name, value] of Object.entries(requiredFields)) {
+//     if (typeof value !== "string" || !value.trim()) {
+//       throw new TypeError(`extractDocument requires a non-empty ${name}`);
+//     }
+//   }
+//
+//   // 2. Normalize MIME formatting.
+//   // Example: "text/plain; charset=utf-8" becomes "text/plain".
+//   const normalizedMimetype = mimetype.split(";")[0].trim().toLowerCase();
+//
+//   const usesNativeText = NATIVE_TEXT_MIME_TYPES.has(normalizedMimetype);
+//
+//   const usesLlamaParse = LLAMA_PARSE_MIME_TYPES.has(normalizedMimetype);
+//
+//   if (!usesNativeText && !usesLlamaParse) {
+//     throw new Error(`Unsupported file type: ${normalizedMimetype}`);
+//   }
+//
+//   const source = {
+//     filename,
+//     mimetype: normalizedMimetype,
+//   };
+//
+//   // 3. Download the uploaded file from Supabase Storage.
+//   const { data, error } = await supabase.storage
+//     .from("documents")
+//     .download(filepath);
+//
+//   if (error) {
+//     throw new Error(`Failed to download document: ${error.message}`);
+//   }
+//
+//   if (!data) {
+//     throw new Error("Document download returned no data");
+//   }
+//
+//   const buffer = Buffer.from(await data.arrayBuffer());
+//
+//   if (buffer.length === 0) {
+//     throw new Error("The uploaded document is empty");
+//   }
+//
+//   // 4. Decode plain-text inputs locally.
+//   if (usesNativeText) {
+//     let text;
+//
+//     try {
+//       text = new TextDecoder("utf-8", {
+//         fatal: true,
+//       }).decode(buffer);
+//     } catch {
+//       throw new Error("Text documents must use valid UTF-8 encoding");
+//     }
+//
+//     return normalizeTextDocument(text, source);
+//   }
+//
+//   // 5. Request structured results for PDFs, DOCX, and images.
+//   const reader = new LlamaParseReader({
+//     apiKey: process.env.LLAMA_CLOUD_API_KEY,
+//     resultType: "json",
+//     premiumMode: true,
+//
+//     // Propagate parser errors to the worker.
+//     ignoreErrors: false,
+//
+//     // Request available layout information.
+//     extract_layout: true,
+//
+//     // Preserve page-local output for our structure pass.
+//     merge_tables_across_pages_in_markdown: false,
+//
+//     parsingInstruction: DOCUMENT_EXTRACTION_INSTRUCTIONS,
+//   });
+//
+//   const rawResults = await reader.loadJson(buffer);
+//
+//   // 6. Convert provider output into our application contract.
+//   const extraction = normalizeLlamaParseResult(rawResults, source);
+//
+//   // 7. Reject a known page-count discrepancy.
+//   if (extraction.warnings.includes("REPORTED_PAGE_COUNT_MISMATCH")) {
+//     throw new Error(
+//       "Extraction returned a different number of pages " +
+//         "than the parser reported",
+//     );
+//   }
+//
+//   return extraction;
+// };
+//
+// export const extractDocPages = async (filepath, mimetype) => {
+//   const { data, error } = await supabase.storage
+//     .from("documents")
+//     .download(filepath);
+//
+//   if (error) {
+//     throw new Error(`Failed to download from Supabase: ${error.message}`);
+//   }
+//
+//   const arrayBuffer = await data.arrayBuffer();
+//   const buffer = Buffer.from(arrayBuffer);
+//
+//   const supportedVisionTypes = [
+//     "application/pdf",
+//     "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+//     "image/jpeg",
+//     "image/png",
+//     "image/webp",
+//   ];
+//
+//   // ==========================================
+//   // 1. PDFs, Word Docs, AND Images (LlamaParse Vision)
+//   // ==========================================
+//   if (supportedVisionTypes.includes(mimetype)) {
+//     console.log(`👁️ Extracting ${mimetype} using LlamaParse Premium Vision...`);
+//
+//     const reader = new LlamaParseReader({
+//       resultType: "markdown",
+//       apiKey: process.env.LLAMA_CLOUD_API_KEY,
+//       premiumMode: true, // Handles OCR and Vision for images AND documents automatically
+//       parsingInstruction: `
+//         You are a universal document extraction AI. Extract all content into clean, semantic Markdown.
+//
+//         1. TEXT & HIERARCHY: Preserve all headings, paragraphs, lists, footnotes, and fine print exactly as they appear. Do not summarize or omit text.
+//         2. EMBEDDED SCANS & EXHIBITS: If a page contains a scanned image of another document (e.g., an invoice, receipt, or specimen exhibit), you MUST transcribe all text, addresses, and line items INSIDE that image as if it were standard page text. Do not skip it.
+//         3. TABULAR DATA: Convert all grids, financial statements, and borderless tabular layouts into standard Markdown tables with column headers.
+//         4. DATA VISUALIZATIONS: If you encounter quantitative charts (bar, line, pie, scatter), extract the underlying axes, labels, and exact coordinate data points into a Markdown table. Do not write a generic summary of the trend.
+//         5. DIAGRAMS & SCHEMATICS: For flowcharts, organizational hierarchies, process maps, or spatial plans, transcribe the structural relationships, flow directions, and textual labels into hierarchical bullet points.
+//         6. TEXT & HIERARCHY: Extract all content into semantic Markdown. You MUST enforce a strict, logical heading hierarchy regardless of visual font size:
+//            - Use Level 1 (#) ONLY for the overarching organization name or main document title (e.g., "TESSALY PARCEL NETWORK").
+//            - Use Level 2 (##) ONLY for document subtitles, document IDs, or version numbers (e.g., "DEPOT HANDBOOK TPN-SH-2026-10").
+//            - Use Level 3 (###) for numbered chapters and primary sections (e.g., "1. PURPOSE AND SCOPE", "2. CONVENTIONS").
+//            - Use Level 4 (####) and below for nested sub-sections (e.g., "1.1 Internal Rules").
+//            Never put a numbered section at the same heading level as the document title or subtitle. Preserve all paragraphs, lists, and fine print. Do not summarize or omit text.
+//
+//         `,
+//     });
+//
+//     // LlamaParse processes the buffer and returns Markdown
+//     const documents = await reader.loadDataAsContent(buffer);
+//     return documents;
+//     // const markdownText = documents.map((doc) => doc.text).join("\n\n");
+//
+//     // return markdownText;
+//   }
+//
+//   // ==========================================
+//   // 2. Plain Text / Markdown (.txt, .md)
+//   // ==========================================
+//   if (mimetype === "text/plain" || mimetype === "text/markdown") {
+//     return [{ text: buffer.toString("utf-8") }];
+//   }
+//
+//   throw new Error(`Unsupported file type: ${mimetype}`);
+// };
+//// export const extractText = async (filepath, mimetype) => {
 //   // const buffer = await fs.readFile(filepath);
 //   const { data, error } = await supabase.storage
 //     .from("documents")

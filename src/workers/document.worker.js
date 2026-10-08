@@ -24,7 +24,7 @@ export const startWorker = () => {
 
   // Listen to the 'document-processing' queue we created earlier
   new Worker(
-    "document-processing",
+    process.env.DOCUMENT_QUEUE_NAME || "document-processing",
     async (job) => {
       const { documentId, filepath, mimetype } = job.data;
       console.log(`[Job ${job.id}] Started processing document...`);

@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ISGEC tender intelligence solution architecture: document ingestion, departmental historical search and engineer review.">
+<title>ISGEC Tender Intelligence — Architecture</title>
+<style>
+:root{color-scheme:dark;--bg:#0a0c11;--panel:#11141b;--line:#1d222c;--text:#e9edf4;--muted:#a9b8cc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,sans-serif;padding:26px 18px 30px}
+.wrap{max-width:1640px;margin:auto;display:grid;gap:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{font-size:clamp(22px,2.4vw,30px);font-weight:600;letter-spacing:-.02em;margin:0 0 8px}
+.subtitle{font-size:13px;color:var(--muted)}
+button{color:var(--muted);background:#0f1218;border:1px solid var(--line);border-radius:7px;padding:8px 12px;cursor:pointer;font:inherit;font-size:12px}
+button:hover{color:var(--text);border-color:#43dcc4}
+button:focus-visible{outline:2px solid #43dcc4;outline-offset:3px}
+figure{margin:0;min-width:0}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+svg{display:block;width:100%;min-width:1200px;height:auto}
+.canvas{fill:var(--bg)}
+.panel-bg{fill:var(--panel);stroke:var(--accent);stroke-width:1.3}
+.halo{fill:none;stroke:var(--accent);stroke-width:3;opacity:.22;filter:url(#glow)}
+.chip-bg{fill:var(--bg);stroke:var(--accent);stroke-opacity:.65}
+.subpanel rect{fill:var(--panel);stroke:var(--accent);stroke-width:1.1}
+.label{font-size:14px;font-weight:600;fill:var(--text)}
+.detail{font-family:Consolas,ui-monospace,monospace;font-size:11.5px;fill:var(--muted)}
+.chip{font-size:10.5px;font-weight:600;letter-spacing:.09em;fill:var(--text)}
+.lane{font-size:10.5px;font-weight:600;letter-spacing:.14em;fill:#8b95a6}
+.item-dot{fill:var(--accent)}
+.arrow{fill:none;stroke:#a9b8cc;stroke-width:1.5}
+.arrow.feedback{stroke:#f0b64a;stroke-dasharray:6 5}
+.arrow.blocked{stroke:#ff8585}
+.refusal rect{fill:#211416;stroke:#ff8585;stroke-width:1.2}
+.blocked-label{fill:#ffadad;font-size:12px}
+.search-field{fill:#0a0c11;stroke:#394354}
+.search-placeholder{fill:#a9b8cc;font-size:13px}
+.arrow-label{font-size:10px;fill:var(--muted)}
+.foot{font-size:10px;fill:#8b95a6}
+@media(max-width:640px){body{padding:20px 12px}.subtitle{line-height:1.7}.wrap{gap:14px}}
+@media print{
+@page{size:A3 landscape;margin:9mm}
+body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+header{margin-bottom:8px}h1{font-size:21px}.subtitle{font-size:11px}
+button{display:none}.wrap{gap:8px;max-width:none}
+.scroll{overflow:visible;border:0}svg{min-width:0;width:100%;height:auto;max-height:250mm}
+figure{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+<header><div><h1>ISGEC Tender Intelligence — Solution Architecture</h1><div class="subtitle">Tender analysis + document search → Historical evidence → Engineer review</div></div><button type="button" id="print">Print / save PDF</button></header>
+<figure><div class="scroll"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1390" role="img" aria-labelledby="map-title map-description">
+  <title id="map-title">ISGEC tender intelligence and document search architecture</title>
+  <desc id="map-description">Tender requirements and proposed team assignments require human approval before entering the department workspace. Edits or rejection return to the tender for revision; only approved assignments proceed. Department tasks and a normal document search box share malicious-intent screening and intent routing. Factual searches use corrective RAG; summary and page requests use direct lookup. Malicious requests are refused. No data in the evidence record or no relevant retrieved evidence returns to query rewriting while retrieval rounds remain. After three total rounds, unresolved results return an unavailable response or an unmatched requirement for engineer review. Document ingestion builds the historical evidence library.</desc>
+  <defs xmlns="http://www.w3.org/2000/svg">
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#141820"/>
+    </pattern>
+    <filter id="glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#a9b8cc"/>
+    </marker>
+    <marker id="amber-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#f0b64a"/>
+    </marker>
+    <marker id="red-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#ff8585"/>
+    </marker>
+  </defs>
+  <rect class="canvas" width="1600" height="1390"/>
+  <rect width="1600" height="1390" fill="url(#grid)"/>
+  <text class="lane" x="30" y="27">DOCUMENT SEARCH · SHARED QUERY SCREENING</text>
+  <path class="arrow " d="M360 105H430" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="367" y="94">Question</text>
+  <path class="arrow " d="M770 105H840" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="791" y="94">SAFE</text>
+  <path class="arrow blocked" d="M430 147H400V210H360" marker-end="url(#red-arrow)"/>
+  <text class="arrow-label" x="373" y="190">MALICIOUS</text>
+  <path class="arrow " d="M1000 180V245" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="1009" y="218">Factual search</text>
+  <path class="arrow " d="M1180 105H1270" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="1185" y="94">Direct lookup</text>
+  <path class="arrow " d="M1185 245V210H1420V180" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="1222" y="203">Answer + sources</text>
+  <path class="arrow " d="M870 480H880V235H805V150H770" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="690" y="226">Approved team queries</text>
+  <path class="arrow " d="M330 483H355V311H380" marker-end="url(#arrow)"/>
+  <path class="arrow " d="M605 380V405" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="615" y="396">Approved only</text>
+  <path class="arrow feedback" d="M380 355H345V426H330" marker-end="url(#amber-arrow)"/>
+  <path class="arrow " d="M1070 545V559H100V685" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="410" y="553">Matches / unmatched</text>
+  <path class="arrow " d="M330 805H380" marker-end="url(#arrow)"/>
+  <path class="arrow " d="M870 805H920" marker-end="url(#arrow)"/>
+  <path class="arrow" d="M1220 435H1250V805H1270" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <text class="arrow-label" x="1255" y="662">Evidence lookup</text>
+  <path class="arrow feedback" d="M180 685V617H380" marker-end="url(#amber-arrow)"/>
+  <text class="arrow-label" x="185" y="607">No data · rounds remain</text>
+  <path class="arrow feedback" d="M920 429H890V594H870" marker-end="url(#amber-arrow)"/>
+  <text class="arrow-label" x="894" y="568">None relevant</text>
+  <path class="arrow feedback" d="M870 617H905V370H920" marker-end="url(#amber-arrow)"/>
+  <text class="arrow-label" x="930" y="592">Retry search</text>
+  <path class="arrow feedback" d="M870 637H914V488H920" marker-end="url(#amber-arrow)"/>
+  <text class="arrow-label" x="930" y="652">Limit reached → unavailable / unmatched</text>
+  <path class="arrow feedback" d="M605 925V955H180V925" marker-end="url(#amber-arrow)"/>
+  <text class="arrow-label" x="290" y="949">Edit · reassign · search again</text>
+  <path class="arrow " d="M330 1165H380" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="337" y="1153">Queue</text>
+  <path class="arrow " d="M1220 1165H1245V895H1270" marker-end="url(#arrow)"/>
+  <text class="arrow-label" x="1240" y="979">Save chunks + vectors</text>
+  <g class="panel" style="--accent:#6fa8ff">
+    <rect class="halo" x="30" y="45" width="330" height="135" rx="12"/>
+    <rect class="panel-bg" x="30" y="45" width="330" height="135" rx="12"/>
+    <rect class="chip-bg" x="44" y="59" width="143.0" height="25" rx="5"/>
+    <text class="chip" x="57" y="76">DOCUMENT SEARCH</text>
+    <rect class="search-field" x="48" y="96" width="294" height="36" rx="7"/>
+    <circle cx="64" cy="112" r="6" fill="none" stroke="#a9b8cc"/>
+    <path d="M68 117L73 122" stroke="#a9b8cc"/>
+    <text class="search-placeholder" x="84" y="118">Search documents...</text>
+    <text class="detail" x="49" y="158">Selected document / all my documents</text>
+  </g>
+  <g class="panel" style="--accent:#f0b64a">
+    <rect class="halo" x="430" y="45" width="340" height="135" rx="12"/>
+    <rect class="panel-bg" x="430" y="45" width="340" height="135" rx="12"/>
+    <rect class="chip-bg" x="444" y="59" width="130" height="25" rx="5"/>
+    <text class="chip" x="457" y="76">QUERY GATE</text>
+    <text class="label" x="453" y="111">Check malicious intent</text>
+    <text class="detail" x="453" y="133">Instruction override / prompt extraction</text>
+    <text class="detail" x="453" y="157">JWT authentication · document scope</text>
+  </g>
+  <g class="refusal">
+    <rect x="30" y="195" width="330" height="30" rx="7"/>
+    <text class="blocked-label" x="48" y="215">Refuse request → stop retrieval</text>
+  </g>
+  <g class="panel" style="--accent:#b98cff">
+    <rect class="halo" x="840" y="45" width="340" height="135" rx="12"/>
+    <rect class="panel-bg" x="840" y="45" width="340" height="135" rx="12"/>
+    <rect class="chip-bg" x="854" y="59" width="135.2" height="25" rx="5"/>
+    <text class="chip" x="867" y="76">INTENT ROUTING</text>
+    <text class="label" x="863" y="109">Factual question → corrective search</text>
+    <text class="detail" x="863" y="132">Summary / page → document lookup</text>
+    <text class="detail" x="863" y="156">Greeting → reply · recent chat history</text>
+  </g>
+  <g class="panel" style="--accent:#43dcc4">
+    <rect class="halo" x="1270" y="45" width="300" height="135" rx="12"/>
+    <rect class="panel-bg" x="1270" y="45" width="300" height="135" rx="12"/>
+    <rect class="chip-bg" x="1284" y="59" width="143.0" height="25" rx="5"/>
+    <text class="chip" x="1297" y="76">SEARCH RESPONSE</text>
+    <text class="label" x="1293" y="110">Answer + page citations</text>
+    <text class="detail" x="1293" y="133">SSE delivery · saved conversation</text>
+    <text class="detail" x="1293" y="156">No evidence → clear unavailable reply</text>
+  </g>
+  <g class="panel" style="--accent:#f0b64a">
+    <rect class="halo" x="380" y="575" width="490" height="78" rx="12"/>
+    <rect class="panel-bg" x="380" y="575" width="490" height="78" rx="12"/>
+    <rect class="chip-bg" x="394" y="589" width="189.79999999999998" height="25" rx="5"/>
+    <text class="chip" x="407" y="606">RETRY / QUERY REWRITE</text>
+    <text class="detail" x="402" y="625">Original question → 1 alternative query</text>
+    <text class="detail" x="402" y="642">Shared budget: 3 retrieval rounds total</text>
+  </g>
+  <text xmlns="http://www.w3.org/2000/svg" class="lane" x="30" y="240">TENDER ANALYSIS &amp; HISTORICAL MATCHING</text>
+  <g transform="translate(0,200)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#43dcc4">
+      <rect class="halo" x="30" y="45" width="300" height="300" rx="12"/>
+      <rect class="panel-bg" x="30" y="45" width="300" height="300" rx="12"/>
+      <rect class="chip-bg" x="44" y="59" width="143" height="25" rx="5"/>
+      <text class="chip" x="57" y="76">TENDER WORKFLOW</text>
+      <text class="label" x="57" y="112">Tender upload</text>
+      <text class="label" x="57" y="169">Document ingestion</text>
+      <text class="label" x="57" y="226">Requirement extraction</text>
+      <text class="label" x="57" y="283">Proposed team assignment</text>
+      <path class="arrow" d="M175 120V148" marker-end="url(#arrow)"/>
+      <path class="arrow" d="M175 177V205" marker-end="url(#arrow)"/>
+      <path class="arrow" d="M175 234V262" marker-end="url(#arrow)"/>
+      <text class="detail" x="57" y="321">Tender · source requirements · teams</text>
+    </g>
+  </g>
+  <g transform="translate(0,200)">
+    <g class="panel" style="--accent:#f0b64a">
+      <rect class="halo" x="380" y="45" width="490" height="135" rx="12"/>
+      <rect class="panel-bg" x="380" y="45" width="490" height="135" rx="12"/>
+      <rect class="chip-bg" x="394" y="59" width="159" height="25" rx="5"/>
+      <text class="chip" x="407" y="76">HUMAN-IN-THE-LOOP</text>
+      <text class="label" x="402" y="111">Approve tender data + team assignments</text>
+      <text class="detail" x="402" y="134">Review extracted values and department ownership</text>
+      <text class="detail" x="402" y="157">Edit / reject → revise tender before dispatch</text>
+    </g>
+  </g>
+  <g transform="translate(0,200)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#b98cff">
+      <rect class="halo" x="380" y="205" width="490" height="140" rx="12"/>
+      <rect class="panel-bg" x="380" y="205" width="490" height="140" rx="12"/>
+      <rect class="chip-bg" x="394" y="219" width="182" height="25" rx="5"/>
+      <text class="chip" x="407" y="236">DEPARTMENT WORKSPACE</text>
+      <circle cx="408" cy="263" r="3" class="item-dot"/>
+      <text class="label" x="420" y="268">Mechanical / Pressure Parts</text>
+      <circle cx="408" cy="292" r="3" class="item-dot"/>
+      <text class="label" x="420" y="297">Electrical / Instrumentation</text>
+      <circle cx="408" cy="321" r="3" class="item-dot"/>
+      <text class="label" x="420" y="326">Commercial / Other Teams</text>
+    </g>
+  </g>
+  <g transform="translate(0,200)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#43dcc4">
+      <rect class="halo" x="920" y="45" width="300" height="300" rx="12"/>
+      <rect class="panel-bg" x="920" y="45" width="300" height="300" rx="12"/>
+      <rect class="chip-bg" x="934" y="59" width="135.2" height="25" rx="5"/>
+      <text class="chip" x="947" y="76">CORRECTIVE RAG</text>
+      <circle cx="948" cy="106" r="3" class="item-dot"/>
+      <text class="label" x="960" y="111">Query planning</text>
+      <text class="detail" x="960" y="131">LangGraph · ≤4 sequential queries</text>
+      <circle cx="948" cy="165" r="3" class="item-dot"/>
+      <text class="label" x="960" y="170">Hybrid search + reranking</text>
+      <text class="detail" x="960" y="190">MiniLM → vector + full-text</text>
+      <circle cx="948" cy="224" r="3" class="item-dot"/>
+      <text class="label" x="960" y="229">Batch evidence grading</text>
+      <text class="detail" x="960" y="249">Keep evidence useful to any part</text>
+      <circle cx="948" cy="283" r="3" class="item-dot"/>
+      <text class="label" x="960" y="288">Grounded response</text>
+      <text class="detail" x="960" y="308">Context only · page citations</text>
+      <text class="detail" x="960" y="207">RRF → Cohere → neighbors</text>
+      <text class="detail" x="960" y="326">No sources → unavailable response</text>
+    </g>
+  </g>
+  <g transform="translate(0,200)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#f0b64a">
+      <rect class="halo" x="1270" y="45" width="300" height="300" rx="12"/>
+      <rect class="panel-bg" x="1270" y="45" width="300" height="300" rx="12"/>
+      <rect class="chip-bg" x="1284" y="59" width="130" height="25" rx="5"/>
+      <text class="chip" x="1297" y="76">PLATFORM &amp; AI</text>
+      <circle cx="1298" cy="106" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="111">Access control</text>
+      <text class="detail" x="1310" y="131">Express · JWT · bcrypt</text>
+      <text class="detail" x="1310" y="148">Document ownership checks</text>
+      <circle cx="1298" cy="183" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="188">Context protection</text>
+      <text class="detail" x="1310" y="208">Untrusted document text</text>
+      <text class="detail" x="1310" y="225">Randomized input delimiters</text>
+      <circle cx="1298" cy="260" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="265">Task-based model routing</text>
+      <text class="detail" x="1310" y="285">Groq · OpenRouter</text>
+      <text class="detail" x="1310" y="302">Gemini · OpenCode</text>
+    </g>
+  </g>
+  <text xmlns="http://www.w3.org/2000/svg" class="lane" x="380" y="668">HISTORICAL EVIDENCE → HUMAN REVIEW → CONSOLIDATED FINDINGS</text>
+  <g transform="translate(0,280)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#43dcc4">
+      <rect class="halo" x="30" y="405" width="300" height="240" rx="12"/>
+      <rect class="panel-bg" x="30" y="405" width="300" height="240" rx="12"/>
+      <rect class="chip-bg" x="44" y="419" width="143" height="25" rx="5"/>
+      <text class="chip" x="57" y="436">EVIDENCE RECORD</text>
+      <circle cx="58" cy="470" r="3" class="item-dot"/>
+      <text class="label" x="70" y="475">Historical source references</text>
+      <circle cx="58" cy="517" r="3" class="item-dot"/>
+      <text class="label" x="70" y="522">Matching requirements</text>
+      <circle cx="58" cy="564" r="3" class="item-dot"/>
+      <text class="label" x="70" y="569">Deviations / missing evidence</text>
+      <circle cx="58" cy="611" r="3" class="item-dot"/>
+      <text class="label" x="70" y="616">Findings / unmatched requirements</text>
+    </g>
+  </g>
+  <g transform="translate(0,280)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#f0b64a">
+      <rect class="halo" x="380" y="405" width="490" height="240" rx="12"/>
+      <rect class="panel-bg" x="380" y="405" width="490" height="240" rx="12"/>
+      <rect class="chip-bg" x="394" y="419" width="158.6" height="25" rx="5"/>
+      <text class="chip" x="407" y="436">HUMAN-IN-THE-LOOP</text>
+      <circle cx="408" cy="470" r="3" class="item-dot"/>
+      <text class="label" x="420" y="475">Engineer reviews requirements and sources</text>
+      <circle cx="408" cy="517" r="3" class="item-dot"/>
+      <text class="label" x="420" y="522">Accept · edit · reject · request clarification</text>
+      <circle cx="408" cy="564" r="3" class="item-dot"/>
+      <text class="label" x="420" y="569">Confirm historical applicability</text>
+      <circle cx="408" cy="611" r="3" class="item-dot"/>
+      <text class="label" x="420" y="616">Record decision and comments</text>
+    </g>
+  </g>
+  <g transform="translate(0,280)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#43dcc4">
+      <rect class="halo" x="920" y="405" width="300" height="240" rx="12"/>
+      <rect class="panel-bg" x="920" y="405" width="300" height="240" rx="12"/>
+      <rect class="chip-bg" x="934" y="419" width="174.2" height="25" rx="5"/>
+      <text class="chip" x="947" y="436">CONSOLIDATED OUTPUT</text>
+      <circle cx="948" cy="470" r="3" class="item-dot"/>
+      <text class="label" x="960" y="475">Department-wise findings</text>
+      <circle cx="948" cy="517" r="3" class="item-dot"/>
+      <text class="label" x="960" y="522">Reviewed historical references</text>
+      <circle cx="948" cy="564" r="3" class="item-dot"/>
+      <text class="label" x="960" y="569">Deviations and open questions</text>
+      <circle cx="948" cy="611" r="3" class="item-dot"/>
+      <text class="label" x="960" y="616">Engineering lead review</text>
+    </g>
+  </g>
+  <g transform="translate(0,280)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#b98cff">
+      <rect class="halo" x="1270" y="405" width="300" height="240" rx="12"/>
+      <rect class="panel-bg" x="1270" y="405" width="300" height="240" rx="12"/>
+      <rect class="chip-bg" x="1284" y="419" width="158.6" height="25" rx="5"/>
+      <text class="chip" x="1297" y="436">EVIDENCE DATABASE</text>
+      <circle cx="1298" cy="470" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="475">Vector + full-text store</text>
+      <text class="detail" x="1310" y="495">PostgreSQL · pgvector</text>
+      <text class="detail" x="1310" y="512">384-D child embeddings</text>
+      <circle cx="1298" cy="548" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="553">Relational persistence</text>
+      <text class="detail" x="1310" y="573">Prisma · documents · metadata</text>
+      <text class="detail" x="1310" y="590">Conversations · messages</text>
+    </g>
+  </g>
+  <text xmlns="http://www.w3.org/2000/svg" class="lane" x="30" y="979">DOCUMENT INGESTION &amp; KNOWLEDGE LIBRARY</text>
+  <g transform="translate(0,280)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#a3acbb">
+      <rect class="halo" x="30" y="720" width="300" height="350" rx="12"/>
+      <rect class="panel-bg" x="30" y="720" width="300" height="350" rx="12"/>
+      <rect class="chip-bg" x="44" y="734" width="130" height="25" rx="5"/>
+      <text class="chip" x="57" y="751">DATA SOURCES</text>
+      <circle cx="58" cy="784" r="3" class="item-dot"/>
+      <text class="label" x="70" y="789">Historical project documents</text>
+      <text class="detail" x="70" y="809">Specifications · technical records</text>
+      <circle cx="58" cy="845" r="3" class="item-dot"/>
+      <text class="label" x="70" y="850">Current tender documents</text>
+      <text class="detail" x="70" y="870">Tender · supporting evidence</text>
+      <circle cx="58" cy="906" r="3" class="item-dot"/>
+      <text class="label" x="70" y="911">Supported formats</text>
+      <text class="detail" x="70" y="931">PDF · DOCX · TXT · Markdown</text>
+      <text class="detail" x="70" y="948">PNG · JPG · WebP</text>
+      <circle cx="58" cy="985" r="3" class="item-dot"/>
+      <text class="label" x="70" y="990">Original file storage</text>
+      <text class="detail" x="70" y="1010">Supabase Storage</text>
+      <text class="detail" x="70" y="1027">Authenticated upload · async queue</text>
+    </g>
+  </g>
+  <g transform="translate(0,280)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#5fd38d">
+      <rect class="halo" x="380" y="720" width="840" height="350" rx="12"/>
+      <rect class="panel-bg" x="380" y="720" width="840" height="350" rx="12"/>
+      <rect class="chip-bg" x="394" y="734" width="174.2" height="25" rx="5"/>
+      <text class="chip" x="407" y="751">DOCUMENT PROCESSING</text>
+      <g class="subpanel">
+        <rect x="400" y="775" width="240" height="275" rx="9" style="--accent:#6fa8ff"/>
+        <text class="chip" x="416" y="799">EXTRACTION &amp; STRUCTURE</text>
+        <circle cx="419" cy="832" r="3" class="item-dot"/>
+        <text class="label" x="431" y="837">Document parsing</text>
+        <text class="detail" x="431" y="857">Mistral OCR · Markdown</text>
+        <text class="detail" x="431" y="874">Native text / Markdown</text>
+        <circle cx="419" cy="904" r="3" class="item-dot"/>
+        <text class="label" x="431" y="909">Structure analysis</text>
+        <text class="detail" x="431" y="929">Document identity · headings</text>
+        <text class="detail" x="431" y="946">Tables · lists · code</text>
+        <circle cx="419" cy="981" r="3" class="item-dot"/>
+        <text class="label" x="431" y="986">Source mapping</text>
+        <text class="detail" x="431" y="1006">Page / passage locations</text>
+        <text class="detail" x="431" y="1023">Structure warnings</text>
+      </g>
+      <g class="subpanel">
+        <rect x="660" y="775" width="275" height="275" rx="9" style="--accent:#6fa8ff"/>
+        <text class="chip" x="676" y="799">CONTEXTUAL CHUNKING</text>
+        <circle cx="679" cy="832" r="3" class="item-dot"/>
+        <text class="label" x="691" y="837">Parent / child chunks</text>
+        <text class="detail" x="691" y="857">Parents: 1,024-token budget</text>
+        <text class="detail" x="691" y="874">Children: up to 256 tokens</text>
+        <circle cx="679" cy="904" r="3" class="item-dot"/>
+        <text class="label" x="691" y="909">Table context</text>
+        <text class="detail" x="691" y="929">Headers · units · row identity</text>
+        <text class="detail" x="691" y="946">Supported continuations / references</text>
+        <circle cx="679" cy="981" r="3" class="item-dot"/>
+        <text class="label" x="691" y="986">Section context</text>
+        <text class="detail" x="691" y="1006">Identity + heading breadcrumb</text>
+        <text class="detail" x="691" y="1023">Same-section reading-order links</text>
+      </g>
+      <g class="subpanel">
+        <rect x="955" y="775" width="245" height="275" rx="9" style="--accent:#6fa8ff"/>
+        <text class="chip" x="971" y="799">EMBEDDING &amp; SAVE</text>
+        <circle cx="974" cy="832" r="3" class="item-dot"/>
+        <text class="label" x="986" y="837">Local embeddings</text>
+        <text class="detail" x="986" y="857">MiniLM-L6-v2 · 384-D</text>
+        <text class="detail" x="986" y="874">Normalized child vectors</text>
+        <circle cx="974" cy="904" r="3" class="item-dot"/>
+        <text class="label" x="986" y="909">Token safeguards</text>
+        <text class="detail" x="986" y="929">Full contextual input checked</text>
+        <text class="detail" x="986" y="946">No silent truncation</text>
+        <circle cx="974" cy="981" r="3" class="item-dot"/>
+        <text class="label" x="986" y="986">Search readiness</text>
+        <text class="detail" x="986" y="1006">Transactional chunk save</text>
+        <text class="detail" x="986" y="1023">Separate summary readiness</text>
+      </g>
+      <path class="arrow" d="M640 888H660" marker-end="url(#arrow)"/>
+      <path class="arrow" d="M935 888H955" marker-end="url(#arrow)"/>
+    </g>
+  </g>
+  <g transform="translate(0,280)">
+    <g xmlns="http://www.w3.org/2000/svg" class="panel" style="--accent:#f0b64a">
+      <rect class="halo" x="1270" y="720" width="300" height="350" rx="12"/>
+      <rect class="panel-bg" x="1270" y="720" width="300" height="350" rx="12"/>
+      <rect class="chip-bg" x="1284" y="734" width="197.6" height="25" rx="5"/>
+      <text class="chip" x="1297" y="751">RETRIEVAL &amp; INSPECTION</text>
+      <circle cx="1298" cy="784" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="789">Ranked evidence</text>
+      <text class="detail" x="1310" y="809">20 vector + 20 keyword hits</text>
+      <text class="detail" x="1310" y="826">RRF → 15 parents → top 3</text>
+      <circle cx="1298" cy="858" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="863">Context expansion</text>
+      <text class="detail" x="1310" y="883">Immediate section neighbors</text>
+      <text class="detail" x="1310" y="900">Up to 24 parents</text>
+      <circle cx="1298" cy="932" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="937">Document access + progress</text>
+      <text class="detail" x="1310" y="957">Summary · page lookup · history</text>
+      <text class="detail" x="1310" y="974">Live SSE · saved-chunk REST</text>
+      <circle cx="1298" cy="1006" r="3" class="item-dot"/>
+      <text class="label" x="1310" y="1011">Tracing + evaluation</text>
+      <text class="detail" x="1310" y="1031">LangSmith · structured logs</text>
+      <text class="detail" x="1310" y="1048">Recall@3 · MRR · LLM judges</text>
+    </g>
+  </g>
+  <text class="foot" x="30" y="1373">Solid arrows: data flow</text>
+  <text class="foot" x="320" y="1373">Dashed amber: retry / engineer feedback</text>
+  <text class="foot" x="780" y="1373">Red: refused request</text>
+  <text class="foot" x="1190" y="1373">Scroll sideways on smaller screens</text>
+</svg>
+</div></figure>
+</main>
+<script>document.getElementById("print").addEventListener("click",()=>window.print());</script>
+</body>
+</html>
+

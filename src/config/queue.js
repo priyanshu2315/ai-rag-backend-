@@ -9,6 +9,9 @@ const redisConnection = new Redis(process.env.REDIS_URL, {
   tls: {},
 });
 
-export const documentQueue = new Queue("document-processing", {
+const documentQueueName =
+  process.env.DOCUMENT_QUEUE_NAME || "document-processing";
+
+export const documentQueue = new Queue(documentQueueName, {
   connection: redisConnection,
 });

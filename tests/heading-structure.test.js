@@ -12,7 +12,11 @@ function inspect(markdown) {
   );
   const candidates = collectHeadingCandidates(extraction);
   const identity = buildDocumentIdentity(extraction, candidates);
-  return { candidates, identity, result: normalizeHeadingStructure(candidates, identity) };
+  return {
+    candidates,
+    identity,
+    result: normalizeHeadingStructure(candidates, identity),
+  };
 }
 
 function numbered(result, label) {
@@ -20,7 +24,9 @@ function numbered(result, label) {
 }
 
 test("17 and 18 become siblings despite conflicting Markdown levels", () => {
-  const { result } = inspect("# Guide\n\n### 17. Equipment\n\nBody.\n\n#### 18. Safety");
+  const { result } = inspect(
+    "# Guide\n\n### 17. Equipment\n\nBody.\n\n#### 18. Safety",
+  );
   const a = numbered(result, "17");
   const b = numbered(result, "18");
   assert.equal(a.depth, 1);
@@ -32,14 +38,22 @@ test("17 and 18 become siblings despite conflicting Markdown levels", () => {
 });
 
 test("bold 5A follows 5 as a sibling, without becoming a reference link", () => {
-  const { result } = inspect("## 5. Finance\n\nBody.\n\n**5A. Column meanings**\n\nExplanation.\n\n# 6. Pallets");
+  const { result } = inspect(
+    "## 5. Finance\n\nBody.\n\n**5A. Column meanings**\n\nExplanation.\n\n# 6. Pallets",
+  );
   const headings = ["5", "5A", "6"].map((label) => numbered(result, label));
   assert.ok(headings.every((item) => item.status === "inferred"));
-  assert.ok(headings.every((item) => item.depth === 1 && item.parentCandidateId === null));
+  assert.ok(
+    headings.every(
+      (item) => item.depth === 1 && item.parentCandidateId === null,
+    ),
+  );
 });
 
 test("decimal sections use their active numbered parent", () => {
-  const { result } = inspect("# 5. Finance\n\nBody.\n\n# 5.1 Rates\n\nBody.\n\n#### 5.2 Charges");
+  const { result } = inspect(
+    "# 5. Finance\n\nBody.\n\n# 5.1 Rates\n\nBody.\n\n#### 5.2 Charges",
+  );
   const parent = numbered(result, "5");
   for (const label of ["5.1", "5.2"]) {
     assert.equal(numbered(result, label).parentCandidateId, parent.id);
@@ -48,25 +62,35 @@ test("decimal sections use their active numbered parent", () => {
 });
 
 test("a missing decimal parent and a numbering restart require review", () => {
-  const missing = inspect("# 17. Equipment\n\nBody.\n\n## 18.2 Exceptions").result;
+  const missing = inspect(
+    "# 17. Equipment\n\nBody.\n\n## 18.2 Exceptions",
+  ).result;
   assert.equal(numbered(missing, "18.2").status, "unresolved");
   assert.equal(numbered(missing, "18.2").depth, null);
   const restart = inspect("# 2. Earlier\n\nBody.\n\n## 1. Restart").result;
-  assert.ok(numbered(restart, "1").reasons.includes("NUMBERING_RESTART_OR_DUPLICATE"));
+  assert.ok(
+    numbered(restart, "1").reasons.includes("NUMBERING_RESTART_OR_DUPLICATE"),
+  );
 });
 
 test("numbered list items and quoted headings remain content", () => {
-  const { result } = inspect("# 5. Finance\n\n1. Complete the form.\n2. Submit the form.\n\n> # Quoted heading\n\n## 6. Pallets");
-  const nested = result.decisions.filter((item) => item.containers.some((type) => type !== "root"));
+  const { result } = inspect(
+    "# 5. Finance\n\n1. Complete the form.\n2. Submit the form.\n\n> # Quoted heading\n\n## 6. Pallets",
+  );
+  const nested = result.decisions.filter((item) =>
+    item.containers.some((type) => type !== "root"),
+  );
   assert.equal(nested.length, 3);
-  assert.ok(nested.every((item) => item.role === "content" && item.depth === null));
+  assert.ok(
+    nested.every((item) => item.role === "content" && item.depth === null),
+  );
   assert.equal(numbered(result, "6").depth, 1);
 });
 
 test("an explicit chapter boundary scopes restarted numbering", () => {
   const { result } = inspect(
     "Preamble.\n\n# Chapter A\n\nText.\n\n## 1. First\n\nText.\n\n" +
-    "# Chapter B\n\nText.\n\n## 1. Second",
+      "# Chapter B\n\nText.\n\n## 1. Second",
   );
   const first = result.decisions.find((item) => item.title === "1. First");
   const second = result.decisions.find((item) => item.title === "1. Second");
@@ -77,7 +101,9 @@ test("an explicit chapter boundary scopes restarted numbering", () => {
 });
 
 test("unsupported bold headings and title proposals remain unresolved", () => {
-  const { result } = inspect("# Unconfirmed title\n\nBody.\n\n**COURSE FEES**\n\nFees.\n\n**VARIOUS DEVELOPMENTAL ACTIVITIES**");
+  const { result } = inspect(
+    "# Unconfirmed title\n\nBody.\n\n**COURSE FEES**\n\nFees.\n\n**VARIOUS DEVELOPMENTAL ACTIVITIES**",
+  );
   assert.equal(result.decisions[0].role, "title_candidate");
   assert.ok(result.decisions.every((item) => item.status === "unresolved"));
   assert.equal(result.reviewCandidateIds.length, 3);
