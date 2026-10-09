@@ -4,7 +4,7 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 
 const markdownParser = unified().use(remarkParse).use(remarkGfm);
-const VERSION = "ai-corrected-markdown-v1";
+const VERSION = "ai-corrected-markdown-v3";
 const unique = (values) => [...new Set(values)];
 
 function inlineText(node) {
@@ -14,17 +14,40 @@ function inlineText(node) {
   return (node.children ?? []).map(inlineText).join("");
 }
 
+function numberedRowKey(value) {
+  const match = value.trim().match(/^([\p{L}]+)[\s-]*(\d{1,6})(?:[^\p{L}\p{N}]|$)/u);
+  return match ? { prefix: match[1].toLowerCase(), number: Number(match[2]) } : null;
+}
+
+function continuesNumberedRows(previous, next) {
+  return previous && next && previous.prefix === next.prefix &&
+    next.number === previous.number + 1;
+}
+
+function compatibleTableLabels(previous, next) {
+  if (previous.length !== next.length) return false;
+  return previous.every((label, index) => {
+    const before = label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    const after = next[index].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    if (!before || !after) return false;
+    return before === after || before.startsWith(after + " ") ||
+      after.startsWith(before + " ") ||
+      (index >= 2 && before.startsWith("column " + after + " "));
+  });
+}
+
 // Gemini fixes the Markdown first. This function only reads its headings and blocks.
 // A main section contains its subsections, lists, and page continuations.
 export function splitMarkdownSections(extraction) {
   const sections = [];
+  const tables = [];
   let current;
   let headingStack = [];
   let blockIndex = 0;
 
-  function startSection(path) {
+  function startSection(path, id = "section-" + (sections.length + 1)) {
     current = {
-      id: "section-" + (sections.length + 1),
+      id,
       headingPath: path,
       blocks: [],
     };
@@ -32,6 +55,7 @@ export function splitMarkdownSections(extraction) {
   }
 
   for (const page of extraction.pages) {
+    let beforeFirstHeading = true;
     const nodes =
       page.textFormat === "plain"
         ? [
@@ -46,28 +70,101 @@ export function splitMarkdownSections(extraction) {
         : markdownParser.parse(page.text).children;
 
     for (const node of nodes) {
-      const text = page.text.slice(
+      let text = page.text.slice(
         node.position.start.offset,
         node.position.end.offset,
       );
+      if (node.type === "heading") {
+        text = text.replace(/[\s\-_]*\((?:continued|cont\.?|continuation)\)\s*$/i, "").trim();
+      }
       if (!text.trim()) continue;
 
+      let tableHeader;
+      let table;
+      let continuation;
+      if (node.type === "table") {
+        const [header, ...rows] = node.children;
+        const labels = header.children.map((cell) => inlineText(cell).trim());
+        tableHeader = labels.map((label) => label.toLowerCase()).join("|");
+        const firstRowKey = numberedRowKey(inlineText(rows[0]?.children[0] ?? { type: "text", value: "" }));
+        const lastRowKey = numberedRowKey(inlineText(rows.at(-1)?.children[0] ?? { type: "text", value: "" }));
+        const isSameSection = current?.id && tables.some((t) => t.sectionId === current.id);
+        if ((beforeFirstHeading || isSameSection) && rows.length > 0) {
+          const candidates = tables.filter((candidate) =>
+            candidate.labels.length === labels.length &&
+            candidate.pageIndex < page.sequenceIndex &&
+            candidate.pageIndex >= page.sequenceIndex - 2,
+          );
+          const numbered = candidates.filter((candidate) =>
+            labels.length >= 3 &&
+            continuesNumberedRows(candidate.lastRowKey, firstRowKey) &&
+            compatibleTableLabels(candidate.labels, labels),
+          );
+          const exact = candidates.filter((candidate) => candidate.headers.has(tableHeader));
+          table = numbered.length === 1 ? numbered[0] :
+            numbered.length === 0 && exact.length === 1 ? exact[0] : null;
+          if (table) {
+            table.continued = true;
+            continuation = {
+              type: "table_continuation",
+              table_id: table.id,
+              from_page: table.pageNumber,
+              to_page: page.sourcePageNumber,
+              match: numbered.includes(table) ? "row_sequence" : "column_headers",
+            };
+            if (current?.id !== table.sectionId) {
+              headingStack = table.headingStack.map((heading) => ({ ...heading }));
+              startSection(table.headingPath, table.sectionId);
+            }
+          }
+        }
+        if (!table) {
+          table = {
+            id: "table-" + (tables.length + 1),
+            sectionId: current?.id,
+            headingPath: current?.headingPath,
+            headingStack: headingStack.map((heading) => ({ ...heading })),
+            labels,
+            headers: new Set(),
+          };
+          tables.push(table);
+        }
+        table.headers.add(tableHeader);
+        table.pageIndex = page.sequenceIndex;
+        table.pageNumber = page.sourcePageNumber;
+        table.lastRowKey = lastRowKey;
+      }
+
       if (node.type === "heading") {
-        const title = inlineText(node).trim();
+        const rawTitle = inlineText(node).trim();
+        const title = rawTitle.replace(/[\s\-_]*\((?:continued|cont\.?|continuation)\)\s*$/i, "").trim();
         // The correction prompt reserves level 1 for the document title.
         const isDocumentTitle =
           node.depth === 1 && title === extraction.documentTitle;
         if (!isDocumentTitle) {
-          headingStack = headingStack.filter(
+          const nextStack = headingStack.filter(
             (heading) => heading.level < node.depth,
           );
-          headingStack.push({ level: node.depth, title });
-          if (!current || node.depth <= 2)
-            startSection(headingStack.map((heading) => heading.title));
+          nextStack.push({ level: node.depth, title });
+          const nextPath = nextStack.map((heading) => heading.title);
+          const repeatedHeading = beforeFirstHeading && node.depth <= 2 &&
+            current && JSON.stringify(nextPath) === JSON.stringify(current.headingPath);
+          headingStack = nextStack;
+          if (!repeatedHeading && (!current || node.depth <= 2)) {
+            const resumed = sections.find(
+              (section) => JSON.stringify(section.headingPath) === JSON.stringify(nextPath),
+            );
+            startSection(nextPath, resumed?.id);
+          }
+          if (!repeatedHeading) beforeFirstHeading = false;
         }
       }
 
       if (!current) startSection([]);
+      if (table && !table.sectionId) {
+        table.sectionId = current.id;
+        table.headingPath = current.headingPath;
+      }
       current.blocks.push({
         id: "block-" + ++blockIndex,
         type: node.type,
@@ -75,6 +172,10 @@ export function splitMarkdownSections(extraction) {
         node,
         page,
         headingPath: headingStack.map((heading) => heading.title),
+        tableId: table?.id ?? null,
+        table,
+        tableLabels: continuation?.match === "row_sequence" ? table.labels : null,
+        continuation,
         location: {
           sourceId: page.id,
           sourceKind: page.sourceKind,
@@ -97,9 +198,8 @@ function blockPassages(block) {
   if (block.type !== "table") return [{ text: block.text, block }];
   const [header, ...rows] = block.node.children;
   if (!rows.length) return [{ text: block.text, block }];
-  const labels = header.children.map(
-    (cell, index) => inlineText(cell).trim() || "Column " + (index + 1),
-  );
+  const labels = (block.tableLabels ?? header.children.map((cell) => inlineText(cell).trim()))
+    .map((label, index) => label || "Column " + (index + 1));
   return rows.map((row, index) => {
     const fields = row.children.map((cell, column) => ({
       label: labels[column] ?? "Column " + (column + 1),
@@ -151,19 +251,20 @@ export async function buildDocumentChunks(
   // Use the embedding model's tokenizer, not a characters-to-tokens estimate.
   const childLimit = Math.min(childTokenLimit, (await measure("")).tokenLimit);
   const count = async (text) => (await measure(text)).tokenCount;
-  const searchText = (pieces) =>
-    "Document: " +
-    title +
-    "\n\n" +
-    pieces
-      .map((piece) => {
-        const path = piece.block.headingPath;
-        return (
-          (path.length ? "Section: " + path.join(" > ") + "\n" : "") +
-          piece.text
-        );
-      })
-      .join("\n\n");
+  const searchText = (pieces) => {
+    let lastPath = null;
+    const parts = ["Document: " + title];
+    for (const piece of pieces) {
+      const path = piece.block.headingPath;
+      const pathStr = path.length ? "Section: " + path.join(" > ") : "";
+      if (pathStr && pathStr !== lastPath) {
+        parts.push(pathStr);
+        lastPath = pathStr;
+      }
+      parts.push(piece.text);
+    }
+    return parts.join("\n\n");
+  };
   const bodyText = (pieces) => pieces.map((piece) => piece.text).join("\n\n");
 
   await onEvent({
@@ -301,11 +402,15 @@ export async function buildDocumentChunks(
       chunker_version: VERSION,
       block_ids: blocks.map((block) => block.id),
       block_types: unique(blocks.map((block) => block.type)),
+      table_ids: unique(blocks.map((block) => block.tableId).filter(Boolean)),
+      linked_table_ids: unique(blocks
+        .filter((block) => block.table?.continued)
+        .map((block) => block.tableId)),
       row_ids: unique(pieces.map((piece) => piece.rowId).filter(Boolean)),
       contains_unit_fragments: pieces.some((piece) => piece.fragment),
       structure_warnings: [],
       references: [],
-      relationships: [],
+      relationships: blocks.map((block) => block.continuation).filter(Boolean),
     };
   }
 
@@ -387,9 +492,13 @@ export async function buildDocumentChunks(
       children = [];
     }
     for (const piece of pieces) {
+      const parentPage = parentPieces[0]?.block.page.sourcePageNumber;
+      const piecePage = piece.block.page.sourcePageNumber;
+      const newPage = parentPage != null && piecePage != null && parentPage !== piecePage;
       if (
         parentPieces.length &&
-        (await count(searchText([...parentPieces, piece]))) > parentTokenLimit
+        (newPage ||
+          (await count(searchText([...parentPieces, piece]))) > parentTokenLimit)
       ) {
         await finishParent();
       }
@@ -437,7 +546,7 @@ export async function buildDocumentChunks(
   await onEvent({
     type: "chunking_complete",
     stage: "preparing",
-    totalSections: sections.length,
+    totalSections: unique(sections.map((section) => section.id)).length,
     totalParents: parents.length,
     totalChildren: parents.reduce(
       (sum, parent) => sum + parent.children.length,

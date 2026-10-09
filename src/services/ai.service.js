@@ -167,7 +167,16 @@ export async function extractDocumentWithAI(
   if (isPDF) {
     pdf = new PDFParse({ data: buffer });
     const info = await pdf.getInfo();
-    texts = Array.from({ length: info.total }, () => "");
+    let textResult;
+    try {
+      textResult = await pdf.getText();
+    } catch {
+      // Scanned PDFs or extraction errors fall back to empty text
+    }
+    texts = Array.from({ length: info.total }, (_, index) => {
+      const pageText = textResult?.getPageText(index + 1) ?? "";
+      return pageText.trim();
+    });
   } else if (source.mimetype === DOCX) {
     const content = await docxContent(buffer);
     texts = textSources(content.text);
@@ -207,6 +216,7 @@ export async function extractDocumentWithAI(
 
   let documentTitle = "";
   let continuationContext = "";
+  let hasDocumentHeading = false;
   await onEvent({
     type: eventPrefix + "_start",
     stage: "preparing",
@@ -219,10 +229,6 @@ export async function extractDocumentWithAI(
   try {
     for (let start = 0; start < sources.length; start += batchSize) {
       const primary = sources.slice(start, start + batchSize);
-      const neighbors = sources.slice(
-        Math.max(0, start - 1),
-        start + batchSize + 1,
-      );
       const primarySourceIds = primary.map((item) => item.id);
       const batch = batches.length + 1;
       await onEvent({
@@ -242,12 +248,9 @@ export async function extractDocumentWithAI(
             continuationContext,
             primarySourceIds,
             visualInput,
-            sources: neighbors.map((item) => ({
+            sources: primary.map((item) => ({
               sourceId: item.id,
               page: item.sourcePageNumber,
-              role: primarySourceIds.includes(item.id)
-                ? "primary"
-                : "context_only",
               text: item.text || undefined,
             })),
           }),
@@ -255,7 +258,7 @@ export async function extractDocumentWithAI(
       ];
       if (pdf) {
         const rendered = await pdf.getScreenshot({
-          partial: neighbors.map((item) => item.sourcePageNumber),
+          partial: primary.map((item) => item.sourcePageNumber),
           desiredWidth: 1600,
           imageBuffer: true,
           imageDataUrl: false,
@@ -279,7 +282,7 @@ export async function extractDocumentWithAI(
       } else if (images.length) {
         for (const [index, image] of images.entries()) {
           const marker = "[Embedded image " + (index + 1) + "]";
-          if (neighbors.some((item) => item.text.includes(marker))) {
+          if (primary.some((item) => item.text.includes(marker))) {
             parts.push({ text: marker });
             parts.push({ inlineData: image });
           }
@@ -368,10 +371,17 @@ export async function extractDocumentWithAI(
           "Document extraction returned invalid Markdown for batch " + batch,
         );
       }
+      const batchTitle = result.documentTitle.trim();
+      documentTitle ||= batchTitle;
       for (const item of primary) {
         const page = {
           ...item,
-          text: byId.get(item.id),
+          text: byId.get(item.id).replace(/^# (?!#)(.+)$/gm, (line, heading) => {
+            if (heading.trim() !== documentTitle) return "## " + heading;
+            if (hasDocumentHeading) return "";
+            hasDocumentHeading = true;
+            return line;
+          }),
           originalText: null,
           correctionBatch: batch,
         };
@@ -385,7 +395,6 @@ export async function extractDocumentWithAI(
           text: page.text,
         });
       }
-      documentTitle ||= result.documentTitle.trim();
       continuationContext = result.continuationContext;
       batches.push({ batch, sourceIds: primarySourceIds, usage });
       await onEvent({

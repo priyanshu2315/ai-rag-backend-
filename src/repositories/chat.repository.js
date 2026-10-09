@@ -243,9 +243,46 @@ export const clearConversationMessages = async (userId, documentId) => {
   return result.count;
 };
 
-export async function getParentNeighbors(parents, userId) {
+export async function getParentNeighbors(parents, userId, db = prisma) {
   const result = [...parents];
   const addedIds = new Set(parents.map((parent) => parent.id));
+
+  // A table may resume after another section, so its other parents are not
+  // necessarily reading-order neighbors. Include them before nearby prose.
+  const tableKeys = new Map();
+  for (const parent of parents) {
+    for (const tableId of parent.metadata?.linked_table_ids ?? []) {
+      tableKeys.set(`${parent.documentId}:${tableId}`, {
+        documentId: parent.documentId,
+        tableId,
+        seedParentId: parent.id,
+      });
+    }
+  }
+  for (const { documentId, tableId, seedParentId } of tableKeys.values()) {
+    if (result.length >= 24) break;
+    const related = await db.parentChunk.findMany({
+      where: {
+        documentId,
+        metadata: { path: ["linked_table_ids"], array_contains: [tableId] },
+        document: { userId, status: "COMPLETED" },
+      },
+      take: 24,
+    });
+    related.sort((left, right) =>
+      (left.metadata?.chunk_index ?? 0) - (right.metadata?.chunk_index ?? 0),
+    );
+    for (const parent of related) {
+      if (result.length >= 24) break;
+      if (!addedIds.has(parent.id)) {
+        addedIds.add(parent.id);
+        result.push({
+          ...parent,
+          retrievalOrigin: { type: "table_continuation", seedParentId, tableId },
+        });
+      }
+    }
+  }
 
   for (const parent of parents) {
     const neighborIds = [parent.prevParentId, parent.nextParentId].filter(
@@ -254,7 +291,7 @@ export async function getParentNeighbors(parents, userId) {
 
     if (neighborIds.length === 0) continue;
 
-    const neighbors = await prisma.parentChunk.findMany({
+    const neighbors = await db.parentChunk.findMany({
       where: {
         id: { in: neighborIds },
         documentId: parent.documentId,
