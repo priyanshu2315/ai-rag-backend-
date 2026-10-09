@@ -13,6 +13,7 @@ const PROVIDERS = {
       chat: "gemini-3.5-flash-lite",
       fast: "gemini-3.5-flash-lite",
       summary: "gemini-3.5-flash-lite",
+      extraction: "gemini-3.5-flash-lite",
       // summary: "gemini-3.5-flash-lite",
     },
   },
@@ -54,6 +55,7 @@ const DEFAULT_TASK_PROVIDERS = {
   chat: "groq",
   fast: "groq",
   summary: "openrouter",
+  extraction: "gemini",
 };
 
 export const AI_PROVIDER = process.env.AI_PROVIDER || "mixed";
@@ -64,12 +66,12 @@ export function getAI(task) {
     throw new Error(`Unknown AI task: ${task}`);
   }
 
-  // A named AI_PROVIDER overrides every task. "mixed" enables task routing.
-  const providerName =
-    AI_PROVIDER === "mixed"
-      ? process.env[`AI_${task.toUpperCase()}_PROVIDER`] ||
-        DEFAULT_TASK_PROVIDERS[task]
-      : AI_PROVIDER;
+  // Document extraction stays on Gemini because it reads page images.
+  let providerName = AI_PROVIDER;
+  if (task === "extraction") providerName = "gemini";
+  else if (AI_PROVIDER === "mixed")
+    providerName = process.env[`AI_${task.toUpperCase()}_PROVIDER`] ||
+      DEFAULT_TASK_PROVIDERS[task];
 
   const provider = PROVIDERS[providerName];
   if (!provider) {
@@ -81,10 +83,10 @@ export function getAI(task) {
 
   // Ignore task model overrides when AI_PROVIDER forces one provider.
   // This prevents an OpenRouter model ID being sent to OpenCode.
-  const model =
-    AI_PROVIDER === "mixed"
-      ? process.env[`AI_${task.toUpperCase()}_MODEL`] || provider.models[task]
-      : provider.models[task];
+  let model = provider.models[task];
+  if (task === "extraction") model = process.env.AI_EXTRACTION_MODEL || model;
+  else if (AI_PROVIDER === "mixed")
+    model = process.env[`AI_${task.toUpperCase()}_MODEL`] || model;
 
   if (!model) {
     throw new Error(`No ${task} model configured for ${providerName}`);

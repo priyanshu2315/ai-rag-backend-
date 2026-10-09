@@ -1,71 +1,495 @@
-import fs from "node:fs/promises";
 import { PDFParse } from "pdf-parse";
 import { pipeline } from "@xenova/transformers";
-import "dotenv/config";
 import mammoth from "mammoth";
-import { supabase } from "../config/supabase.js";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
-import * as cheerio from "cheerio"; // <-- 1. Import Cheerio at the top of your file
+import * as cheerio from "cheerio";
 import { traceable } from "langsmith/traceable";
-import { LlamaParseReader } from "llama-cloud-services";
-import { chatCompletion, cohere, RERANK_MODEL } from "../config/ai.js";
-import {
-  normalizeLlamaParseResult,
-  normalizeTextDocument,
-} from "./extraction-normalizer.service.js";
-export { getEmbedding } from "./embedding.service.js";
+import { supabase } from "../config/supabase.js";
+import { chatCompletion, cohere, RERANK_MODEL, getAI } from "../config/ai.js";
+import { DOCUMENT_EXTRACTION_INSTRUCTIONS } from "../instructions/document-extraction.js";
+import { buildDocumentChunks as splitIntoChunks } from "./simple-chunking.service.js";
 
-// 1. Extract text from the physical file
-// export const extractTextFromPDF = async (filepath) => {
-//   const dataBuffer = fs.readFileSync(filepath);
-//   const parser = new PDFParse({
-//     data: dataBuffer,
-//   });
-//   const data = await parser.getText();
-//   await parser.destroy();
+const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
+let embeddingPipeline;
 
-//   return data.text; // Returns all the text from the PDF
-// };
+function getEmbeddingPipeline() {
+  embeddingPipeline ??= pipeline("feature-extraction", EMBEDDING_MODEL).catch(
+    (error) => {
+      embeddingPipeline = null;
+      throw error;
+    },
+  );
+  return embeddingPipeline;
+}
 
-const LLAMA_PARSE_MIME_TYPES = new Set([
+export async function measureEmbeddingInput(text) {
+  const extractor = await getEmbeddingPipeline();
+  const tokens = await extractor.tokenizer(text, {
+    add_special_tokens: true,
+    truncation: false,
+    padding: false,
+  });
+  const tokenCount = tokens.input_ids.data.length;
+  const tokenLimit = Math.min(
+    256,
+    Number(extractor.tokenizer.model_max_length),
+  );
+  return {
+    model: EMBEDDING_MODEL,
+    tokenCount,
+    tokenLimit,
+    withinLimit: tokenCount <= tokenLimit,
+  };
+}
+
+export async function getEmbedding(
+  text,
+  { rejectTruncation = false, onDetails } = {},
+) {
+  const extractor = await getEmbeddingPipeline();
+  const details = rejectTruncation
+    ? await measureEmbeddingInput(text)
+    : { model: EMBEDDING_MODEL };
+  if (rejectTruncation && !details.withinLimit) {
+    await onDetails?.(details);
+    const error = new Error(
+      "Chunk is too large for embedding: " + details.tokenCount + " tokens",
+    );
+    error.code = "EMBEDDING_INPUT_TOO_LARGE";
+    error.details = details;
+    throw error;
+  }
+  const output = await extractor(text, { pooling: "mean", normalize: true });
+  details.dimensions = output.data.length;
+  await onDetails?.(details);
+  return Array.from(output.data);
+}
+
+export function buildDocumentChunks(
+  extraction,
+  documentId,
+  filename,
+  onEvent,
+  options = {},
+) {
+  return splitIntoChunks(extraction, documentId, filename, onEvent, {
+    ...options,
+    measure: options.measure ?? measureEmbeddingInput,
+  });
+}
+
+const DOCX =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const SUPPORTED_TYPES = new Set([
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  DOCX,
   "image/jpeg",
   "image/png",
   "image/webp",
+  "text/plain",
+  "text/markdown",
 ]);
+const RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    documentTitle: { type: "string" },
+    pages: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          sourceId: { type: "string" },
+          markdown: { type: "string" },
+        },
+        required: ["sourceId", "markdown"],
+      },
+    },
+    continuationContext: { type: "string" },
+  },
+  required: ["documentTitle", "pages", "continuationContext"],
+};
 
-const NATIVE_TEXT_MIME_TYPES = new Set(["text/plain", "text/markdown"]);
+// Keep long text documents in small, ordered groups for the model.
+function textSources(text) {
+  const sources = [];
+  while (text.length) {
+    let cut = Math.min(12000, text.length);
+    if (cut < text.length) {
+      const paragraphEnd = text.lastIndexOf("\n\n", cut);
+      if (paragraphEnd > cut / 2) cut = paragraphEnd + 2;
+    }
+    sources.push(text.slice(0, cut));
+    text = text.slice(cut);
+  }
+  return sources.length ? sources : [""];
+}
 
-const DOCUMENT_EXTRACTION_INSTRUCTIONS = `
-Preserve the document's content and structural evidence.
+// DOCX has no reliable physical page boundaries. Mammoth preserves text and
+// embedded images locally, then the extraction model reads both.
+async function docxContent(buffer) {
+  const { value: html } = await mammoth.convertToHtml({ buffer });
+  const $ = cheerio.load(html);
+  const images = [];
+  $("img").each((_, element) => {
+    const match = /^data:([^;]+);base64,(.+)$/s.exec(
+      $(element).attr("src") ?? "",
+    );
+    if (match) {
+      images.push({ mimeType: match[1], data: match[2] });
+      $(element).replaceWith("EMBEDDEDIMAGE" + images.length + "END");
+    }
+  });
+  const converter = new TurndownService();
+  converter.use(gfm);
+  const text = converter
+    .turndown($.html())
+    .replace(
+      /EMBEDDEDIMAGE(\d+)END/g,
+      (_, number) => "[Embedded image " + number + "]",
+    );
+  return { text, images };
+}
 
-1. Preserve headings, paragraphs, numbered and bulleted lists,
-   captions, footnotes, and text inside embedded exhibits.
+export async function extractDocumentWithAI(
+  buffer,
+  source,
+  onEvent = () => {},
+  { request, batchSize = 5, ai = getAI("extraction") } = {},
+) {
+  const { model, providerName } = ai;
+  const eventPrefix = providerName + "_extraction";
+  const isPDF = source.mimetype === "application/pdf";
+  const isImage = source.mimetype.startsWith("image/");
+  let pdf;
+  let texts = [""];
+  let images = [];
+  if (isPDF) {
+    pdf = new PDFParse({ data: buffer });
+    const info = await pdf.getInfo();
+    texts = Array.from({ length: info.total }, () => "");
+  } else if (source.mimetype === DOCX) {
+    const content = await docxContent(buffer);
+    texts = textSources(content.text);
+    images = content.images;
+  } else if (!isImage) {
+    let decoded;
+    try {
+      decoded = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+    } catch {
+      throw new Error("Text documents must use valid UTF-8 encoding");
+    }
+    texts = textSources(decoded);
+  }
+  const sources = texts.map((text, index) => ({
+    id: "source-" + (index + 1),
+    sequenceIndex: index,
+    sourceKind: isPDF ? "page" : isImage ? "image" : "document",
+    sourcePageNumber: isPDF ? index + 1 : null,
+    parserPageNumber: null,
+    text,
+    textFormat: "markdown",
+    items: null,
+    warnings: [],
+  }));
 
-2. Preserve the observed heading hierarchy. Do not impose a fixed
-   heading level based only on numbering. Distinguish numbered
-   list items from section headings.
+  const pages = [];
+  const batches = [];
+  const totalBatches = Math.ceil(sources.length / batchSize);
 
-3. Preserve tables with their row labels, column headers,
-   multi-level headers, dates, units, captions, and footnotes.
-   Preserve merged-cell relationships where the output supports them.
+  const visualInput = isPDF
+    ? "pdf_page_images"
+    : isImage
+      ? "original_image"
+      : images.length
+        ? "docx_embedded_images"
+        : "none";
 
-4. Preserve explicit references to sections, tables, figures,
-   appendices, and other document elements.
+  let documentTitle = "";
+  let continuationContext = "";
+  await onEvent({
+    type: eventPrefix + "_start",
+    stage: "preparing",
+    provider: providerName,
+    model,
+    visualInput,
+    totalBatches,
+    totalSources: sources.length,
+  });
+  try {
+    for (let start = 0; start < sources.length; start += batchSize) {
+      const primary = sources.slice(start, start + batchSize);
+      const neighbors = sources.slice(
+        Math.max(0, start - 1),
+        start + batchSize + 1,
+      );
+      const primarySourceIds = primary.map((item) => item.id);
+      const batch = batches.length + 1;
+      await onEvent({
+        type: eventPrefix + "_batch_start",
+        stage: "preparing",
+        provider: providerName,
+        batch,
+        totalBatches,
+        sourceIds: primarySourceIds,
+      });
+      const parts = [
+        {
+          text: JSON.stringify({
+            filename: source.filename,
+            operation: "extraction",
+            documentTitle,
+            continuationContext,
+            primarySourceIds,
+            visualInput,
+            sources: neighbors.map((item) => ({
+              sourceId: item.id,
+              page: item.sourcePageNumber,
+              role: primarySourceIds.includes(item.id)
+                ? "primary"
+                : "context_only",
+              text: item.text || undefined,
+            })),
+          }),
+        },
+      ];
+      if (pdf) {
+        const rendered = await pdf.getScreenshot({
+          partial: neighbors.map((item) => item.sourcePageNumber),
+          desiredWidth: 1600,
+          imageBuffer: true,
+          imageDataUrl: false,
+        });
+        for (const image of rendered.pages) {
+          parts.push({ text: "PDF page " + image.pageNumber });
+          parts.push({
+            inlineData: {
+              mimeType: "image/png",
+              data: Buffer.from(image.data).toString("base64"),
+            },
+          });
+        }
+      } else if (isImage) {
+        parts.push({
+          inlineData: {
+            mimeType: source.mimetype,
+            data: buffer.toString("base64"),
+          },
+        });
+      } else if (images.length) {
+        for (const [index, image] of images.entries()) {
+          const marker = "[Embedded image " + (index + 1) + "]";
+          if (neighbors.some((item) => item.text.includes(marker))) {
+            parts.push({ text: marker });
+            parts.push({ inlineData: image });
+          }
+        }
+      }
+      const responseSchema = structuredClone(RESPONSE_SCHEMA);
+      responseSchema.properties.pages.minItems = primary.length;
+      responseSchema.properties.pages.maxItems = primary.length;
+      responseSchema.properties.pages.items.properties.sourceId.enum =
+        primarySourceIds;
+      const completionOptions = {
+        model,
+        messages: [
+          { role: "system", content: DOCUMENT_EXTRACTION_INSTRUCTIONS },
+          {
+            role: "user",
+            content: parts.map((part) =>
+              part.inlineData
+                ? {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+                    },
+                  }
+                : { type: "text", text: part.text },
+            ),
+          },
+        ],
+        temperature: 0,
+        max_tokens: 32768,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "document_extraction",
+            schema: responseSchema,
+          },
+        },
+      };
 
-5. Preserve reading order as accurately as possible, including
-   multi-column layouts. Retain continuation labels.
+      const response = request
+        ? await request(completionOptions)
+        : await ai.client.chat.completions.create(completionOptions);
 
-6. Do not summarize, omit content, or invent missing text,
-   column labels, dates, units, or numbers. Mark unreadable
-   or uncertain content explicitly.
+      const choice = response.choices?.[0];
 
-7. For charts, preserve visible labels, legends, axes, and
-   explicitly stated values. Clearly distinguish visual estimates
-   from printed values; do not invent exact underlying data.
-`;
+      if (choice?.finish_reason !== "stop")
+        throw new Error(
+          "Document extraction did not finish: " +
+            (choice?.finish_reason ?? "no output"),
+        );
+      const result = JSON.parse(choice.message.content);
+      const usage = response.usage
+        ? {
+            promptTokenCount: response.usage.prompt_tokens,
+            candidatesTokenCount: response.usage.completion_tokens,
+            totalTokenCount: response.usage.total_tokens,
+          }
+        : null;
+      const returned = result?.pages;
+      const byId = new Map(
+        Array.isArray(returned)
+          ? returned.map((page) => [page?.sourceId, page?.markdown])
+          : [],
+      );
+      await onEvent({
+        type: eventPrefix + "_response",
+        stage: "preparing",
+        provider: providerName,
+        batch,
+        totalBatches,
+        expectedSourceIds: primarySourceIds,
+        receivedSourceIds: Array.isArray(returned)
+          ? returned.map((page) => page?.sourceId)
+          : null,
+        usage,
+      });
+      if (
+        typeof result?.documentTitle !== "string" ||
+        typeof result?.continuationContext !== "string" ||
+        !Array.isArray(returned) ||
+        returned.length !== primary.length ||
+        byId.size !== primary.length ||
+        primarySourceIds.some((id) => typeof byId.get(id) !== "string")
+      ) {
+        throw new Error(
+          "Document extraction returned invalid Markdown for batch " + batch,
+        );
+      }
+      for (const item of primary) {
+        const page = {
+          ...item,
+          text: byId.get(item.id),
+          originalText: null,
+          correctionBatch: batch,
+        };
+        pages.push(page);
+        await onEvent({
+          type: "page_transcribed",
+          stage: "preparing",
+          sourceId: item.id,
+          page: item.sourcePageNumber,
+          originalText: null,
+          text: page.text,
+        });
+      }
+      documentTitle ||= result.documentTitle.trim();
+      continuationContext = result.continuationContext;
+      batches.push({ batch, sourceIds: primarySourceIds, usage });
+      await onEvent({
+        type: eventPrefix + "_batch_complete",
+        stage: "preparing",
+        provider: providerName,
+        batch,
+        totalBatches,
+        continuationContext,
+        usage,
+      });
+    }
+    if (!pages.some((page) => page.text.trim()))
+      throw new Error("Document extraction returned no usable text");
+    await onEvent({
+      type: eventPrefix + "_complete",
+      stage: "preparing",
+      provider: providerName,
+      model,
+      documentTitle,
+      totalBatches,
+      totalSources: pages.length,
+    });
+    return {
+      schemaVersion: "extraction-v1",
+      source,
+      provider: providerName,
+      jobId: null,
+      ingestionMode: providerName,
+      pageCount: isPDF ? pages.length : null,
+      warnings: [],
+      rawResult: null,
+      pages,
+      documentTitle: documentTitle || null,
+      correction: {
+        operation: "extraction",
+        version: "ai-extraction-v1",
+        provider: providerName,
+        model,
+        visualInput,
+        totalBatches,
+        batches,
+      },
+    };
+  } catch (error) {
+    await onEvent({
+      type: eventPrefix + "_failed",
+      stage: "preparing",
+      provider: providerName,
+      batch: batches.length + 1,
+      totalBatches,
+      model,
+      message: error.message,
+    });
+    throw error;
+  } finally {
+    await pdf?.destroy();
+  }
+}
+
+export async function extractDocument({
+  filepath,
+  filename,
+  mimetype,
+  onEvent = () => {},
+} = {}) {
+  for (const [name, value] of Object.entries({
+    filepath,
+    filename,
+    mimetype,
+  })) {
+    if (typeof value !== "string" || !value.trim())
+      throw new TypeError("extractDocument requires a non-empty " + name);
+  }
+  const type = mimetype.split(";")[0].trim().toLowerCase();
+  if (!SUPPORTED_TYPES.has(type))
+    throw new Error("Unsupported file type: " + type);
+
+  const { data, error } = await supabase.storage
+    .from("documents")
+    .download(filepath);
+
+  if (error) throw new Error("Failed to download document: " + error.message);
+  if (!data) throw new Error("Document download returned no data");
+
+  const buffer = Buffer.from(await data.arrayBuffer());
+
+  if (!buffer.length) throw new Error("The uploaded document is empty");
+
+  return extractDocumentWithAI(
+    buffer,
+    { filename, mimetype: type },
+    onEvent,
+  );
+}
+
+export async function extractDocPages(filepath, mimetype) {
+  const extraction = await extractDocument({
+    filepath,
+    mimetype,
+    filename: filepath.split(/[\\/]/).pop(),
+  });
+  return extraction.pages.map((page) => ({ text: page.text }));
+}
 
 export const rerankChunks = async (query, chunks, topN = 3) => {
   // Cohere expects an array of strings (the text of our chunks)
@@ -85,411 +509,6 @@ export const rerankChunks = async (query, chunks, topN = 3) => {
 
   return rerankedChunks;
 };
-
-export const extractDocument = async ({
-  filepath,
-  filename,
-  mimetype,
-} = {}) => {
-  const requiredFields = { filepath, filename, mimetype };
-  for (const [name, value] of Object.entries(requiredFields)) {
-    if (typeof value !== "string" || !value.trim()) {
-      throw new TypeError(`extractDocument requires a non-empty ${name}`);
-    }
-  }
-
-  const normalizedMimetype = mimetype.split(";")[0].trim().toLowerCase();
-  const usesNativeText = NATIVE_TEXT_MIME_TYPES.has(normalizedMimetype);
-  const usesLlamaParse = LLAMA_PARSE_MIME_TYPES.has(normalizedMimetype);
-  if (!usesNativeText && !usesLlamaParse) {
-    throw new Error(`Unsupported file type: ${normalizedMimetype}`);
-  }
-
-  const source = { filename, mimetype: normalizedMimetype };
-  const { data, error } = await supabase.storage
-    .from("documents")
-    .download(filepath);
-  if (error) throw new Error(`Failed to download document: ${error.message}`);
-  if (!data) throw new Error("Document download returned no data");
-
-  const buffer = Buffer.from(await data.arrayBuffer());
-  if (!buffer.length) throw new Error("The uploaded document is empty");
-
-  if (usesNativeText) {
-    let text;
-    try {
-      text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
-    } catch {
-      throw new Error("Text documents must use valid UTF-8 encoding");
-    }
-    return normalizeTextDocument(text, source);
-  }
-
-  if (!process.env.LLAMA_CLOUD_API_KEY?.trim()) {
-    throw new Error("LLAMA_CLOUD_API_KEY is required for document parsing");
-  }
-
-  console.log(`[LlamaParse] Extracting ${filename}`);
-  const reader = new LlamaParseReader({
-    apiKey: process.env.LLAMA_CLOUD_API_KEY,
-    resultType: "json",
-    premiumMode: true,
-    ignoreErrors: false,
-    extract_layout: true,
-    merge_tables_across_pages_in_markdown: false,
-    parsingInstruction: DOCUMENT_EXTRACTION_INSTRUCTIONS,
-  });
-
-  const rawResults = await reader.loadJson(buffer);
-  const extraction = normalizeLlamaParseResult(rawResults, source);
-  if (extraction.warnings.includes("REPORTED_PAGE_COUNT_MISMATCH")) {
-    throw new Error(
-      "Extraction returned a different number of pages than the parser reported",
-    );
-  }
-  return extraction;
-};
-
-// Preserve the legacy page-array API for any callers outside the worker.
-export const extractDocPages = async (filepath, mimetype) => {
-  const extraction = await extractDocument({
-    filepath,
-    mimetype,
-    filename: filepath.split(/[\\/]/).pop(),
-  });
-  return extraction.pages.map((page) => ({ text: page.text }));
-};
-
-// Previous verbose LlamaParse implementation retained for reference.
-// export const extractDocument = async ({
-//   filepath,
-//   filename,
-//   mimetype,
-// } = {}) => {
-//   // 1. Validate the information supplied by the caller.
-//   const requiredFields = {
-//     filepath,
-//     filename,
-//     mimetype,
-//   };
-//
-//   for (const [name, value] of Object.entries(requiredFields)) {
-//     if (typeof value !== "string" || !value.trim()) {
-//       throw new TypeError(`extractDocument requires a non-empty ${name}`);
-//     }
-//   }
-//
-//   // 2. Normalize MIME formatting.
-//   // Example: "text/plain; charset=utf-8" becomes "text/plain".
-//   const normalizedMimetype = mimetype.split(";")[0].trim().toLowerCase();
-//
-//   const usesNativeText = NATIVE_TEXT_MIME_TYPES.has(normalizedMimetype);
-//
-//   const usesLlamaParse = LLAMA_PARSE_MIME_TYPES.has(normalizedMimetype);
-//
-//   if (!usesNativeText && !usesLlamaParse) {
-//     throw new Error(`Unsupported file type: ${normalizedMimetype}`);
-//   }
-//
-//   const source = {
-//     filename,
-//     mimetype: normalizedMimetype,
-//   };
-//
-//   // 3. Download the uploaded file from Supabase Storage.
-//   const { data, error } = await supabase.storage
-//     .from("documents")
-//     .download(filepath);
-//
-//   if (error) {
-//     throw new Error(`Failed to download document: ${error.message}`);
-//   }
-//
-//   if (!data) {
-//     throw new Error("Document download returned no data");
-//   }
-//
-//   const buffer = Buffer.from(await data.arrayBuffer());
-//
-//   if (buffer.length === 0) {
-//     throw new Error("The uploaded document is empty");
-//   }
-//
-//   // 4. Decode plain-text inputs locally.
-//   if (usesNativeText) {
-//     let text;
-//
-//     try {
-//       text = new TextDecoder("utf-8", {
-//         fatal: true,
-//       }).decode(buffer);
-//     } catch {
-//       throw new Error("Text documents must use valid UTF-8 encoding");
-//     }
-//
-//     return normalizeTextDocument(text, source);
-//   }
-//
-//   // 5. Request structured results for PDFs, DOCX, and images.
-//   const reader = new LlamaParseReader({
-//     apiKey: process.env.LLAMA_CLOUD_API_KEY,
-//     resultType: "json",
-//     premiumMode: true,
-//
-//     // Propagate parser errors to the worker.
-//     ignoreErrors: false,
-//
-//     // Request available layout information.
-//     extract_layout: true,
-//
-//     // Preserve page-local output for our structure pass.
-//     merge_tables_across_pages_in_markdown: false,
-//
-//     parsingInstruction: DOCUMENT_EXTRACTION_INSTRUCTIONS,
-//   });
-//
-//   const rawResults = await reader.loadJson(buffer);
-//
-//   // 6. Convert provider output into our application contract.
-//   const extraction = normalizeLlamaParseResult(rawResults, source);
-//
-//   // 7. Reject a known page-count discrepancy.
-//   if (extraction.warnings.includes("REPORTED_PAGE_COUNT_MISMATCH")) {
-//     throw new Error(
-//       "Extraction returned a different number of pages " +
-//         "than the parser reported",
-//     );
-//   }
-//
-//   return extraction;
-// };
-//
-// export const extractDocPages = async (filepath, mimetype) => {
-//   const { data, error } = await supabase.storage
-//     .from("documents")
-//     .download(filepath);
-//
-//   if (error) {
-//     throw new Error(`Failed to download from Supabase: ${error.message}`);
-//   }
-//
-//   const arrayBuffer = await data.arrayBuffer();
-//   const buffer = Buffer.from(arrayBuffer);
-//
-//   const supportedVisionTypes = [
-//     "application/pdf",
-//     "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
-//     "image/jpeg",
-//     "image/png",
-//     "image/webp",
-//   ];
-//
-//   // ==========================================
-//   // 1. PDFs, Word Docs, AND Images (LlamaParse Vision)
-//   // ==========================================
-//   if (supportedVisionTypes.includes(mimetype)) {
-//     console.log(`👁️ Extracting ${mimetype} using LlamaParse Premium Vision...`);
-//
-//     const reader = new LlamaParseReader({
-//       resultType: "markdown",
-//       apiKey: process.env.LLAMA_CLOUD_API_KEY,
-//       premiumMode: true, // Handles OCR and Vision for images AND documents automatically
-//       parsingInstruction: `
-//         You are a universal document extraction AI. Extract all content into clean, semantic Markdown.
-//
-//         1. TEXT & HIERARCHY: Preserve all headings, paragraphs, lists, footnotes, and fine print exactly as they appear. Do not summarize or omit text.
-//         2. EMBEDDED SCANS & EXHIBITS: If a page contains a scanned image of another document (e.g., an invoice, receipt, or specimen exhibit), you MUST transcribe all text, addresses, and line items INSIDE that image as if it were standard page text. Do not skip it.
-//         3. TABULAR DATA: Convert all grids, financial statements, and borderless tabular layouts into standard Markdown tables with column headers.
-//         4. DATA VISUALIZATIONS: If you encounter quantitative charts (bar, line, pie, scatter), extract the underlying axes, labels, and exact coordinate data points into a Markdown table. Do not write a generic summary of the trend.
-//         5. DIAGRAMS & SCHEMATICS: For flowcharts, organizational hierarchies, process maps, or spatial plans, transcribe the structural relationships, flow directions, and textual labels into hierarchical bullet points.
-//         6. TEXT & HIERARCHY: Extract all content into semantic Markdown. You MUST enforce a strict, logical heading hierarchy regardless of visual font size:
-//            - Use Level 1 (#) ONLY for the overarching organization name or main document title (e.g., "TESSALY PARCEL NETWORK").
-//            - Use Level 2 (##) ONLY for document subtitles, document IDs, or version numbers (e.g., "DEPOT HANDBOOK TPN-SH-2026-10").
-//            - Use Level 3 (###) for numbered chapters and primary sections (e.g., "1. PURPOSE AND SCOPE", "2. CONVENTIONS").
-//            - Use Level 4 (####) and below for nested sub-sections (e.g., "1.1 Internal Rules").
-//            Never put a numbered section at the same heading level as the document title or subtitle. Preserve all paragraphs, lists, and fine print. Do not summarize or omit text.
-//
-//         `,
-//     });
-//
-//     // LlamaParse processes the buffer and returns Markdown
-//     const documents = await reader.loadDataAsContent(buffer);
-//     return documents;
-//     // const markdownText = documents.map((doc) => doc.text).join("\n\n");
-//
-//     // return markdownText;
-//   }
-//
-//   // ==========================================
-//   // 2. Plain Text / Markdown (.txt, .md)
-//   // ==========================================
-//   if (mimetype === "text/plain" || mimetype === "text/markdown") {
-//     return [{ text: buffer.toString("utf-8") }];
-//   }
-//
-//   throw new Error(`Unsupported file type: ${mimetype}`);
-// };
-//// export const extractText = async (filepath, mimetype) => {
-//   // const buffer = await fs.readFile(filepath);
-//   const { data, error } = await supabase.storage
-//     .from("documents")
-//     .download(filepath);
-//   if (error)
-//     throw new Error(`Failed to download from Supabase: ${error.message}`);
-//   // 2. Convert the downloaded Blob into a Node.js Buffer
-//   const arrayBuffer = await data.arrayBuffer();
-//   const buffer = Buffer.from(arrayBuffer);
-
-//   // 1. PDF Files
-
-//   if (mimetype === "application/pdf") {
-//     const parser = new PDFParse({
-//       data: buffer,
-//     });
-//     const data = await parser.getText();
-//     return data.text;
-//   }
-//   // 2. Word Documents (.docx)
-//   if (
-//     mimetype ===
-//     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-//   ) {
-//     const { value: html } = await mammoth.convertToHtml({ buffer: buffer });
-
-//     // Load the raw HTML into Cheerio so we can manipulate it reliably
-//     const $ = cheerio.load(html);
-
-//     // 1. Force the first row of EVERY table to be headers (<th> instead of <td>)
-//     $("table").each((_, table) => {
-//       $(table)
-//         .find("tr")
-//         .first() // Grab only the first row
-//         .find("td")
-//         .each((_, td) => {
-//           // Copy the contents of the <td> into a new <th>
-//           const th = $("<th>").html($(td).html());
-//           $(td).replaceWith(th);
-//         });
-//     });
-
-//     // 2. Remove all <p> tags inside tables (unwraps them so text is inline)
-//     $("table p").each((_, p) => {
-//       $(p).replaceWith($(p).contents());
-//     });
-
-//     // Extract the perfectly sanitized HTML
-//     const sanitizedHtml = $.html();
-//     console.log("Sanitized HTML:", sanitizedHtml); // You will now see clean <th> tags and no <p> tags!
-
-//     // 3. Convert to Markdown
-//     const turndownService = new TurndownService();
-//     turndownService.use(gfm);
-
-//     const markdownText = turndownService.turndown(sanitizedHtml);
-//     console.log("Markdown Text:", markdownText);
-
-//     return markdownText;
-//   }
-//   // 3. Plain Text / Markdown (.txt, .md)
-//   if (mimetype === "text/plain" || mimetype === "text/markdown") {
-//     return buffer.toString("utf-8");
-//   }
-
-//   throw new Error(`Unsupported file type: ${mimetype}`);
-// };
-
-// 2. Generate Vectors
-// We define this outside the function so the AI model only loads into memory once
-let extractorPipeline;
-
-// export const getEmbedding = async (
-//   text,
-//   { rejectTruncation = false, onDetails } = {},
-// ) => {
-//   if (!extractorPipeline) {
-//     extractorPipeline = await pipeline(
-//       "feature-extraction",
-//       "Xenova/all-MiniLM-L6-v2",
-//     );
-//   }
-
-//   const details = { model: "Xenova/all-MiniLM-L6-v2" };
-//   if (rejectTruncation) {
-//     const tokens = await extractorPipeline.tokenizer(text, {
-//       truncation: false,
-//       padding: false,
-//     });
-
-//     const tokenCount = tokens.input_ids.data.length;
-
-//     const modelLimit = Number(extractorPipeline.tokenizer.model_max_length);
-
-//     // A conservative limit for indexing with this model.
-//     const limit = Number.isFinite(modelLimit) ? Math.min(modelLimit, 256) : 256;
-//     details.tokenCount = tokenCount;
-//     details.tokenLimit = limit;
-//     details.withinLimit = tokenCount <= limit;
-
-//     if (tokenCount > limit) {
-//       if (onDetails) onDetails(details);
-//       throw new Error(`Chunk is too large for embedding: ${tokenCount} tokens`);
-//     }
-//   }
-
-//   const output = await extractorPipeline(text, {
-//     pooling: "mean",
-//     normalize: true,
-//   });
-//   details.dimensions = output.data.length;
-//   if (onDetails) onDetails(details);
-
-//   return Array.from(output.data);
-// };
-
-// export const askOllama = async (prompt) => {
-//   // Ollama runs on port 11434 by default
-
-//   const response = await fetch("http://localhost:11434/api/generate", {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify({
-//       //   model: "qwen2.5:1.5b", // Or whichever model you downloaded via 'ollama run'
-//       model: "phi3:mini", // Or whichever model you downloaded via 'ollama run'
-//       prompt: prompt,
-//       stream: false, // Wait for the full response before returning
-//     }),
-//   });
-
-//   const data = await response.json();
-//   return data.response;
-// };
-
-// export const askOllama = async (prompt) => {
-//   const response = await fetch(
-//     `${process.env.OLLAMA_BASE_URL}/api/generate`,
-//     {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({
-//         model: "phi3:mini",
-//         prompt,
-//         stream: false,
-//       }),
-//     }
-//   );
-
-//   if (!response.ok) {
-//     throw new Error(
-//       `Ollama request failed: ${response.status} ${response.statusText}`
-//     );
-//   }
-
-//   const data = await response.json();
-
-//   return data.response;
-// };
 
 export const searchToolDefinition = {
   type: "function",

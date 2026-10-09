@@ -9,8 +9,6 @@ import {
   publishProgress,
   clearProgressHistory,
 } from "../config/uploadProgress.js";
-import { buildDocumentChunks } from "../services/chunking.service.js";
-import { getEmbedding } from "../services/embedding.service.js";
 import { saveDocumentChunks } from "../repositories/document.repository.js";
 const redisConnection = new Redis(process.env.REDIS_URL, {
   // host: "localhost",
@@ -45,11 +43,12 @@ export const startWorker = () => {
           filepath,
           filename: document.filename,
           mimetype,
+          onEvent: (event) => publishProgress(documentId, event),
         });
 
         const pages = extraction.pages;
 
-        const reportedPageCount = extraction.rawResult?.job_metadata?.job_pages;
+        const reportedPageCount = extraction.pageCount ?? extraction.rawResult?.job_metadata?.job_pages;
 
         const totalPages =
           extraction.source.mimetype === "application/pdf" &&
@@ -70,6 +69,7 @@ export const startWorker = () => {
           provider: extraction.provider,
           parserJobId: extraction.jobId,
           warnings: extraction.warnings,
+          correction: extraction.correction ?? null,
           ...sourceStats,
         });
 
@@ -104,7 +104,7 @@ export const startWorker = () => {
         const announcedSources = new Set();
         const sourceParentCounts = new Map();
 
-        const parents = await buildDocumentChunks(
+        const parents = await aiService.buildDocumentChunks(
           extraction,
           documentId,
           document.filename,
@@ -166,7 +166,7 @@ export const startWorker = () => {
             let embeddingDetails;
             let embeddingArray;
             try {
-              embeddingArray = await getEmbedding(child.searchText, {
+              embeddingArray = await aiService.getEmbedding(child.searchText, {
                 rejectTruncation: true,
                 onDetails: (details) => {
                   embeddingDetails = details;
