@@ -30,9 +30,6 @@ export const publishProgress = async (documentId, event) => {
     timestamp: new Date().toISOString(),
   };
   const message = JSON.stringify(payload);
-  if (process.env.RAG_DEBUG !== "false") {
-    console.log("[Document pipeline]", message);
-  }
 
   // Removed rpush and expire to save Redis storage
   

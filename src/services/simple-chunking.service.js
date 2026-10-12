@@ -36,30 +36,68 @@ function compatibleTableLabels(previous, next) {
   });
 }
 
-
-function detectDocumentBoundary(pageText) {
-  if (!pageText || typeof pageText !== "string") return null;
+function detectDocumentBoundary(page, documentOutline = []) {
+  const pageText = page.text || "";
+  const pageNum = page.sourcePageNumber;
   const lines = pageText.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 6);
   const headerBlock = lines.join(" ");
-  // 1. Appendix / Annex
+  // 1. Check official Table of Contents outline
+  if (Array.isArray(documentOutline) && documentOutline.length > 0) {
+    const match = documentOutline.find((entry) => {
+      const isAppendixOrAnnex = /(?:appendix|annex|exhibit|schedule|attachment|minutes|restatement)/i.test(
+        `${entry.sectionCode || ""} ${entry.title || ""}`
+      );
+      // For appendices/annexures: page match is sufficient (e.g. Appendix B on page 20)
+      if (isAppendixOrAnnex && entry.targetPage != null && entry.targetPage === pageNum) {
+        return true;
+      }
+      // For top-level sections (e.g. Section 7): only if title is in headerBlock and NOT a dotted subsection (7.1, 7.2)
+      const isSubsection = /\d+\.\d+/.test(entry.sectionCode || "");
+      if (!isSubsection && entry.title && headerBlock.toLowerCase().includes(entry.title.toLowerCase())) {
+        return true;
+      }
+      return false;
+    });
+    if (match) {
+      const code = match.sectionCode ? match.sectionCode.trim() : "";
+      const title = match.title ? match.title.trim() : "";
+      // Avoid stuttering like "7 - 7 Governance and Approval Matrix"
+      if (code && title && !title.toLowerCase().startsWith(code.toLowerCase())) {
+        return `${code} - ${title}`;
+      }
+      return title || code;
+    }
+  }
+  // 2. Check if extractor already gave a boundaryTitle
+  if (page.boundaryTitle && page.isDocumentBoundary) {
+    return page.boundaryTitle.trim();
+  }
+
+  // 3. Regex Fallback: Explicit Appendix / Annex header on the page
   const appendixMatch = headerBlock.match(/^(?:[A-Z]\s+)?(Appendix\s+[A-Z0-9]+[\s:\-\–—]+[^\n\r]+)/i);
   if (appendixMatch) {
     return appendixMatch[1].trim();
   }
-  // 2. Formal Board Minutes
+
+  // 4. Regex Fallback: Formal Board Minutes
   if (/MINUTES OF (?:A )?MEETING/i.test(headerBlock)) {
     return "Board minutes";
   }
-  // 3. Official CFO Letterhead / Restatement
+
+  // 5. Regex Fallback: CFO Letterhead / Restatement
   if (/(?:Office of the Chief Financial Officer|Subject:\s*Restatement)/i.test(headerBlock)) {
     return "CFO restatement letter";
   }
-  // 4. Test Record / Quality Form
+
+  // 6. Regex Fallback: Test Record / Quality Form
   if (/FACTORY ACCEPTANCE TEST RECORD|FORM\s+FAT/i.test(headerBlock)) {
     return "Factory acceptance test record";
   }
+
   return null;
 }
+
+
 // Generic cross-reference extractor: detects standard citations across all documents
 function extractCrossReferences(text) {
   if (!text) return [];
@@ -100,26 +138,25 @@ function isTableOfContentsChunk(headingPath, text) {
   return dotLines.length >= 3;
 }
 
-function getHeadingLevel(title, rawDepth) {
+function getHeadingLevel(title, rawDepth, hasActiveBoundary = false) {
   const clean = title.trim();
   // Match decimal numbering: "1.", "1.1", "4.4.1"
   const match = clean.match(/^(?:section|clause|article)?\s*(\d+(?:\.\d+)*)(?:[.\s\-]|$)/i);
   if (match) {
     const parts = match[1].split(".").filter(Boolean);
-    // "1" -> Level 2 (main section)
-    // "1.1" -> Level 3 (subsection)
-    // "1.1.1" -> Level 4 (sub-subsection)
-    return parts.length + 1;
+    // When inside an Appendix or Document Boundary, items like "1.", "2.", "3."
+    // are subsections of that appendix (Level 3+) and must never pop the boundary container
+    const baseLevel = hasActiveBoundary ? 3 : 2;
+    return parts.length - 1 + baseLevel;
   }
   // Major standalone document markers are always Level 2 (main sections)
   if (/^(?:Table of Contents|Contents|Document Control|Appendix\s+[A-Z0-9]|Annex|Exhibit)/i.test(clean)) {
     return 2;
   }
 
-  // Unnumbered subheadings (like "Certifications" or "TN-1 Thermal management")
-  // must NOT pop major sections (Level 2). Keep them at Level 3 or deeper.
   return Math.max(rawDepth || 3, 3);
 }
+
 
 
 // Gemini fixes the Markdown first. This function reads its headings, tables, and boundaries.
@@ -137,13 +174,16 @@ export function splitMarkdownSections(extraction) {
     };
     sections.push(current);
   }
+  const documentOutline = extraction.documentOutline || [];
+
   for (const page of extraction.pages) {
     let beforeFirstHeading = true;
     // Check if this page is a separate appendix, memorandum, or form
-    const boundaryTitle = detectDocumentBoundary(page.text);
+    const boundaryTitle = detectDocumentBoundary(page, documentOutline);
+
     if (boundaryTitle) {
       // Pop all sections and start a fresh main section (level 2)
-      headingStack = [{ level: 2, title: boundaryTitle }];
+      headingStack = [{ level: 2, title: boundaryTitle, isBoundary: true }];
       startSection([boundaryTitle]);
       beforeFirstHeading = false;
     }
@@ -229,7 +269,9 @@ export function splitMarkdownSections(extraction) {
         const isDocumentTitle =
           node.depth === 1 && title === extraction.documentTitle;
         if (!isDocumentTitle) {
-          const effectiveLevel = getHeadingLevel(title, node.depth);
+          const hasActiveBoundary = headingStack.some((h) => h.isBoundary);
+
+          const effectiveLevel = getHeadingLevel(title, node.depth, hasActiveBoundary);
 
           // Pop any headings of equal or deeper level
           headingStack = headingStack.filter((h) => h.level < effectiveLevel);
@@ -623,7 +665,9 @@ export async function buildDocumentChunks(
   for (let index = 1; index < parents.length; index++) {
     const before = parents[index - 1];
     const current = parents[index];
-    if (before.metadata.section_id === current.metadata.section_id) {
+    const sameChapter = before.metadata?.heading_path?.[0] &&
+      before.metadata?.heading_path?.[0] === current.metadata?.heading_path?.[0];
+    if (before.metadata.section_id === current.metadata.section_id || sameChapter) {
       before.nextParentId = current.id;
       current.prevParentId = before.id;
     }

@@ -38,12 +38,13 @@
 // };
 
 import prisma from "../config/db.js";
+import { RAG_CONFIG } from "../config/rag.config.js";
 
 export const searchSingleDocument = async (
   documentId,
   vectorStr,
   queryText,
-  count = 5,
+  count = RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
 ) => {
   const res = await prisma.$queryRaw`
     WITH vector_matches AS (
@@ -54,7 +55,7 @@ export const searchSingleDocument = async (
       WHERE "documentId" = ${documentId}        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'  -- <--- ADD HERE (line 55)
 
       ORDER BY "embedding" <=> ${vectorStr}::vector ASC
-      LIMIT 20
+      LIMIT ${RAG_CONFIG.SEARCH_VECTOR_MATCH_LIMIT}
     ),
     keyword_matches AS (
       SELECT 
@@ -68,7 +69,7 @@ export const searchSingleDocument = async (
         AND (metadata->>'is_toc') IS DISTINCT FROM 'true'  -- <--- ADD HERE (line 55)
 
       ORDER BY ts_rank_cd(to_tsvector('english', "searchText"), plainto_tsquery('english', ${queryText})) DESC
-      LIMIT 20
+      LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
     ),
     combined_scores AS (
       SELECT "parentId", (1.0 / (10 + rank)) AS score FROM vector_matches
@@ -106,7 +107,7 @@ export const searchAllUserDocuments = async (
   userId,
   vectorStr,
   queryText,
-  count = 5,
+  count = RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
 ) => {
   return await prisma.$queryRaw`
     WITH vector_matches AS (
@@ -119,7 +120,7 @@ export const searchAllUserDocuments = async (
         AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
 
       ORDER BY c."embedding" <=> ${vectorStr}::vector ASC
-      LIMIT 20
+      LIMIT ${RAG_CONFIG.SEARCH_VECTOR_MATCH_LIMIT}
     ),
     keyword_matches AS (
       SELECT 
@@ -134,7 +135,7 @@ export const searchAllUserDocuments = async (
         AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
 
       ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
-      LIMIT 20
+      LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
     ),
     combined_scores AS (
       SELECT "parentId", (1.0 / (60 + rank)) AS score FROM vector_matches
@@ -282,12 +283,12 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
   const result = [...parents];
   const addedIds = new Set(parents.map((parent) => parent.id));
 
-  // Guard: Never allow total returned chunks to exceed 6 (~4,000 tokens)
-  const MAX_TOTAL_CHUNKS = 6;
+  // Guard: Never allow total returned chunks to exceed configured limit
+  const MAX_TOTAL_CHUNKS = RAG_CONFIG.MAX_TOTAL_CHUNKS_PER_ROUND;
   if (result.length >= MAX_TOTAL_CHUNKS) return result;
 
-  // Only examine the top 2 reranked seed chunks to prevent cascading expansion
-  const seedParents = parents.slice(0, 2);
+  // Only examine the top reranked seed chunks for targeted expansion
+  const seedParents = parents.slice(0, RAG_CONFIG.EXPANSION_SEED_COUNT);
   const questionLower = (question || "").toLowerCase();
 
   // 1. Targeted Section Context: Immediate Siblings (prev/next) + Section Lead (Parent 0 for headers)
@@ -347,7 +348,44 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
         });
       }
     }
+
+
+    // C) Chapter / Workflow Expansion: If user asks for a full process or policy, fetch sequential chapter chunks
+    const rootChapter = parent.metadata?.heading_path?.[0];
+    const isProcessOrOverview = /process|step|flow|procedure|overview|policy|guide|sop/i.test(questionLower);
+
+    if (isProcessOrOverview && rootChapter && result.length < MAX_TOTAL_CHUNKS) {
+      const chapterChunks = await prismaClient.$queryRaw`
+        SELECT p.id, p.text, p."searchText", p."documentId", p."prevParentId", p."nextParentId",
+               p.metadata, d."fileUrl", d.filename AS "documentTitle"
+        FROM "ParentChunk" p
+        JOIN "Document" d ON p."documentId" = d.id
+        WHERE p."documentId" = ${parent.documentId}
+          AND d."userId" = ${userId}
+          AND d."status" = 'COMPLETED'
+          AND (p.metadata->>'is_toc') IS DISTINCT FROM 'true'
+          AND p.metadata->'heading_path'->>0 = ${rootChapter}
+        ORDER BY (p.metadata->>'chunk_index')::int ASC
+        LIMIT ${RAG_CONFIG.MAX_CHAPTER_EXPANSION_CHUNKS};
+      `;
+
+      for (const chunk of chapterChunks) {
+        if (!addedIds.has(chunk.id) && result.length < MAX_TOTAL_CHUNKS) {
+          addedIds.add(chunk.id);
+          result.push({
+            ...chunk,
+            fileUrl: chunk.fileUrl || parent.fileUrl || null,
+            documentTitle: chunk.documentTitle || parent.documentTitle || null,
+            retrievalOrigin: { type: "chapter_expansion", seedParentId: parent.id, chapter: rootChapter },
+          });
+        }
+      }
+    }
+
   }
+
+
+
 
   // 2. Table Continuation: If a table crossed page/section boundaries, fetch related table part
   const tableKeys = new Map();
@@ -382,7 +420,7 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
       include: {
         document: { select: { fileUrl: true, filename: true } },
       },
-      take: 2,
+      take: RAG_CONFIG.MAX_TABLE_CONTINUATION_CHUNKS,
     });
 
     for (const parent of related) {
@@ -436,12 +474,13 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
     }
   }
 
-  // Cap added reference chunks to at most 2 chunks total
+  // Cap added reference chunks to configured limit
   let addedRefCount = 0;
-  const MAX_REF_CHUNKS = 2;
+  const MAX_REF_CHUNKS = RAG_CONFIG.MAX_REFERENCE_CHUNKS;
 
   for (const { documentId, searchPattern, originalRef, seedParentId } of referencedTargets.values()) {
     if (result.length >= MAX_TOTAL_CHUNKS || addedRefCount >= MAX_REF_CHUNKS) break;
+
 
     const matched = await prismaClient.parentChunk.findMany({
       where: {
@@ -449,11 +488,10 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
         document: { userId, status: "COMPLETED" },
         searchText: { contains: searchPattern, mode: "insensitive" },
       },
-      include: {
-        document: { select: { fileUrl: true, filename: true } },
-      },
-      take: 5, // Fetch candidates to pick the true definition
+      include: { document: { select: { fileUrl: true, filename: true } } },
+      take: 5,
     });
+
     // 2. Rank candidates: Prioritize true definitions over passing mentions.
     // Chunks where searchPattern is in the Heading or starts the passage rank highest.
     const contentMatched = matched.filter((c) => !c.metadata?.is_toc);

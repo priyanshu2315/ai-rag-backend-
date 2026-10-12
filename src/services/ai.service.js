@@ -7,6 +7,7 @@ import * as cheerio from "cheerio";
 import { traceable } from "langsmith/traceable";
 import { supabase } from "../config/supabase.js";
 import { chatCompletion, cohere, RERANK_MODEL, getAI } from "../config/ai.js";
+import { RAG_CONFIG } from "../config/rag.config.js";
 import { DOCUMENT_EXTRACTION_INSTRUCTIONS } from "../instructions/document-extraction.js";
 import { buildDocumentChunks as splitIntoChunks } from "./simple-chunking.service.js";
 
@@ -130,9 +131,28 @@ const RESPONSE_SCHEMA = {
       },
     },
     continuationContext: { type: "string" },
+    isTableOfContents: {
+      type: "boolean",
+      description: "True if this page contains a Table of Contents, Index, or Outline.",
+    },
+    tableOfContents: {
+      type: "array",
+      description: "If isTableOfContents is true, list every entry with its section code, title, and page/length.",
+      items: {
+        type: "object",
+        properties: {
+          sectionCode: { type: "string" },
+          title: { type: "string" },
+          targetPage: { type: ["integer", "null"] },
+          pageCount: { type: ["integer", "null"] },
+        },
+        required: ["sectionCode", "title"],
+      },
+    },
   },
   required: ["documentTitle", "pages", "continuationContext"],
 };
+
 
 
 // Keep long text documents in small, ordered groups for the model.
@@ -252,6 +272,7 @@ export async function extractDocumentWithAI(
     totalSources: sources.length,
   });
   try {
+    let documentOutline = [];
     for (let start = 0; start < sources.length; start += batchSize) {
       const primary = sources.slice(start, start + batchSize);
       const primarySourceIds = primary.map((item) => item.id);
@@ -347,6 +368,8 @@ export async function extractDocumentWithAI(
         },
       };
 
+
+
       const response = request
         ? await request(completionOptions)
         : await ai.client.chat.completions.create(completionOptions);
@@ -359,6 +382,24 @@ export async function extractDocumentWithAI(
           (choice?.finish_reason ?? "no output"),
         );
       const result = JSON.parse(choice.message.content);
+      if (Array.isArray(result?.tableOfContents) && result.tableOfContents.length > 0) {
+        documentOutline = result.tableOfContents;
+      }
+      console.log(
+        "[Document extraction JSON START]\n" +
+        JSON.stringify({
+          filename: source.filename,
+          provider: providerName,
+          model,
+          batch,
+          totalBatches,
+          sourceIds: primarySourceIds,
+          extraction: result,
+          activeDocumentOutline: documentOutline,
+        }, null, 2) +
+        "\n[Document extraction JSON END]",
+      );
+
       const usage = response.usage
         ? {
           promptTokenCount: response.usage.prompt_tokens,
@@ -426,7 +467,11 @@ export async function extractDocumentWithAI(
           text: page.text,
         });
       }
-      continuationContext = result.continuationContext;
+      const outlineSummary = documentOutline.length
+        ? `\nActive Document TOC Outline: ${JSON.stringify(documentOutline.map(o => `${o.sectionCode || ''}: ${o.title}${o.targetPage ? ` (Page ${o.targetPage})` : ''}`))}`
+        : "";
+      continuationContext = (result.continuationContext || "") + outlineSummary;
+
       batches.push({ batch, sourceIds: primarySourceIds, usage });
       await onEvent({
         type: eventPrefix + "_batch_complete",
@@ -460,6 +505,8 @@ export async function extractDocumentWithAI(
       rawResult: null,
       pages,
       documentTitle: documentTitle || null,
+      documentOutline: documentOutline.length ? documentOutline : null,
+
       correction: {
         operation: "extraction",
         version: "ai-extraction-v1",
@@ -531,7 +578,7 @@ export async function extractDocPages(filepath, mimetype) {
   return extraction.pages.map((page) => ({ text: page.text }));
 }
 
-export const rerankChunks = async (query, chunks, topN = 3) => {
+export const rerankChunks = async (query, chunks, topN = RAG_CONFIG.RERANK_TOP_N) => {
   if (!chunks || chunks.length === 0) return [];
 
   try {

@@ -27,9 +27,15 @@ Mark values read from a scale as approximate (for example, ~42); never present
 a visual estimate as an exact source value.
 For flowcharts and floor plans, record labelled steps or zones, their measurements,
 arrow directions, spatial links, and useful details such as a red label above a box.
-For organization charts, follow visible connector lines, not box proximity or row
-order. State each direct link as "[person] reports to [manager]". If a line is
-unclear, mark the relationship [unclear] instead of guessing.
+
+ORGANIZATION CHARTS & REPORTING LINES:
+For organization charts and reporting diagrams, follow visible connector lines carefully.
+State each role and the person holding it clearly, followed by their reporting line:
+Format: "- [Role] ([Location/Unit] if any): [Person Name] — Reports to: [Manager Role] ([Manager Name])"
+Example: "- Plant Director P3 (Gdańsk): Katarzyna Wiśniewska — Reports to: Chief Operating Officer (COO) (Ravi Shankar Iyer)"
+Example: "- Plant Director P1 (Reno): Whitney Calloway — Reports to: Chief Operating Officer (COO) (Ravi Shankar Iyer)"
+NEVER place the subordinate person's name in parentheses directly after the manager's title.
+
 Transcribe useful text in other images and scans. Mark unreadable parts [unreadable].
 
 Return each primary sourceId exactly once with only that source's Markdown.
@@ -38,9 +44,9 @@ Return documentTitle, pages, and continuationContext as requested by the schema.
 The # title must match documentTitle exactly, including capitalization.
 continuationContext should briefly name the active section and any open table.
 
-Document Structure and Cross-References:
-- Set isDocumentBoundary to true if this page starts a distinct appendix, letterhead, formal minutes, or standalone form/record. Provide its title in boundaryTitle (e.g. "Appendix C - CFO restatement letter", "FACTORY ACCEPTANCE TEST RECORD").
-- Set isTableOfContents to true if this page contains a Table of Contents or index of pages.
+DOCUMENT STRUCTURE, TABLE OF CONTENTS & CROSS-REFERENCES:
+- Set isTableOfContents to true if this page contains a Table of Contents, Index, or document outline.
+  In tableOfContents, extract EVERY entry with its sectionCode (e.g. 'Appendix B', 'SECTION-4', 'APPENDIX-III'), its description/title, and targetPage or pageCount.
+- Set isDocumentBoundary to true if this page starts a distinct appendix, letterhead, formal minutes, or standalone form/record. Provide its title in boundaryTitle (e.g. "Appendix B - Board minutes", "Appendix C - CFO restatement letter", "FACTORY ACCEPTANCE TEST RECORD").
 - In references, extract any explicit and semantic citations mentioned on the page (such as "Appendix C", "Resolution 2025-14", "Table 7.1", "contract VS-GRID-0417", "Board Minutes"). If none, return an empty array.
-
 `;

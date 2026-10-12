@@ -1,0 +1,428 @@
+{
+  "metadata": {
+    "title": "VAYUZ SOP Evaluation Benchmark & Knowledge Base Questions",
+    "description": "Comprehensive benchmark and question bank generated from VAYUZ Standard Operating Procedures (SOPs) for evaluating RAG retrieval, multi-hop reasoning, and knowledge synthesis.",
+    "created_at": "2026-10-12T13:25:00+05:30",
+    "total_documents_analyzed": 5,
+    "user_reported_sops_count": 7,
+    "notes_on_document_count": "The user mentioned 7 SOPs; 5 SOP documents were provided in the current input session. These 5 have been thoroughly analyzed for internal and cross-document references. When the remaining 2 SOPs are provided, this question bank can be seamlessly extended.",
+    "documents_analyzed": [
+      {
+        "id": "DOC-01",
+        "title": "Account Lifecycle Management SOP (Internal Playbook)",
+        "sop_number": "N/A (Playbook)",
+        "pages": 15,
+        "owner_audience": "Account Managers, Delivery Leads, Business Development",
+        "scope": "Account governance, 6 lifecycle states, account classification, weekly operating system, health scoring, expansion, crisis recovery, and non-negotiables."
+      },
+      {
+        "id": "DOC-02",
+        "title": "Hiring SOP",
+        "sop_number": "SOP2024030701",
+        "pages": 5,
+        "owner_audience": "Maroof Khan, Ankit Arora (Approved by Shivam Bhargava)",
+        "scope": "Candidate shortlisting prerequisites, formal communication protocols, interview rules & warnings, SLAs, weekend interview policy (#mission100), and exception handling."
+      },
+      {
+        "id": "DOC-03",
+        "title": "Demo Saturday SOP",
+        "sop_number": "SOP2022070101",
+        "pages": 4,
+        "owner_audience": "Harsh Yadav (Approved for Team Managers)",
+        "scope": "Demo Saturday monthly cadence, Tuesday prep meetings, role responsibilities (Demo owner, Product evangelist, Arka, PET, HR, Business, Co-Founders), attendance, camera rules, and disciplinary penalties (Red flags & LWP)."
+      },
+      {
+        "id": "DOC-04",
+        "title": "Solution Blueprint Framework (Business Edition)",
+        "sop_number": "Version 1.0 (Business Edition)",
+        "pages": 15,
+        "owner_audience": "Business Development, Solution Architects, Sales Leadership",
+        "scope": "5 deciphering phases, 3-layer diagnosis model, 4 solution pillars (Digital Engineering, Pragyan AI, Bitovn Suite, RAPYD Exchange), commercial engagement models, squad templates, milestone architecture, proposal flow, and BD standards."
+      },
+      {
+        "id": "DOC-05",
+        "title": "Client Escalation & Conflict Management SOP",
+        "sop_number": "Version 1.0 (Business Impact Group)",
+        "pages": 9,
+        "owner_audience": "Business Group / VP Business (Approved by Co-Founders)",
+        "scope": "Escalation typology, severity classification P0-P3, response/resolution SLAs, ownership matrix, 5-step resolution workflow, high-risk playbooks (resource changes, missed milestones, billing, exit threats), communication norms, and prevention framework."
+      }
+    ],
+    "analysis_summary": {
+      "cross_document_linkages": [
+        {
+          "linkage_name": "Shared Leadership & Key Personnel",
+          "details": "Kushagra is referenced in the Hiring SOP as the Product Team Lead and in the Solution Blueprint Framework as the AI specialist/Solution Architect. Ankit Arora is co-author of the Hiring SOP and referenced as the primary Solution Architect (SA) in the Solution Blueprint Framework. Co-Founders Pooja Chauhan and Tejveer Singh are explicitly named in the Demo Saturday SOP and designated as executive sponsors, retention leads, and P0 resolution owners in the Client Escalation SOP."
+        },
+        {
+          "linkage_name": "Core Solution Pillars & Products",
+          "details": "The 4 core pillars defined in the Solution Blueprint Framework (Digital Engineering, Pragyan AI, Bitovn Suite, RAPYD Exchange) are formally codified in the Client Escalation SOP as the four engagement categories under governance. Bitovn Suite modules (Social, Bridge, Forms, Learning, Recruit) in the Escalation SOP connect directly to 'VAYUZ Social' used internally in Demo Saturday SOP."
+        },
+        {
+          "linkage_name": "Account Health & Escalation Protocols",
+          "details": "The 5-area Health Scoring Model in Account Lifecycle Management (Score < 7 = Red) connects directly to the P0 / Crisis triggers and the Prevention Framework in the Client Escalation SOP. The Monday Morning internal operating reviews connect AM reviews with weekly VP Business escalation reporting."
+        },
+        {
+          "linkage_name": "Engineering Seniority & Talent Governance",
+          "details": "The Solution Blueprint Framework strictly enforces a '100% Senior-Grade Only (4+ years minimum, no juniors on client accounts)' rule, which links with the Hiring SOP's entry criteria (degree holders only, no students) and the Client Escalation SOP's Scenario A protocol for client resource dissatisfaction."
+        }
+      ],
+      "intra_document_linkages": [
+        {
+          "linkage_name": "Account Lifecycle Management Internal Links",
+          "details": "Section 05 Account Health System explicitly cross-references Section 07 (Red Account Crisis Playbook). Weekly rhythms (Section 04) tie directly into State 3 (Delivery Stability) and State 4 (Value Demonstration)."
+        },
+        {
+          "linkage_name": "Solution Blueprint Framework Internal Links",
+          "details": "Phase 02 (3-Layer Diagnosis) directly drives Phase 03 (Offering Pillar matching), which determines Phase 04 (Engagement model and squad templates), culminating in Phase 05 (6-step proposal flow)."
+        },
+        {
+          "linkage_name": "Client Escalation SOP Internal Links",
+          "details": "Section 3 Severity Classification triggers the Section 4 Ownership Matrix, dictates Step 1-5 SLAs, governs Section 6 Communication Frequencies, and informs the Section 7 high-risk scenario workflows."
+        },
+        {
+          "linkage_name": "Demo Saturday SOP Internal Links",
+          "details": "Section 3 roles (Demo owner, Arka, PET, Product Evangelist) determine call presentations, while Section 4 outlines the exact 2-Red-Flag to 1-LWP penalty system for late arrivals, missing RSVP, or camera violations."
+        },
+        {
+          "linkage_name": "Hiring SOP Internal Links",
+          "details": "Section 2 shortlisting prerequisites link directly to Section 3.b email communications, Section 3.c camera and screen-sharing interview rules, and Section 4 rescheduling exceptions."
+        }
+      ]
+    },
+    "question_statistics": {
+      "total": 25,
+      "by_difficulty": {
+        "easy": 7,
+        "medium": 10,
+        "hard": 8
+      },
+      "by_scope": {
+        "intra_document": 12,
+        "cross_document": 13
+      },
+      "by_hops": {
+        "1_hop": 7,
+        "2_hops": 9,
+        "3_hops": 8,
+        "4_hops": 1
+      }
+    }
+  },
+  "questions": [
+    {
+      "id": "Q01",
+      "category": "easy",
+      "hops": 1,
+      "scope": "intra_document",
+      "source_documents": ["Hiring SOP"],
+      "question": "If a candidate is rejected during the VAYUZ hiring process, after how long are they eligible to reapply?",
+      "answer": "A rejected candidate can reapply only after 3 months.",
+      "reasoning": "Section 2.c of the Hiring SOP explicitly states as a prerequisite: 'In case the candidate is rejected, he/she can apply only after 3 Months.'",
+      "source_citations": ["Hiring SOP, Section 2 (Prerequisite before shortlisting candidate), clause c, page 2"]
+    },
+    {
+      "id": "Q02",
+      "category": "easy",
+      "hops": 1,
+      "scope": "intra_document",
+      "source_documents": ["Demo Saturday SOP"],
+      "question": "By what deadline and in what email format must an employee notify absence for Demo Saturday to avoid receiving a Leave Without Pay (LWP)?",
+      "answer": "The employee must inform the event manager by Friday 05:00 PM with a valid reason, keeping their line manager in CC, using the subject line format: 'Ref: Absent in Demo Saturday #29 | Person Name | Team'. Failure to send this gives the event manager the right to mark 1 LWP.",
+      "reasoning": "Under Section 4 (Important Announcements for those who violate the Rules), item 2 explicitly lays out the Friday 5:00 PM deadline, CC requirement, exact subject line syntax, and the 1 LWP penalty.",
+      "source_citations": ["Demo Saturday SOP, Section 4 (Important Announcements), point 2, page 4"]
+    },
+    {
+      "id": "Q03",
+      "category": "easy",
+      "hops": 1,
+      "scope": "intra_document",
+      "source_documents": ["Client Escalation & Conflict Management SOP"],
+      "question": "Within what timeframe must all incoming client escalations be classified into a severity level by the receiving VAYUZ owner?",
+      "answer": "All client escalations must be classified by the receiving VAYUZ owner within 1 hour of receipt.",
+      "reasoning": "Section 3 (Severity Classification & SLAs) states: 'All client escalations must be classified by the receiving VAYUZ owner within 1 hour of receipt, using the following framework.'",
+      "source_citations": ["Client Escalation & Conflict Management SOP, Section 3, page 2"]
+    },
+    {
+      "id": "Q04",
+      "category": "easy",
+      "hops": 1,
+      "scope": "intra_document",
+      "source_documents": ["Account Lifecycle Management SOP"],
+      "question": "What are the 5 evaluation areas in the VAYUZ Account Health System, and what is the maximum achievable score?",
+      "answer": "The 5 evaluation areas are Delivery, Relationship, Financials, Scope/Change, and Growth signals. Each area is scored up to 3 points (Green: 3pts, Amber: 2pts, Red: 1pt), resulting in a maximum score of 15.",
+      "reasoning": "Section 05 (Account Health System) outlines the scoring model table: 5 Areas, 3 Points Each (Max Score: 15), listing Delivery, Relationship, Financials, Scope/Change, and Growth signals.",
+      "source_citations": ["Account Lifecycle Management SOP, Section 05 (Account Health System), page 8"]
+    },
+    {
+      "id": "Q05",
+      "category": "easy",
+      "hops": 1,
+      "scope": "intra_document",
+      "source_documents": ["Solution Blueprint Framework"],
+      "question": "What is VAYUZ's non-negotiable policy regarding engineer experience levels when staffing client accounts?",
+      "answer": "VAYUZ enforces a strict 100% Senior-Grade Only standard: every engineer must have a minimum of 4+ years of experience with domain depth. No junior engineers are permitted on client accounts under any circumstances.",
+      "reasoning": "Section 05.B (Team Composition) and Section 07 (Standard 4) state: '100% Senior-Grade Only. Every engineer minimum 4+ years with domain depth. No juniors on client accounts — ever. This is a VAYUZ standard, not a preference.'",
+      "source_citations": ["Solution Blueprint Framework, Section 05.B, page 10; Section 07.4, page 13"]
+    },
+    {
+      "id": "Q06",
+      "category": "easy",
+      "hops": 1,
+      "scope": "intra_document",
+      "source_documents": ["Solution Blueprint Framework"],
+      "question": "For engagements exceeding what duration is a Discovery Sprint mandatory to recommend, and what is its standard duration?",
+      "answer": "A Discovery Sprint is mandatory to recommend for any engagement above 3 months, and its standard duration is 2 weeks (conducted as a paid sprint at a fixed cost).",
+      "reasoning": "Section 07 (The 8 VAYUZ BD Non-Negotiables), point 3 states: 'Always propose a Discovery Sprint first. For any engagement above 3 months, a paid 2-week Discovery Sprint is mandatory to recommend.'",
+      "source_citations": ["Solution Blueprint Framework, Section 07.3, page 13; Section 05.C, page 10"]
+    },
+    {
+      "id": "Q07",
+      "category": "easy",
+      "hops": 1,
+      "scope": "intra_document",
+      "source_documents": ["Client Escalation & Conflict Management SOP"],
+      "question": "What are the initial response and resolution target SLAs for a P0 (Critical) client escalation?",
+      "answer": "The initial response SLA is within 1 hour, and the resolution target is within 24 hours.",
+      "reasoning": "In Section 3 (Severity Classification & SLAs), the table row for 'P0 — Critical' lists 'Initial Response: Within 1 hour' and 'Resolution Target: 24 hours'.",
+      "source_citations": ["Client Escalation & Conflict Management SOP, Section 3, page 2"]
+    },
+    {
+      "id": "Q08",
+      "category": "medium",
+      "hops": 2,
+      "scope": "intra_document",
+      "source_documents": ["Demo Saturday SOP"],
+      "question": "Explain the penalty progression for tardiness on Demo Saturday calls, including when it results in Leave Without Pay (LWP).",
+      "answer": "An employee joining later than 20 minutes after the call starts is allowed to join but marked absent with 1 Red flag. If the same employee commits this tardiness a second time within the same calendar month, they accumulate 2 Red flags, which automatically converts into 1 LWP (Leave Without Pay).",
+      "reasoning": "Hop 1 identifies tardiness threshold (>20 mins) resulting in absent status + 1 Red flag. Hop 2 connects repeated offense in the same month where 2 Red flags convert into 1 LWP under Rule 1 of Section 4.",
+      "source_citations": ["Demo Saturday SOP, Section 4 (Important Announcements), point 1, page 4"]
+    },
+    {
+      "id": "Q09",
+      "category": "medium",
+      "hops": 2,
+      "scope": "intra_document",
+      "source_documents": ["Client Escalation & Conflict Management SOP"],
+      "question": "In a P1 (High) escalation, who acts as the first responder, who is the resolution owner, and within what timeframe must the initial response and full resolution occur?",
+      "answer": "For a P1 escalation, the Delivery Lead acts as the first responder, and the VP Business is the resolution owner (with Co-Founders as executive sponsors). The initial response must be delivered within 4 hours, and the resolution target is 72 hours.",
+      "reasoning": "Hop 1 locates Section 3's severity table for P1 SLAs (Initial Response: within 4 hours, Resolution Target: 72 hours). Hop 2 checks Section 4's Ownership Matrix to match P1 roles (First Responder: Delivery Lead, Resolution Owner: VP Business, Executive Sponsor: Co-Founders).",
+      "source_citations": ["Client Escalation & Conflict Management SOP, Section 3 & Section 4, pages 2–3"]
+    },
+    {
+      "id": "Q10",
+      "category": "medium",
+      "hops": 2,
+      "scope": "intra_document",
+      "source_documents": ["Account Lifecycle Management SOP"],
+      "question": "What health score range defines an 'Amber' account, what operational mode does it trigger, and what specific action must the Account Manager take within two weeks?",
+      "answer": "An Amber account is defined by a health score between 7 and 10. It triggers the 'Increase attention' mode. The Account Manager must increase touchpoint frequency, identify the weakest area, fix it within 2 weeks, and brief their manager without waiting for the account to turn red.",
+      "reasoning": "Hop 1 identifies the Amber score range (7–10) in Section 05. Hop 2 extracts the operational directives in 'What Each Color Means — and What You Do' which specifies increasing touchpoints, briefing manager, and fixing the weakest area within 2 weeks.",
+      "source_citations": ["Account Lifecycle Management SOP, Section 05 (Account Health System), page 8"]
+    },
+    {
+      "id": "Q11",
+      "category": "medium",
+      "hops": 2,
+      "scope": "intra_document",
+      "source_documents": ["Solution Blueprint Framework"],
+      "question": "When a client presents the symptom 'Our app keeps crashing and users are complaining', what is VAYUZ's diagnosed operational root cause and corresponding solution pillar?",
+      "answer": "The operational root cause is Architecture Debt (specifically: no load testing, no monitoring, no DevOps pipeline, with technical debt compounded over 3 years). The corresponding VAYUZ solution pillar to deploy is Digital Engineering.",
+      "reasoning": "Hop 1 retrieves Layer 1 symptom analysis from Section 03 showing the real issue behind crashes is missing load testing/monitoring/DevOps. Hop 2 maps this to Layer 2 Root Cause Categories, where 'Architecture Debt' points directly to 'Digital Engineering' as the VAYUZ answer.",
+      "source_citations": ["Solution Blueprint Framework, Section 03 (Phase 02 — The 3-Layer Diagnosis Model), Layer 1 & Layer 2, page 5"]
+    },
+    {
+      "id": "Q12",
+      "category": "medium",
+      "hops": 2,
+      "scope": "intra_document",
+      "source_documents": ["Hiring SOP"],
+      "question": "What are the rules regarding camera use, background environment, and screen sharing during L1 technical interviews, and what penalty is enforced if candidate compliance fails?",
+      "answer": "Both interviewer and interviewee must keep cameras on. Interviewers cannot browse the internet or consult others (room must be empty). During L1 coding rounds, the interviewee must share their screen. If the candidate is caught not looking at the screen, exactly one warning can be issued; if they continue to do so, the interview is immediately terminated.",
+      "reasoning": "Hop 1 extracts Section 3.c guidelines regarding camera activation, quiet room requirements, and mandatory screen-sharing during L1 coding rounds. Hop 2 identifies the disciplinary rule: one warning for not looking at the screen, followed by immediate termination upon repeated offense.",
+      "source_citations": ["Hiring SOP, Section 3.c.iii, pages 2–3"]
+    },
+    {
+      "id": "Q13",
+      "category": "hard",
+      "hops": 3,
+      "scope": "intra_document",
+      "source_documents": ["Account Lifecycle Management SOP"],
+      "question": "What 5 specific conditions trigger an account into RED crisis status, and what exact milestones must be met internally and with the client within the first 2 hours, 24 hours, and 48 hours?",
+      "answer": "An account goes RED when any of these 5 conditions are met: (1) Client escalates to VAYUZ senior leadership or client C-suite, (2) Delivery is delayed by >2 weeks with no agreed recovery plan, (3) Client issues formal complaint or threatens contract termination, (4) Health score drops below 7 AND at least two areas are at 1 point, (5) Primary sponsor states they are 'evaluating alternatives'. Within the first 2 hours: AM must brief the delivery lead and direct manager; within 24 hours: AM must call the client (not email) acknowledging the issue, expressing ownership, and committing to a response; within 48 hours: a structured recovery plan must be presented to the client in person or via video.",
+      "reasoning": "Hop 1 gathers the 5 trigger criteria in Section 07. Hop 2 links these triggers to the 'First 48 Hours — What You Do Immediately' protocol. Hop 3 sequences the strict time milestones: 2 hours (internal briefing), 24 hours (client phone call), and 48 hours (in-person/video recovery plan presentation).",
+      "source_citations": ["Account Lifecycle Management SOP, Section 07 (Red Account Crisis Playbook), page 11"]
+    },
+    {
+      "id": "Q14",
+      "category": "hard",
+      "hops": 3,
+      "scope": "intra_document",
+      "source_documents": ["Hiring SOP"],
+      "question": "Detail the full operational timeline and communication loop for an L1 interview, from candidate invite delivery to post-interview feedback submission.",
+      "answer": "The timeline requires: (1) HR sends the interview invite mail 1 day before the L1 round, CC'ing the L1 interviewers, Yashna Bansal (HR), and the hiring team lead (e.g., Kushagra for Product). (2) The candidate must reply to confirm at least 2 hours before the interview; otherwise they are considered unavailable. (3) The interview proceeds with cameras enabled and coding screen shared. (4) Interview feedback must be submitted within 1 hour after the L1 round concludes; if rejected, detailed feedback specifying the reasons must be documented on email.",
+      "reasoning": "Hop 1 locates Section 3.b.i for the 1-day prior invite and mandatory CC list. Hop 2 tracks Section 3.b.ii for the candidate 2-hour response confirmation requirement. Hop 3 links to Section 3.c.iv & v for the 1-hour feedback turnaround SLA and requirement for detailed rejection feedback.",
+      "source_citations": ["Hiring SOP, Section 3.b.i–ii, page 2; Section 3.c.iv–v, page 3"]
+    },
+    {
+      "id": "Q15",
+      "category": "hard",
+      "hops": 3,
+      "scope": "intra_document",
+      "source_documents": ["Solution Blueprint Framework"],
+      "question": "Compare VAYUZ's three standard squad templates by team composition, headcount, and ideal engagement type.",
+      "answer": "The three standard squad templates are: (1) Small Squad: 1 Tech Lead + 1–2 Engineers + QA (Total: 3–4 headcount); best for focused feature work, RAPYD augmentation, and Bitovn deployments. (2) Mid Squad: 1 Solution Architect (SA) + 3–4 Engineers + QA + 1 Designer (Total: 6–7 headcount); best for new product builds, modernization projects, and Time & Material (T&M) engagements. (3) Full Squad: 1 Solution Architect (SA) + 6–8 Engineers + QA + Design + Project Manager (PM) + Pragyan AI resource (Total: 11–13 headcount); best for enterprise platform builds, Dedicated Team retainers, and long-term partnerships.",
+      "reasoning": "Hop 1 extracts Small Squad roles and use cases from Section 05.B. Hop 2 extracts Mid Squad composition and deployment fits. Hop 3 extracts Full Squad structure and enterprise scope, verifying all members meet the 100% senior-grade policy.",
+      "source_citations": ["Solution Blueprint Framework, Section 05.B (Standard Squad Templates), page 10"]
+    },
+    {
+      "id": "Q16",
+      "category": "medium",
+      "hops": 2,
+      "scope": "cross_document",
+      "source_documents": ["Hiring SOP", "Solution Blueprint Framework"],
+      "question": "Kushagra is named in both the Hiring SOP and the Solution Blueprint Framework. What specific organizational roles and responsibilities are attributed to Kushagra across these documents?",
+      "answer": "In the Hiring SOP, Kushagra is identified as the Lead of the Product Team who must be CC'd on interview invitation emails for product team hiring. In the Solution Blueprint Framework (Section 07 Non-Negotiable #5), Kushagra is identified as the technical AI specialist/Solution Architect to tag on large commercial deals to establish technical credibility with VP of Engineering and technical decision-makers.",
+      "reasoning": "Hop 1 locates Kushagra in Hiring SOP Section 3.b.i ('For Product Team, Kushagra must be marked'). Hop 2 locates Kushagra in Solution Blueprint Framework Section 07.5 ('Tag Ankit (SA) or Kushagra (AI) when warranted'). Combining both documents demonstrates Kushagra leads Product and serves as the senior AI technical authority for sales deals.",
+      "source_citations": [
+        "Hiring SOP, Section 3.b.i, page 2",
+        "Solution Blueprint Framework, Section 07 (Standards), rule 5, page 14"
+      ]
+    },
+    {
+      "id": "Q17",
+      "category": "medium",
+      "hops": 2,
+      "scope": "cross_document",
+      "source_documents": ["Hiring SOP", "Solution Blueprint Framework"],
+      "question": "What responsibilities are assigned to Ankit Arora across the Hiring SOP and the Solution Blueprint Framework?",
+      "answer": "In the Hiring SOP, Ankit Arora is the co-author and SOP Owner (alongside Maroof Khan) who established Versions 1.0 and 1.1 of the hiring process. In the Solution Blueprint Framework (Section 07 Non-Negotiable #5), Ankit is designated as the Solution Architect (SA) who must be tagged on large commercial deals to bring technical credibility and who must validate all project timelines before sales quotes them to clients.",
+      "reasoning": "Hop 1 checks the Hiring SOP title block and Version History table identifying Ankit Arora as S.O.P Owner. Hop 2 checks Solution Blueprint Framework Section 07 (rules 5 & 6) identifying Ankit as the Solution Architect required for deal architecture and timeline validation.",
+      "source_citations": [
+        "Hiring SOP, Version History, page 1",
+        "Solution Blueprint Framework, Section 07 (Standards), rules 5 & 6, page 14"
+      ]
+    },
+    {
+      "id": "Q18",
+      "category": "medium",
+      "hops": 2,
+      "scope": "cross_document",
+      "source_documents": ["Solution Blueprint Framework", "Client Escalation & Conflict Management SOP"],
+      "question": "How do the four solution pillars established in the Solution Blueprint Framework map into the governance scope of the Client Escalation & Conflict Management SOP?",
+      "answer": "The Solution Blueprint Framework defines VAYUZ's 4 solution pillars: Digital Engineering, Pragyan AI, Bitovn Suite, and RAPYD Exchange. The Client Escalation SOP explicitly applies its conflict management protocols across these exact four categories: (1) Product engineering and digital transformation engagements (Digital Engineering), (2) Pragyan AI engagements (strategy, GenAI, LLM, MLOps), (3) Bitovn Suite product deployments (specifically naming Social, Bridge, Forms, Learning, and Recruit), and (4) RAPYD Exchange talent placements (both contractual and full-time).",
+      "reasoning": "Hop 1 retrieves the 4 pillars from Section 04 of the Solution Blueprint Framework. Hop 2 compares this with Section 1 (Purpose & Philosophy) of the Client Escalation SOP, which establishes that its procedures govern engagements across all four pillars and details the Bitovn Suite product line.",
+      "source_citations": [
+        "Solution Blueprint Framework, Section 04 (Phase 03 — Match Pain to VAYUZ Capability), page 7",
+        "Client Escalation & Conflict Management SOP, Section 1 (Purpose & Philosophy), page 1"
+      ]
+    },
+    {
+      "id": "Q19",
+      "category": "medium",
+      "hops": 2,
+      "scope": "cross_document",
+      "source_documents": ["Demo Saturday SOP", "Client Escalation & Conflict Management SOP"],
+      "question": "Who are the Co-Founders of VAYUZ as named in the Demo Saturday SOP, and what specific escalation responsibilities are assigned to them in the Client Escalation SOP?",
+      "answer": "In the Demo Saturday SOP, the Co-Founders are named as Pooja Chauhan and Tejveer Singh. In the Client Escalation SOP, the Co-Founders hold the highest authority: they serve as Executive Sponsors for P0 and P1 escalations, Resolution Owners for P0 (Critical) escalations, must be briefed within 2 hours of a P0 exit threat, lead high-stakes client retention calls, resolve commercial billing disputes unresolved after 2 rounds, and possess sole approval authority for structural amendments to the Escalation SOP.",
+      "reasoning": "Hop 1 locates the Co-Founders' identities (Pooja Chauhan and Tejveer Singh) in Demo Saturday SOP Section 3. Hop 2 gathers their governance duties from Client Escalation SOP across Section 3, Section 4 (Ownership Matrix), Section 6, Section 7 (Scenarios C & D), and Section 11 (Governance).",
+      "source_citations": [
+        "Demo Saturday SOP, Section 3 (Roles and Responsibilities), page 3",
+        "Client Escalation & Conflict Management SOP, Section 3, 4, 7 (Scenarios C & D), 11, pages 2, 3, 6, 7, 8"
+      ]
+    },
+    {
+      "id": "Q20",
+      "category": "medium",
+      "hops": 2,
+      "scope": "cross_document",
+      "source_documents": ["Solution Blueprint Framework", "Account Lifecycle Management SOP"],
+      "question": "How does VAYUZ's commercial recommendation default in the Solution Blueprint Framework directly support the primary business objective stated in the Account Lifecycle Management SOP?",
+      "answer": "The Solution Blueprint Framework (Section 05.A) mandates 'Dedicated Team (Retainer)' as VAYUZ's default commercial recommendation, highlighting that VAYUZ's 95% retention rate is built on this model because it establishes long-term product ownership and context. This directly underpins the core philosophy of Account Lifecycle Management (Section 01), which states that the entire purpose of the function is to retain clients for '5 years instead of 1' by transforming accounts into multi-year contracts rather than one-off transactional projects.",
+      "reasoning": "Hop 1 inspects Solution Blueprint Section 05.A where Dedicated Team Retainer is the default model backing the 95% retention rate. Hop 2 relates this to Section 01 of Account Lifecycle Management ('Why This Function Matters'), which contrasts 1-year transactional delivery with 5-year multi-year retention.",
+      "source_citations": [
+        "Solution Blueprint Framework, Section 05.A (Engagement Model Selection), page 9",
+        "Account Lifecycle Management SOP, Section 01 (The Big Picture), page 1"
+      ]
+    },
+    {
+      "id": "Q21",
+      "category": "hard",
+      "hops": 3,
+      "scope": "cross_document",
+      "source_documents": ["Account Lifecycle Management SOP", "Client Escalation & Conflict Management SOP"],
+      "question": "Compare the response protocols when a client threatens contract termination between the Account Lifecycle Management SOP and the Client Escalation SOP: what are the notification timelines, executive roles, and mandatory communication rules?",
+      "answer": "When a client threatens exit or termination: (1) Classification: Account Lifecycle SOP classifies this as an immediate RED account; Client Escalation SOP classifies it as a P0 Critical escalation. (2) Internal Notifications: Client Escalation SOP requires VP Business notification within 30 minutes and Co-Founders briefing within 2 hours; Account Lifecycle SOP mandates briefing the delivery lead and direct manager within 2 hours. (3) Client Outreach: Account Lifecycle SOP requires calling the client (never email) within 24 hours to express ownership and present a recovery plan within 48 hours; Client Escalation SOP requires scheduling a retention call within 24 hours led by the VP Business or a Co-Founder, with initial response dispatched within 1 hour. (4) Pricing & Negotiation: Both SOPs strictly prohibit negotiating on pricing as an immediate reflex, requiring teams to diagnose and address the root issue first.",
+      "reasoning": "Hop 1 analyzes RED account triggers and 48-hour actions in Account Lifecycle Management Section 07. Hop 2 analyzes P0 triggers, SLA table, and Scenario D in Client Escalation SOP Sections 3 & 7. Hop 3 cross-synthesizes the exact notification deadlines (30 min, 2 hours), executive involvement (VP Business, Co-Founders), and identical prohibitions (never discount/re-negotiate price as a reflex).",
+      "source_citations": [
+        "Account Lifecycle Management SOP, Section 07 (Red Account Playbook), page 11",
+        "Client Escalation & Conflict Management SOP, Section 3, 4, 7 (Scenario D), pages 2, 3, 6–7"
+      ]
+    },
+    {
+      "id": "Q22",
+      "category": "hard",
+      "hops": 3,
+      "scope": "cross_document",
+      "source_documents": ["Account Lifecycle Management SOP", "Client Escalation & Conflict Management SOP", "Solution Blueprint Framework"],
+      "question": "How do weekly Monday morning routines across Account Management, Solution Delivery, and Executive Escalation governance align into a single operational rhythm?",
+      "answer": "Every Monday morning: (1) Account Management: The Account Manager and Delivery Lead hold a mandatory 30–45 minute Internal Account Review covering delivery status, commercial health, relationship signals, weekly priorities, and red flags, while verifying invoice status (Account Lifecycle SOP Section 04). (2) Escalation Governance: The VP Business reviews the Weekly Escalation Report every Monday, actively flagging any open P0/P1 items directly to the Co-Founders (Client Escalation SOP Section 9). (3) Solution Delivery & Sprints: Delivery leads review ongoing Sprint milestones (e.g. 2-week Discovery, Sprint 0, Build Phase) established in the Solution Blueprint Framework (Section 05.C) to ensure deliverables and billing stay on track without scope leakage.",
+      "reasoning": "Hop 1 locates the Monday Internal Account Review agenda and non-negotiables in Account Lifecycle Management Section 04. Hop 2 locates the Monday VP Business Weekly Escalation Report review in Client Escalation SOP Section 9. Hop 3 links these weekly checks to the milestone delivery rhythm (bi-weekly demos, sprint reviews) outlined in Solution Blueprint Framework Section 05.C.",
+      "source_citations": [
+        "Account Lifecycle Management SOP, Section 04 (Weekly Operating System), page 6",
+        "Client Escalation & Conflict Management SOP, Section 9 (Escalation Tracking & Reporting), page 8",
+        "Solution Blueprint Framework, Section 05.C (Milestone Architecture), page 10"
+      ]
+    },
+    {
+      "id": "Q23",
+      "category": "hard",
+      "hops": 3,
+      "scope": "cross_document",
+      "source_documents": ["Solution Blueprint Framework", "Demo Saturday SOP", "Client Escalation & Conflict Management SOP"],
+      "question": "How does VAYUZ's proprietary product 'Social' (part of the Bitovn Suite) function as an external commercial offering versus its internal deployment in company operations?",
+      "answer": "Externally, as defined in the Solution Blueprint Framework (Section 04.03) and Client Escalation SOP (Section 1), 'Bitovn Suite' features 'Social' as an enterprise-grade social intranet and internal community platform with real-time communication (audio, video, text) sold to enterprise clients for knowledge sharing, employee onboarding, and organizational connectivity. Internally, as detailed in the Demo Saturday SOP (Sections 3 & 4), VAYUZ uses this exact product under the name 'VAYUZ Social' as the central hub to publish Demo Saturday events, distribute links, mandate employee RSVP attendance (clicking 'Attending' before Friday 6 PM), and publish event photos and Minutes of Meeting (MOM).",
+      "reasoning": "Hop 1 retrieves Bitovn Suite product capabilities (enterprise social intranet, real-time comms) from Solution Blueprint Framework Section 04. Hop 2 cross-checks Client Escalation SOP Section 1 where 'Bitovn Suite (Social, Bridge, Forms, Learning, Recruit)' is codified. Hop 3 discovers in Demo Saturday SOP Section 3 & 4.4 that VAYUZ deploys this software internally as 'VAYUZ Social' for event management and compulsory attendance tracking.",
+      "source_citations": [
+        "Solution Blueprint Framework, Section 04.03 (Bitovn Suite), page 7",
+        "Client Escalation & Conflict Management SOP, Section 1 (Purpose & Philosophy), page 1",
+        "Demo Saturday SOP, Section 3 & Section 4.4, pages 2, 4"
+      ]
+    },
+    {
+      "id": "Q24",
+      "category": "hard",
+      "hops": 3,
+      "scope": "cross_document",
+      "source_documents": ["Client Escalation & Conflict Management SOP", "Hiring SOP"],
+      "question": "If an engineering client demands a resource replacement under the Client Escalation SOP, what internal steps and timelines must be executed, and how does the replacement process interface with the standards of the Hiring SOP?",
+      "answer": "Under Client Escalation SOP (Scenario A), when a client demands a resource change: (1) Acknowledge immediately without defensiveness; schedule a client call within 24 hours to uncover gaps. (2) Conduct an internal performance assessment with the People Group. (3) If the concern is valid, initiate a transition plan within 5 business days with a knowledge transfer protocol. (4) The replacement resource sourced by the People Group must comply with the Hiring SOP: they must be a pass-out (not pursuing a degree), meet clear JD requirements, undergo L1 screening with mandatory camera and screen-shared coding rounds, have interview feedback recorded within 1 hour, and possess documented approval.",
+      "reasoning": "Hop 1 extracts Scenario A steps from Client Escalation SOP Section 7, noting the 24-hour call, People Group involvement, and 5-day transition SLA. Hop 2 bridges to the People Group's talent intake protocols in Hiring SOP Sections 2 and 3. Hop 3 confirms that replacement talent must fulfill all Hiring SOP prerequisites (pass-out, screen-share coding test, 1-hour feedback turnaround).",
+      "source_citations": [
+        "Client Escalation & Conflict Management SOP, Section 7 (Scenario A — Client Demands a Resource Change), page 6",
+        "Hiring SOP, Section 2 & Section 3, pages 2–3"
+      ]
+    },
+    {
+      "id": "Q25",
+      "category": "hard",
+      "hops": 4,
+      "scope": "cross_document",
+      "source_documents": [
+        "Solution Blueprint Framework",
+        "Account Lifecycle Management SOP",
+        "Demo Saturday SOP",
+        "Client Escalation & Conflict Management SOP"
+      ],
+      "question": "Trace an enterprise client account through its entire lifecycle from pre-sales discovery to contract renewal, specifying which SOP governs each phase, the key deliverables, the role of executive leadership, and how operational reviews connect across phases.",
+      "answer": "The enterprise account lifecycle spans five coordinated phases: (1) Pre-Sales & Blueprinting (Solution Blueprint Framework): BD leads with active listening; diagnoses root cause using the 3-Layer model; tags Solution Architect Ankit (SA) or Kushagra (AI) for large deals; mandates a paid 2-week Discovery Sprint; and proposes a Dedicated Team Retainer using 100% senior-grade squads. (2) Conversion & Onboarding (Account Lifecycle SOP - State 1): SOW is signed, team onboarded, internal and client kick-off completed, communication plan set, and first invoice raised within 30 days. (3) Steady-State Delivery & Internal Showcasing (Account Lifecycle SOP - States 2–4 & Demo Saturday SOP): Delivery Lead runs weekly ops calls; AM runs bi-weekly steering and tracks health scores weekly (Green 11–15, Amber 7–10). Project teams present milestones at monthly Demo Saturday calls (governed by Demo Saturday SOP) where Co-Founders Pooja Chauhan and Tejveer Singh provide strategic feedback. (4) Crisis Management & Conflict Resolution (Client Escalation SOP & Account Lifecycle State 7): If health score drops below 7 or client threatens exit, P0 is activated within 1 hour; VP Business notified in 30 mins; Co-Founders briefed in 2 hours; phone call held within 24 hours; and a formal recovery plan presented in 48 hours without price discounting reflexes. (5) Expansion & Renewal (Account Lifecycle SOP - States 5 & 6): AM presents Account Growth Roadmaps every 6 months, tracks expansion pipelines, and initiates formal renewal conversations 4–6 months prior to contract expiry, targeting signature 60 days before contract end.",
+      "reasoning": "Hop 1 maps pre-sales discovery, SA involvement, and 2-week Discovery Sprint from Solution Blueprint Framework. Hop 2 transitions to State 1 (Deal Conversion) and States 2–4 steady-state delivery cadences in Account Lifecycle Management. Hop 3 integrates internal engineering showcasing and Co-Founder feedback from Demo Saturday SOP. Hop 4 links health triggers to P0 crisis interventions in Client Escalation SOP, concluding with renewal locking in Account Lifecycle State 6.",
+      "source_citations": [
+        "Solution Blueprint Framework, Sections 01, 05, 07, pages 2, 9, 13–14",
+        "Account Lifecycle Management SOP, Sections 02, 04, 05, 07, pages 2–4, 6, 8, 11",
+        "Demo Saturday SOP, Section 3, pages 2–3",
+        "Client Escalation & Conflict Management SOP, Sections 3, 4, 7, pages 2–3, 6–7"
+      ]
+    }
+  ]
+}

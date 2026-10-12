@@ -60,6 +60,7 @@ export const generateAnswer = traceable(
 
     const finalAnswer = finalState?.generation || "";
     const citations = finalState?.citations || [];
+    const reasoningChain = finalState?.reasoningChain || null;
 
     // 4. Stream and Save
     onEvent({ type: "status", message: "Synthesizing final response..." });
@@ -77,6 +78,7 @@ export const generateAnswer = traceable(
         {
           citations,
           steps: traceSteps,
+          reasoningChain
         },
       );
     }
