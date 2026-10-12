@@ -584,6 +584,150 @@ export const PIPELINE = [
     ],
     date: "October 4, 2026",
   },
+  {
+    id: 50,
+    title: "Table of Contents (TOC) Hijacking & Search Pollution",
+    problem:
+      "The Table of Contents (TOC) at the start of documents was getting chunked like regular content. Because it contains chapter names and numbers, our chunker got tricked into thinking every TOC row was a real section header. This scrambled the whole outline—real sections got trapped under TOC headers, and user searches kept returning useless TOC page lists instead of real text.",
+    solution:
+      "We added a check to detect Table of Contents pages and tagged those chunks with an 'is_toc' flag. We filtered them completely out of database searches so they never show up in answers, and we stopped the chunker from using TOC lines to build the document's heading tree.",
+    terms: [
+      "Table of Contents Filter",
+      "Heading Hierarchy Guard",
+      "Search Noise Elimination",
+      "Breadcrumb Protection",
+      "Metadata Tagging",
+    ],
+    date: "October 10, 2026",
+  },
+  {
+    id: 51,
+    title: "Heading Leakage Across Standalone Forms & Attachments",
+    problem:
+      "When reports had standalone forms, factory test records, or appendices at the very end, our chunker blindly attached the previous chapter's heading to them. For example, a quality control test sheet on page 24 was falsely labeled as part of 'Section 2 Corporate Structure', creating confusing metadata and wrong reading order links.",
+    solution:
+      "We added document boundary detection. Whenever the system spots a clean break like a test certificate, form number, letterhead, or appendix (like 'Form FAT-07' or 'Appendix E'), it clears out the old chapter breadcrumbs and starts fresh with the attachment's own title. This stops earlier headings from leaking into separate documents.",
+    terms: [
+      "Document Boundary Detection",
+      "Heading Stack Reset",
+      "Form & Certificate Isolation",
+      "Context Leakage Prevention",
+      "Clean Attachment Breadcrumbs",
+    ],
+    date: "October 10, 2026",
+  },
+  {
+    id: 52,
+    title: "Batch Extraction Markdown Validation Crash",
+    problem:
+      "While uploading larger PDF files, the document background worker suddenly crashed with an error saying 'Document extraction returned invalid Markdown for batch 1'. The code was checking for a plain string in a way that failed when the batch extractor returned structured page objects, bringing the whole upload to a halt.",
+    solution:
+      "We fixed the batch extraction unpacking logic in ai.service.js to correctly pull out the markdown text for each page ID. This eliminated the false-alarm validation errors and made multi-page document ingestion reliable.",
+    terms: [
+      "Batch Extraction Resilience",
+      "Worker Error Handling",
+      "Markdown Validation",
+      "Page Unpacking",
+      "Ingestion Stability",
+    ],
+    date: "October 11, 2026",
+  },
+  {
+    id: 53,
+    title: "Multi-Hop Cross-References & Precedence Overrides",
+    problem:
+      "In technical and financial reports, critical answers are often scattered across different pages. One page says 'we fit 4 units in a container, see Table 4.2 for capacity', or a draft financial figure is later overridden by a 'Board Resolution' or 'Restatement Note' in the appendix. Standard vector search only found one half of the answer or gave an outdated draft number because it had no idea the appendix existed.",
+    solution:
+      "We taught the extractor to identify explicit cross-references (like §4.3, Table 4.2, Resolution 2025-14, TN-6) and automatically follow them during retrieval to pull in the companion chunks. We also gave the answer generator strict precedence rules so that final board resolutions and restatements always override older draft numbers.",
+    terms: [
+      "Cross-Reference Following",
+      "Multi-Hop Evidence Gathering",
+      "Precedence & Restatements",
+      "Board Resolution Overrides",
+      "Linked Information Retrieval",
+    ],
+    date: "October 11, 2026",
+  },
+  {
+    id: 54,
+    title: "Progressive Query Rewriting with Discovered Facts in CRAG",
+    problem:
+      "When an answer required multiple steps—like first finding a secret project code or customer name, and then finding that customer's test results—our CRAG query rewriter got stuck. Because it did not know what clues round 1 had already uncovered, it just kept rewording the original question in circles without making progress.",
+    solution:
+      "We connected the relevance grader and query rewriter so that any facts, names, or codes found in earlier search rounds are passed forward. The rewriter now takes the newly discovered clue and uses it to craft the next specific search query, successfully completing multi-step investigations.",
+    terms: [
+      "Stateful Query Rewriting",
+      "Fact Accumulation",
+      "Multi-Step Search Planning",
+      "Corrective RAG",
+      "Iterative Follow-Up Queries",
+    ],
+    date: "October 11, 2026",
+  },
+  {
+    id: 55,
+    title: "Context Token Explosion & Groq TPM Rate Limit (413 Error)",
+    problem:
+      "Because parent chunks are large (around 1,024 tokens each), blindly fetching every cross-reference, table continuation, and neighboring chunk caused retrieval to pull in 18+ chunks at once. This created a massive 9,361-token prompt that crashed into Groq's 8,000 Tokens Per Minute (TPM) limit on 120b models with an HTTP 413 error.",
+    solution:
+      "Identified the need for token budgeting and smart gating: restricting reference following to primary search seeds, ignoring non-essential diagram/figure links, and applying a hard context ceiling (capping context to ~4,000 tokens / 6 chunks) so the final prompt never overflows the LLM's rate limit.",
+    terms: [
+      "Token Budgeting",
+      "TPM Rate Limit Protection",
+      "Prompt Ceiling",
+      "Throttled Neighbor Expansion",
+      "Groq LPU Optimization",
+    ],
+    date: "October 11, 2026",
+  },
+  {
+    id: 56,
+    title: "Reference-Following Table of Contents (TOC) Hijack",
+    problem:
+      "While SQL hybrid searches filtered out Table of Contents chunks using the 'is_toc' metadata flag, our dynamic reference-following query in the repository fetched candidate matches using standard text containment without checking for TOC pages. When following an override citation such as 'see Appendix B', the Table of Contents—which naturally lists 'Appendix B' at the beginning of a line—scored highest in candidate ranking and was mistakenly pulled into LLM context instead of the actual substantive document.",
+    solution:
+      "We filtered out 'is_toc' chunks directly within the reference candidate evaluator in chat.repository.js. Reference resolution now bypasses index and table of contents pages completely, ensuring that followed citations only pull substantive definitions and body sections.",
+    terms: [
+      "Reference Resolution Guard",
+      "TOC Candidate Pruning",
+      "Neighbor Expansion Filtering",
+      "Substantive Chunk Isolation",
+      "Override Routing Accuracy",
+    ],
+    date: "October 11, 2026",
+  },
+  {
+    id: 57,
+    title: "Subheading Hierarchy Collapse & Local Reference Bleed",
+    problem:
+      "In documents with unnumbered subheadings (such as 'Certifications' or technical notes 'TN-1' through 'TN-8'), our heading detector assigned them a shallow fallback depth of 2. This mistakenly popped major chapter headers (e.g. popping Section 4 'Products and Technology'), breaking the heading breadcrumb tree. Simultaneously, AI-extracted cross-references were being attached at the page level, causing isolated sub-chunks to inherit references belonging to other sections on the same page.",
+    solution:
+      "We clamped unnumbered heading depths to a minimum level of 3 to preserve existing chapter hierarchy without popping parent sections. In addition, we added text verification to the chunker so chunks only retain cross-references that are explicitly mentioned within their own text passage, stopping cross-reference bleed across chunk boundaries.",
+    terms: [
+      "Heading Depth Clamping",
+      "Hierarchy Collapse Prevention",
+      "Cross-Reference Verification",
+      "Passage-Level Isolation",
+      "Breadcrumb Stack Integrity",
+    ],
+    date: "October 11, 2026",
+  },
+  {
+    id: 58,
+    title: "Trace Step Persistence & Historical Reasoning Observability",
+    problem:
+      "While live SSE events streamed execution traces (intent classification, query planning, rerank scores, and candidate grading) to the user during active generation, these multi-step traces were purely ephemeral. Upon browser refresh or when reviewing past chat sessions, users could only view the final raw text, losing all visibility into how the agent retrieved and reasoned through evidence.",
+    solution:
+      "We updated the chat generation workflow to accumulate non-token execution events into a structured trace array and persist them directly inside PostgreSQL under Message.metadata.steps. This gives the frontend full historical access to multi-hop reasoning steps, tool calls, and retrieval metrics on reload.",
+    terms: [
+      "Execution Trace Persistence",
+      "Audit Trail Storage",
+      "Historical Observability",
+      "Agent Reasoning Replay",
+      "PostgreSQL Metadata Storage",
+    ],
+    date: "October 11, 2026",
+  },
 ];
 
 export default PIPELINE;

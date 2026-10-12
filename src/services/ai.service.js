@@ -101,14 +101,39 @@ const RESPONSE_SCHEMA = {
         properties: {
           sourceId: { type: "string" },
           markdown: { type: "string" },
+          isDocumentBoundary: {
+            type: "boolean",
+            description: "True if this page begins a separate appendix, standalone letter, formal minutes, quality form, or annexure.",
+          },
+          boundaryTitle: {
+            type: "string",
+            description: "The title of the new sub-document if isDocumentBoundary is true (e.g., 'Appendix C - CFO Restatement Letter', 'Factory Acceptance Test Record'). Otherwise empty string.",
+          },
+          isTableOfContents: {
+            type: "boolean",
+            description: "True if this page is a Table of Contents or outline listing section titles and page numbers.",
+          },
+          references: {
+            type: "array",
+            items: { type: "string" },
+            description: "List of explicit and contextual cross-references on this page (e.g. 'Appendix C', 'Resolution 2025-14', 'Table 7.1', 'contract VS-GRID-0417', 'Board Minutes of 22 October 2025').",
+          },
         },
-        required: ["sourceId", "markdown"],
+        required: [
+          "sourceId",
+          "markdown",
+          "isDocumentBoundary",
+          "boundaryTitle",
+          "isTableOfContents",
+          "references",
+        ],
       },
     },
     continuationContext: { type: "string" },
   },
   required: ["documentTitle", "pages", "continuationContext"],
 };
+
 
 // Keep long text documents in small, ordered groups for the model.
 function textSources(text) {
@@ -154,7 +179,7 @@ async function docxContent(buffer) {
 export async function extractDocumentWithAI(
   buffer,
   source,
-  onEvent = () => {},
+  onEvent = () => { },
   { request, batchSize = 5, ai = getAI("extraction") } = {},
 ) {
   const { model, providerName } = ai;
@@ -194,7 +219,7 @@ export async function extractDocumentWithAI(
     id: "source-" + (index + 1),
     sequenceIndex: index,
     sourceKind: isPDF ? "page" : isImage ? "image" : "document",
-    sourcePageNumber: isPDF ? index + 1 : null,
+    sourcePageNumber: index + 1,
     parserPageNumber: null,
     text,
     textFormat: "markdown",
@@ -302,11 +327,11 @@ export async function extractDocumentWithAI(
             content: parts.map((part) =>
               part.inlineData
                 ? {
-                    type: "image_url",
-                    image_url: {
-                      url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
-                    },
-                  }
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+                  },
+                }
                 : { type: "text", text: part.text },
             ),
           },
@@ -331,20 +356,20 @@ export async function extractDocumentWithAI(
       if (choice?.finish_reason !== "stop")
         throw new Error(
           "Document extraction did not finish: " +
-            (choice?.finish_reason ?? "no output"),
+          (choice?.finish_reason ?? "no output"),
         );
       const result = JSON.parse(choice.message.content);
       const usage = response.usage
         ? {
-            promptTokenCount: response.usage.prompt_tokens,
-            candidatesTokenCount: response.usage.completion_tokens,
-            totalTokenCount: response.usage.total_tokens,
-          }
+          promptTokenCount: response.usage.prompt_tokens,
+          candidatesTokenCount: response.usage.completion_tokens,
+          totalTokenCount: response.usage.total_tokens,
+        }
         : null;
       const returned = result?.pages;
       const byId = new Map(
         Array.isArray(returned)
-          ? returned.map((page) => [page?.sourceId, page?.markdown])
+          ? returned.map((page) => [page?.sourceId, page])
           : [],
       );
       await onEvent({
@@ -365,7 +390,7 @@ export async function extractDocumentWithAI(
         !Array.isArray(returned) ||
         returned.length !== primary.length ||
         byId.size !== primary.length ||
-        primarySourceIds.some((id) => typeof byId.get(id) !== "string")
+        primarySourceIds.some((id) => typeof byId.get(id)?.markdown !== "string")
       ) {
         throw new Error(
           "Document extraction returned invalid Markdown for batch " + batch,
@@ -374,14 +399,20 @@ export async function extractDocumentWithAI(
       const batchTitle = result.documentTitle.trim();
       documentTitle ||= batchTitle;
       for (const item of primary) {
+        const pageData = byId.get(item.id) || {};
+        const rawMarkdown = pageData.markdown || "";
         const page = {
           ...item,
-          text: byId.get(item.id).replace(/^# (?!#)(.+)$/gm, (line, heading) => {
+          text: rawMarkdown.replace(/^# (?!#)(.+)$/gm, (line, heading) => {
             if (heading.trim() !== documentTitle) return "## " + heading;
             if (hasDocumentHeading) return "";
             hasDocumentHeading = true;
             return line;
           }),
+          isDocumentBoundary: pageData.isDocumentBoundary || false,
+          boundaryTitle: pageData.boundaryTitle || null,
+          isTableOfContents: pageData.isTableOfContents || false,
+          references: pageData.references || [],
           originalText: null,
           correctionBatch: batch,
         };
@@ -459,7 +490,7 @@ export async function extractDocument({
   filepath,
   filename,
   mimetype,
-  onEvent = () => {},
+  onEvent = () => { },
 } = {}) {
   for (const [name, value] of Object.entries({
     filepath,
@@ -501,23 +532,29 @@ export async function extractDocPages(filepath, mimetype) {
 }
 
 export const rerankChunks = async (query, chunks, topN = 3) => {
-  // Cohere expects an array of strings (the text of our chunks)
-  const documents = chunks.map((chunk) => chunk.searchText);
-  // console.log(documents, "documents");
-  const response = await cohere.rerank({
-    model: RERANK_MODEL,
-    query: query,
-    documents: documents,
-    topN: topN, // We only want the top 3 back
-  });
-  // console.log(response.results, "results");
-  const rerankedChunks = response.results.map((result) => ({
-    ...chunks[result.index],
-    rerankScore: result.relevanceScore,
-  }));
+  if (!chunks || chunks.length === 0) return [];
 
-  return rerankedChunks;
+  try {
+    const documents = chunks.map((chunk) => chunk.searchText || chunk.text);
+    const response = await cohere.rerank({
+      model: RERANK_MODEL,
+      query: query,
+      documents: documents,
+      topN: Math.min(topN, chunks.length),
+    });
+
+    const rerankedChunks = response.results.map((result) => ({
+      ...chunks[result.index],
+      rerankScore: result.relevanceScore,
+    }));
+
+    return rerankedChunks;
+  } catch (error) {
+    console.warn(`[Cohere Rerank] Warning: Reranking failed (${error.message}). Falling back to top search hits.`);
+    return chunks.slice(0, topN);
+  }
 };
+
 
 export const searchToolDefinition = {
   type: "function",

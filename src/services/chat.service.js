@@ -36,8 +36,16 @@ export const generateAnswer = traceable(
     // 3. Invoke the LangGraph State Machine
     onEvent({ type: "status", message: "Processing your question..." });
 
+    // Collect trace steps for historical viewing (exclude streaming tokens to keep DB light)
+    const traceSteps = [];
+    const eventCollector = (event) => {
+      onEvent(event); // Stream to UI in real time
+      if (event.type !== "token") {
+        traceSteps.push(event); // Save step in metadata
+      }
+    };
+
     // The graph handles the retrieval, grading, rewriting, and generating.
-    // It will return the final state payload once END is reached.
     const finalState = await cragPipeline.invoke(
       {
         question: question,
@@ -47,14 +55,15 @@ export const generateAnswer = traceable(
         userId: userId,
         historyText: historyText,
       },
-      { configurable: { onEvent } },
+      { configurable: { onEvent: eventCollector } },
     );
 
-    const finalAnswer = finalState?.generation;
-    // console.log(finalAnswer, "finalAnswer");
+    const finalAnswer = finalState?.generation || "";
+    const citations = finalState?.citations || [];
+
     // 4. Stream and Save
     onEvent({ type: "status", message: "Synthesizing final response..." });
-    const words = finalAnswer?.split(" ");
+    const words = finalAnswer.split(" ");
     for (const word of words) {
       onEvent({ type: "token", text: word + " " });
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -65,6 +74,10 @@ export const generateAnswer = traceable(
         conversationId,
         "assistant",
         finalAnswer,
+        {
+          citations,
+          steps: traceSteps,
+        },
       );
     }
     onEvent({ type: "done" });

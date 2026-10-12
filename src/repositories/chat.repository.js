@@ -51,7 +51,8 @@ export const searchSingleDocument = async (
         "parentId",
         ROW_NUMBER() OVER (ORDER BY "embedding" <=> ${vectorStr}::vector ASC) AS rank
       FROM "ChildChunk"
-      WHERE "documentId" = ${documentId}
+      WHERE "documentId" = ${documentId}        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'  -- <--- ADD HERE (line 55)
+
       ORDER BY "embedding" <=> ${vectorStr}::vector ASC
       LIMIT 20
     ),
@@ -64,6 +65,8 @@ export const searchSingleDocument = async (
       FROM "ChildChunk"
       WHERE "documentId" = ${documentId}
         AND to_tsvector('english', "searchText") @@ plainto_tsquery('english', ${queryText})
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'  -- <--- ADD HERE (line 55)
+
       ORDER BY ts_rank_cd(to_tsvector('english', "searchText"), plainto_tsquery('english', ${queryText})) DESC
       LIMIT 20
     ),
@@ -82,15 +85,19 @@ export const searchSingleDocument = async (
       LIMIT ${count}
     )
     SELECT   p.id,
-  p.text,
-  p."searchText",
-  p."documentId",
-  p."prevParentId",
-  p."nextParentId",
-  p.metadata,
-  r.total_score::double precision AS "retrievalScore"
+      p.text,
+      p."searchText",
+      p."documentId",
+      p."prevParentId",
+      p."nextParentId",
+      d."fileUrl",
+      d.filename AS "documentTitle",
+      p.metadata,
+      r.total_score::double precision AS "retrievalScore"
     FROM ranked_parents r
-    JOIN "ParentChunk" p ON r."parentId" = p.id;
+    JOIN "ParentChunk" p ON r."parentId" = p.id
+    JOIN "Document" d ON p."documentId" = d.id;
+
   `;
   return res;
 };
@@ -109,6 +116,8 @@ export const searchAllUserDocuments = async (
       FROM "ChildChunk" c
       JOIN "Document" d ON c."documentId" = d.id
       WHERE d."userId" = ${userId} AND d."status" = 'COMPLETED'
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+
       ORDER BY c."embedding" <=> ${vectorStr}::vector ASC
       LIMIT 20
     ),
@@ -122,6 +131,8 @@ export const searchAllUserDocuments = async (
       JOIN "Document" d ON c."documentId" = d.id
       WHERE d."userId" = ${userId} AND d."status" = 'COMPLETED'
         AND to_tsvector('english', c."searchText") @@ plainto_tsquery('english', ${queryText})
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+
       ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
       LIMIT 20
     ),
@@ -140,32 +151,48 @@ export const searchAllUserDocuments = async (
       LIMIT ${count}
     )
     SELECT   p.id,
-  p.text,
-  p."searchText",
-  p."documentId",
-  p."prevParentId",
-  p."nextParentId",
-  p.metadata,
-  r.total_score::double precision AS "retrievalScore"
+      p.text,
+      p."searchText",
+      p."documentId",
+      p."prevParentId",
+      p."nextParentId",
+      p.metadata,
+      d."fileUrl",
+      d.filename AS "documentTitle",
+      r.total_score::double precision AS "retrievalScore"
     FROM ranked_parents r
-    JOIN "ParentChunk" p ON r."parentId" = p.id;
+    JOIN "ParentChunk" p ON r."parentId" = p.id
+    JOIN "Document" d ON p."documentId" = d.id
+
   `;
 };
 
 export const getChunksByPage = async (documentId, pageNumber) => {
   const result = await prisma.$queryRaw`
-    SELECT id, text, "searchText", "documentId", metadata
-    FROM "ParentChunk" 
-    WHERE "documentId" = ${documentId}
-      AND (metadata->>'page_number')::int = ${pageNumber}
-    ORDER BY (metadata->>'chunk_index')::int ASC;
+    SELECT 
+      p.id, 
+      p.text, 
+      p."searchText", 
+      p."documentId", 
+      p.metadata,
+      d."fileUrl",
+      d.filename AS "documentTitle"
+    FROM "ParentChunk" p
+    JOIN "Document" d ON p."documentId" = d.id
+    WHERE p."documentId" = ${documentId}
+      AND (
+        (p.metadata->>'page_number')::int = ${pageNumber}
+        OR (p.metadata->'source_pages')::jsonb @> ${JSON.stringify([pageNumber])}::jsonb
+      )
+    ORDER BY (p.metadata->>'chunk_index')::int ASC;
   `;
   return result;
 };
 
-export const saveMessage = async (conversationId, role, content) => {
+
+export const saveMessage = async (conversationId, role, content, metadata = null) => {
   return await prisma.message.create({
-    data: { conversationId, role, content },
+    data: { conversationId, role, content, metadata },
   });
 };
 
@@ -178,7 +205,14 @@ export const getChatHistory = async (conversationId, limit = 6) => {
   // Reverse to chronological order and format for the LLM
   return messages
     .reverse()
-    .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    .map((m) => {
+      let content = m.content.trim();
+      // Truncate long assistant answers so history stays under ~200 tokens
+      if (m.role === "assistant" && content.length > 200) {
+        content = content.slice(0, 200).replace(/\n+/g, " ") + "...";
+      }
+      return `${m.role.toUpperCase()}: ${content}`;
+    })
     .join("\n");
 };
 
@@ -243,15 +277,88 @@ export const clearConversationMessages = async (userId, documentId) => {
   return result.count;
 };
 
-export async function getParentNeighbors(parents, userId, db = prisma) {
+export async function getParentNeighbors(parents, userId, question = null, db = prisma) {
+  const prismaClient = (db && typeof db === "object" && db.parentChunk) ? db : prisma;
   const result = [...parents];
   const addedIds = new Set(parents.map((parent) => parent.id));
 
-  // A table may resume after another section, so its other parents are not
-  // necessarily reading-order neighbors. Include them before nearby prose.
+  // Guard: Never allow total returned chunks to exceed 6 (~4,000 tokens)
+  const MAX_TOTAL_CHUNKS = 6;
+  if (result.length >= MAX_TOTAL_CHUNKS) return result;
+
+  // Only examine the top 2 reranked seed chunks to prevent cascading expansion
+  const seedParents = parents.slice(0, 2);
+  const questionLower = (question || "").toLowerCase();
+
+  // 1. Targeted Section Context: Immediate Siblings (prev/next) + Section Lead (Parent 0 for headers)
+  for (const parent of seedParents) {
+    if (result.length >= MAX_TOTAL_CHUNKS) break;
+    const sectionId = parent.metadata?.section_id;
+    if (!sectionId) continue;
+
+    // A) Immediate Siblings: Fetch predecessor (prevParentId) and successor (nextParentId)
+    const siblingIds = [parent.prevParentId, parent.nextParentId].filter(Boolean);
+    if (siblingIds.length > 0) {
+      const siblings = await prismaClient.parentChunk.findMany({
+        where: {
+          id: { in: siblingIds },
+          document: { userId, status: "COMPLETED" },
+        },
+        include: {
+          document: { select: { fileUrl: true, filename: true } },
+        },
+      });
+
+      for (const chunk of siblings) {
+        if (!addedIds.has(chunk.id) && result.length < MAX_TOTAL_CHUNKS) {
+          addedIds.add(chunk.id);
+          result.push({
+            ...chunk,
+            fileUrl: chunk.document?.fileUrl || parent.fileUrl || null,
+            documentTitle: chunk.document?.filename || parent.documentTitle || null,
+            retrievalOrigin: { type: "section_sibling", seedParentId: parent.id, sectionId },
+          });
+        }
+      }
+    }
+
+    // B) Section Lead (Parent 0): If anchor is a mid-section row, fetch the first chunk of the section for table headers & scope notes
+    const partIndex = Number(parent.metadata?.section_part_index ?? 0);
+    if (partIndex > 0 && result.length < MAX_TOTAL_CHUNKS) {
+      const sectionLead = await prismaClient.parentChunk.findFirst({
+        where: {
+          documentId: parent.documentId,
+          metadata: { path: ["section_id"], equals: sectionId },
+          document: { userId, status: "COMPLETED" },
+        },
+        orderBy: { createdAt: "asc" },
+        include: {
+          document: { select: { fileUrl: true, filename: true } },
+        },
+      });
+
+      if (sectionLead && !addedIds.has(sectionLead.id)) {
+        addedIds.add(sectionLead.id);
+        result.push({
+          ...sectionLead,
+          fileUrl: sectionLead.document?.fileUrl || parent.fileUrl || null,
+          documentTitle: sectionLead.document?.filename || parent.documentTitle || null,
+          retrievalOrigin: { type: "section_lead", seedParentId: parent.id, sectionId },
+        });
+      }
+    }
+  }
+
+  // 2. Table Continuation: If a table crossed page/section boundaries, fetch related table part
   const tableKeys = new Map();
-  for (const parent of parents) {
-    for (const tableId of parent.metadata?.linked_table_ids ?? []) {
+  for (const parent of seedParents) {
+    const tableIds = [
+      ...(parent.metadata?.table_ids ?? []),
+      ...(parent.metadata?.linked_table_ids ?? []),
+    ];
+
+    for (const tableId of tableIds) {
+      if (!tableId) continue;
       tableKeys.set(`${parent.documentId}:${tableId}`, {
         documentId: parent.documentId,
         tableId,
@@ -259,64 +366,118 @@ export async function getParentNeighbors(parents, userId, db = prisma) {
       });
     }
   }
+
   for (const { documentId, tableId, seedParentId } of tableKeys.values()) {
-    if (result.length >= 24) break;
-    const related = await db.parentChunk.findMany({
+    if (result.length >= MAX_TOTAL_CHUNKS) break;
+
+    const related = await prismaClient.parentChunk.findMany({
       where: {
         documentId,
-        metadata: { path: ["linked_table_ids"], array_contains: [tableId] },
         document: { userId, status: "COMPLETED" },
+        OR: [
+          { metadata: { path: ["table_ids"], array_contains: [tableId] } },
+          { metadata: { path: ["linked_table_ids"], array_contains: [tableId] } },
+        ],
       },
-      take: 24,
+      include: {
+        document: { select: { fileUrl: true, filename: true } },
+      },
+      take: 2,
     });
-    related.sort((left, right) =>
-      (left.metadata?.chunk_index ?? 0) - (right.metadata?.chunk_index ?? 0),
-    );
+
     for (const parent of related) {
-      if (result.length >= 24) break;
-      if (!addedIds.has(parent.id)) {
+      if (!addedIds.has(parent.id) && result.length < MAX_TOTAL_CHUNKS) {
         addedIds.add(parent.id);
         result.push({
           ...parent,
+          fileUrl: parent.document?.fileUrl || null,
+          documentTitle: parent.document?.filename || null,
           retrievalOrigin: { type: "table_continuation", seedParentId, tableId },
         });
       }
     }
   }
 
-  for (const parent of parents) {
-    const neighborIds = [parent.prevParentId, parent.nextParentId].filter(
-      Boolean,
-    );
+  // 3. Selective Reference-Following: Follow citations ONLY when relevant or high-value override
+  const referencedTargets = new Map();
 
-    if (neighborIds.length === 0) continue;
+  for (const parent of seedParents) {
+    const refs = parent.metadata?.references || parent.metadata?.cross_references || [];
+    for (const ref of refs) {
+      if (!ref || typeof ref !== "string") continue;
+      const cleanRef = ref.trim();
+      const refLower = cleanRef.toLowerCase();
 
-    const neighbors = await db.parentChunk.findMany({
+      // Determine relevance:
+      // A) High-value overrides: Resolutions, Restatements, Amendments, Appendices, Technical Notes
+      const isOverride = /(resolution|restatement|amendment|appendix|annex|addendum|tn-\d+)/i.test(cleanRef);
+
+      // B) Question topic match: Does the question specifically cite or ask about this reference?
+      const idMatch = cleanRef.match(/(?:figure|table|note|tn|form|resolution|appendix|section|§)\s*([a-z0-9\.\-_]+)/i);
+      const identifier = idMatch ? idMatch[1].toLowerCase() : refLower;
+
+      const isCitedInQuestion = questionLower.includes(refLower) ||
+        (identifier.length >= 2 && questionLower.includes(identifier));
+
+      // Skip generic figure/table mentions unless it is an override or matches the user query
+      if (!isOverride && !isCitedInQuestion) {
+        continue;
+      }
+
+      const searchPattern = cleanRef.startsWith("§") ? cleanRef.slice(1).trim() : cleanRef;
+      if (searchPattern.length >= 2) {
+        referencedTargets.set(`${parent.documentId}:${searchPattern.toLowerCase()}`, {
+          documentId: parent.documentId,
+          searchPattern,
+          originalRef: cleanRef,
+          seedParentId: parent.id,
+        });
+      }
+    }
+  }
+
+  // Cap added reference chunks to at most 2 chunks total
+  let addedRefCount = 0;
+  const MAX_REF_CHUNKS = 2;
+
+  for (const { documentId, searchPattern, originalRef, seedParentId } of referencedTargets.values()) {
+    if (result.length >= MAX_TOTAL_CHUNKS || addedRefCount >= MAX_REF_CHUNKS) break;
+
+    const matched = await prismaClient.parentChunk.findMany({
       where: {
-        id: { in: neighborIds },
-        documentId: parent.documentId,
-
-        // Check access inside the database query.
-        document: {
-          userId,
-          status: "COMPLETED",
-        },
+        documentId,
+        document: { userId, status: "COMPLETED" },
+        searchText: { contains: searchPattern, mode: "insensitive" },
       },
+      include: {
+        document: { select: { fileUrl: true, filename: true } },
+      },
+      take: 5, // Fetch candidates to pick the true definition
     });
+    // 2. Rank candidates: Prioritize true definitions over passing mentions.
+    // Chunks where searchPattern is in the Heading or starts the passage rank highest.
+    const contentMatched = matched.filter((c) => !c.metadata?.is_toc);
 
-    for (const neighbor of neighbors) {
-      const sameSection =
-        neighbor.metadata?.section_id === parent.metadata.section_id;
-
-      if (sameSection && !addedIds.has(neighbor.id) && result.length < 24) {
-        addedIds.add(neighbor.id);
+    const patternLower = searchPattern.toLowerCase();
+    contentMatched.sort((a, b) => {
+      const aHeading = (a.metadata?.heading_path || []).join(" ").toLowerCase();
+      const bHeading = (b.metadata?.heading_path || []).join(" ").toLowerCase();
+      const aInHeading = aHeading.includes(patternLower) ? 3 : 0;
+      const bInHeading = bHeading.includes(patternLower) ? 3 : 0;
+      const aStarts = (a.text || "").trim().toLowerCase().startsWith(patternLower) ? 2 : 0;
+      const bStarts = (b.text || "").trim().toLowerCase().startsWith(patternLower) ? 2 : 0;
+      return (bInHeading + bStarts) - (aInHeading + aStarts);
+    });
+    // 3. Take the top-ranked definition chunk
+    for (const chunk of contentMatched.slice(0, 1)) {
+      if (!addedIds.has(chunk.id) && result.length < MAX_TOTAL_CHUNKS && addedRefCount < MAX_REF_CHUNKS) {
+        addedIds.add(chunk.id);
+        addedRefCount++;
         result.push({
-          ...neighbor,
-          retrievalOrigin: {
-            type: "neighbor",
-            seedParentId: parent.id,
-            direction: neighbor.id === parent.prevParentId ? "previous" : "next",
-          },
+          ...chunk,
+          fileUrl: chunk.document?.fileUrl || null,
+          documentTitle: chunk.document?.filename || null,
+          retrievalOrigin: { type: "reference_following", seedParentId, reference: originalRef },
         });
       }
     }

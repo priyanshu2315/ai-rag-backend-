@@ -37,4 +37,10 @@ Do not copy text from one page into another page's sourceId.
 Return documentTitle, pages, and continuationContext as requested by the schema.
 The # title must match documentTitle exactly, including capitalization.
 continuationContext should briefly name the active section and any open table.
+
+Document Structure and Cross-References:
+- Set isDocumentBoundary to true if this page starts a distinct appendix, letterhead, formal minutes, or standalone form/record. Provide its title in boundaryTitle (e.g. "Appendix C - CFO restatement letter", "FACTORY ACCEPTANCE TEST RECORD").
+- Set isTableOfContents to true if this page contains a Table of Contents or index of pages.
+- In references, extract any explicit and semantic citations mentioned on the page (such as "Appendix C", "Resolution 2025-14", "Table 7.1", "contract VS-GRID-0417", "Board Minutes"). If none, return an empty array.
+
 `;
