@@ -109,18 +109,27 @@ export const searchAllUserDocuments = async (
   queryText,
   count = RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
 ) => {
+  const vectorLimit = Math.max(30, RAG_CONFIG.SEARCH_VECTOR_MATCH_LIMIT);
+  const keywordLimit = Math.max(30, RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT);
+  const candidateCount = Math.max(20, count);
+
   return await prisma.$queryRaw`
-    WITH vector_matches AS (
+    WITH active_docs AS (
+      SELECT DISTINCT ON (filename) id
+      FROM "Document"
+      WHERE "userId" = ${userId} AND "status" = 'COMPLETED'
+      ORDER BY filename, "createdAt" DESC
+    ),
+    vector_matches AS (
       SELECT 
         c."parentId",
         ROW_NUMBER() OVER (ORDER BY c."embedding" <=> ${vectorStr}::vector ASC) AS rank
       FROM "ChildChunk" c
-      JOIN "Document" d ON c."documentId" = d.id
-      WHERE d."userId" = ${userId} AND d."status" = 'COMPLETED'
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+      JOIN active_docs ad ON c."documentId" = ad.id
+      WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
 
       ORDER BY c."embedding" <=> ${vectorStr}::vector ASC
-      LIMIT ${RAG_CONFIG.SEARCH_VECTOR_MATCH_LIMIT}
+      LIMIT ${vectorLimit}
     ),
     keyword_matches AS (
       SELECT 
@@ -129,18 +138,17 @@ export const searchAllUserDocuments = async (
           ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
         ) AS rank
       FROM "ChildChunk" c
-      JOIN "Document" d ON c."documentId" = d.id
-      WHERE d."userId" = ${userId} AND d."status" = 'COMPLETED'
-        AND to_tsvector('english', c."searchText") @@ plainto_tsquery('english', ${queryText})
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+      JOIN active_docs ad ON c."documentId" = ad.id
+      WHERE to_tsvector('english', c."searchText") @@ plainto_tsquery('english', ${queryText})
+        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
 
       ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
-      LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
+      LIMIT ${keywordLimit}
     ),
     combined_scores AS (
-      SELECT "parentId", (1.0 / (60 + rank)) AS score FROM vector_matches
+      SELECT "parentId", (1.0 / (10 + rank)) AS score FROM vector_matches
       UNION ALL
-      SELECT "parentId", (1.0 / (60 + rank)) AS score FROM keyword_matches
+      SELECT "parentId", (1.0 / (10 + rank)) AS score FROM keyword_matches
     ),
     ranked_parents AS (
       SELECT 
@@ -149,7 +157,7 @@ export const searchAllUserDocuments = async (
       FROM combined_scores
       GROUP BY "parentId"
       ORDER BY total_score DESC
-      LIMIT ${count}
+      LIMIT ${candidateCount}
     )
     SELECT   p.id,
       p.text,
@@ -163,8 +171,7 @@ export const searchAllUserDocuments = async (
       r.total_score::double precision AS "retrievalScore"
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id
-    JOIN "Document" d ON p."documentId" = d.id
-
+    JOIN "Document" d ON p."documentId" = d.id;
   `;
 };
 
