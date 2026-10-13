@@ -389,6 +389,69 @@ Column key notes.`,
   assert.match(sec5Page4.text, /Column B — fiscal 2023 revenue \(K TC\): 9,990/);
 });
 
+test("PDF contents fallback retains Appendix B through the next extraction batch", async () => {
+  let requests = 0;
+  const extraction = await extract(tinyPDF(3), source("report.pdf", "application/pdf"), () => {}, {
+    batchSize: 1,
+    request: async (options) => {
+      requests++;
+      const schema = options.response_format.json_schema.schema;
+      assert.equal(schema.properties.isTableOfContents, undefined);
+      assert.ok(schema.required.includes("tableOfContents"));
+      const input = JSON.parse(options.messages[1].content[0].text);
+      const sourceId = input.primarySourceIds[0];
+      const isContents = sourceId === "source-1";
+      return { choices: [{ finish_reason: "stop", message: { content: JSON.stringify({
+        documentTitle: "Report", continuationContext: "Board minutes", tableOfContents: [],
+        pages: [{ sourceId,
+          markdown: isContents
+            ? "## Table of Contents\n\nAppendix B - Board minutes (2 pages) . . . . . 2"
+            : "## MINUTES OF A MEETING\n\n### 4. DELEGATION\n\nCEO limit is USD 12,000,000.",
+          isTableOfContents: isContents,
+          isDocumentBoundary: !isContents,
+          boundaryTitle: "Minutes excerpt",
+          references: [],
+        }],
+      }) } }] };
+    },
+  });
+  assert.equal(requests, 3);
+  assert.equal(extraction.documentOutline[0].targetPage, 2);
+  assert.equal(extraction.documentOutline[0].pageCount, 2);
+  const parents = await buildDocumentChunks(extraction, "doc", "report.pdf", () => {}, {
+    measure: async (text) => ({ tokenCount: Math.ceil(text.length / 4), tokenLimit: 256 }),
+  });
+  for (const parent of parents.filter((item) => item.metadata.page_number >= 2)) {
+    for (const chunk of [parent, ...parent.children]) {
+      assert.equal(chunk.metadata.heading_path[0], "Appendix B - Board minutes (2 pages)");
+    }
+  }
+});
+
+test("focused contents retry uses the same model and records its usage", async () => {
+  let calls = 0;
+  const extraction = await extract(tinyPDF(1), source("report.pdf", "application/pdf"), () => {}, {
+    request: async (options) => {
+      calls++;
+      assert.equal(options.model, testAI.model);
+      if (options.response_format.json_schema.name === "contents_outline") {
+        const sources = JSON.parse(options.messages[1].content);
+        assert.deepEqual(sources, [{ sourceId: "source-1", markdown: "## Table of Contents\n\nAppendix X - Notes 1" }]);
+        return { choices: [{ finish_reason: "stop", message: { content: JSON.stringify({
+          tableOfContents: [{ sectionCode: "Appendix X", title: "Notes", targetPage: 1, pageCount: 1 }],
+        }) } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } };
+      }
+      return { choices: [{ finish_reason: "stop", message: { content: JSON.stringify({
+        documentTitle: "Report", continuationContext: "Contents", tableOfContents: [],
+        pages: [{ sourceId: "source-1", markdown: "## Table of Contents\n\nAppendix X - Notes 1", isTableOfContents: true }],
+      }) } }] };
+    },
+  });
+  assert.equal(calls, 2);
+  assert.equal(extraction.documentOutline[0].sectionCode, "Appendix X");
+  assert.equal(extraction.correction.batches[0].outlineRecoveryUsage.total_tokens, 15);
+});
+
 function tinyPDF(pageCount = 1) {
   const content = "BT /F1 18 Tf 40 180 Td (Original source) Tj ET";
   const fontId = pageCount + 3;

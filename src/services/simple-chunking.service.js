@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
+import { appendixAtPage } from "./document-outline.service.js";
 
 const markdownParser = unified().use(remarkParse).use(remarkGfm);
 const VERSION = "ai-corrected-markdown-v3";
@@ -175,11 +176,17 @@ export function splitMarkdownSections(extraction) {
     sections.push(current);
   }
   const documentOutline = extraction.documentOutline || [];
+  const totalPages = extraction.pageCount;
 
   for (const page of extraction.pages) {
     let beforeFirstHeading = true;
-    // Check if this page is a separate appendix, memorandum, or form
-    const boundaryTitle = detectDocumentBoundary(page, documentOutline);
+    const appendix = Number.isSafeInteger(totalPages)
+      ? appendixAtPage(documentOutline, page.sourcePageNumber, totalPages)
+      : null;
+    // An established appendix range takes priority over an AI boundary flag.
+    const boundaryTitle = appendix
+      ? (headingStack[0]?.title === appendix.title ? null : appendix.title)
+      : detectDocumentBoundary(page, documentOutline);
 
     if (boundaryTitle) {
       // Pop all sections and start a fresh main section (level 2)
@@ -221,6 +228,7 @@ export function splitMarkdownSections(extraction) {
         if ((beforeFirstHeading || isSameSection) && rows.length > 0) {
           const candidates = tables.filter((candidate) =>
             candidate.labels.length === labels.length &&
+            (!appendix || candidate.headingStack[0]?.title === appendix.title) &&
             candidate.pageIndex < page.sequenceIndex &&
             candidate.pageIndex >= page.sequenceIndex - 2,
           );
@@ -271,7 +279,10 @@ export function splitMarkdownSections(extraction) {
         if (!isDocumentTitle) {
           const hasActiveBoundary = headingStack.some((h) => h.isBoundary);
 
-          const effectiveLevel = getHeadingLevel(title, node.depth, hasActiveBoundary);
+          // A repeated appendix heading must not pop its resolved container.
+          const effectiveLevel = appendix
+            ? Math.max(3, getHeadingLevel(title, node.depth, hasActiveBoundary))
+            : getHeadingLevel(title, node.depth, hasActiveBoundary);
 
           // Pop any headings of equal or deeper level
           headingStack = headingStack.filter((h) => h.level < effectiveLevel);

@@ -45,8 +45,13 @@ The # title must match documentTitle exactly, including capitalization.
 continuationContext should briefly name the active section and any open table.
 
 DOCUMENT STRUCTURE, TABLE OF CONTENTS & CROSS-REFERENCES:
-- Set isTableOfContents to true if this page contains a Table of Contents, Index, or document outline.
-  In tableOfContents, extract EVERY entry with its sectionCode (e.g. 'Appendix B', 'SECTION-4', 'APPENDIX-III'), its description/title, and targetPage or pageCount.
+- Set pages[].isTableOfContents for each individual page containing a Table of Contents, Index, or document outline.
+  At the response root, tableOfContents must collect EVERY entry from ALL contents pages in this batch,
+  with sectionCode (e.g. 'Appendix B', 'SECTION-4', 'APPENDIX-III'), title, targetPage and pageCount.
+  Copy printed page numbers and explicit page counts exactly; use null when unknown.
+  Do not base this array only on the final page of the batch. Return [] only when no contents entries occur.
 - Set isDocumentBoundary to true if this page starts a distinct appendix, letterhead, formal minutes, or standalone form/record. Provide its title in boundaryTitle (e.g. "Appendix B - Board minutes", "Appendix C - CFO restatement letter", "FACTORY ACCEPTANCE TEST RECORD").
+- A continuation of an appendix, letter, minutes, or form is not a new document boundary.
+  Set isDocumentBoundary to false and preserve its existing appendix identity across page breaks.
 - In references, extract any explicit and semantic citations mentioned on the page (such as "Appendix C", "Resolution 2025-14", "Table 7.1", "contract VS-GRID-0417", "Board Minutes"). If none, return an empty array.
 `;

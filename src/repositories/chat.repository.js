@@ -449,16 +449,26 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
       // Determine relevance:
       // A) High-value overrides: Resolutions, Restatements, Amendments, Appendices, Technical Notes
       const isOverride = /(resolution|restatement|amendment|appendix|annex|addendum|tn-\d+)/i.test(cleanRef);
-
       // B) Question topic match: Does the question specifically cite or ask about this reference?
       const idMatch = cleanRef.match(/(?:figure|table|note|tn|form|resolution|appendix|section|§)\s*([a-z0-9\.\-_]+)/i);
       const identifier = idMatch ? idMatch[1].toLowerCase() : refLower;
-
       const isCitedInQuestion = questionLower.includes(refLower) ||
         (identifier.length >= 2 && questionLower.includes(identifier));
-
-      // Skip generic figure/table mentions unless it is an override or matches the user query
-      if (!isOverride && !isCitedInQuestion) {
+      // C) Navigation / Guide reference: If the seed chunk is a Reading Guide / Table of Contents / Where to Find What,
+      // or if the text surrounding the reference in the seed chunk matches terms in the question:
+      const isGuideOrToc = parent.metadata?.is_toc ||
+        /(reading guide|where to find what|table of contents|contents|document control)/i.test(parent.text || "");
+      let isRelevantGuideRef = false;
+      if (isGuideOrToc) {
+        const parentLines = (parent.text || "").split("\n");
+        const lineWithRef = parentLines.find((l) => l.toLowerCase().includes(refLower));
+        if (lineWithRef) {
+          const lineWords = lineWithRef.toLowerCase().split(/\W+/).filter((w) => w.length >= 4);
+          isRelevantGuideRef = lineWords.some((w) => questionLower.includes(w));
+        }
+      }
+      // Skip generic figure/table mentions unless it is an override, matches the query, or is a relevant guide pointer
+      if (!isOverride && !isCitedInQuestion && !isRelevantGuideRef) {
         continue;
       }
 

@@ -71,9 +71,19 @@ Rules:
 3. COMPOUND QUESTIONS (BASELINE STATUS + DATE/CHANGE): If a question asks both for a current entity/role AND whether it changes on a specific date (e.g. "Who is [Role/Entity], and does that change on [Date]?"), emit TWO parallel queries:
    - Query 1: Search for the current entity or role assignment
    - Query 2: Search for updates, amendments, or changes on that date
-4. INDEPENDENT FACTS: If the question asks for multiple independent facts, return up to 3 separate queries.
+// In src/services/crag.service.js (around line 75)
+4. INDEPENDENT FACTS: If the question asks for multiple independent, unrelated facts (e.g. "What was Helios revenue and what was SwiftRoute attrition?"), return separate parallel queries.
+5. MULTI-FACET / RELATIONAL QUESTIONS: If a question asks for a chain of relationships (e.g. "Find the owner of X, who they report to, and which committee that boss sits on?"):
+   - Split the question into targeted parallel sub-queries covering each required relationship:
+     - Query 1: Search for the specific project/step and its owner/identifier.
+     - Query 2: Search for that division head's reporting line and management structure.
+     - Query 3: Search for board committee memberships and director roles.
+   - Do NOT cram the root project name into every subquery (management/governance sections do not mention specific operational projects).
+
+
 
 Respond ONLY with JSON: {"queries": ["query 1", ...]}`;
+
 
 
 
@@ -494,14 +504,21 @@ ${numberedChunks}
 Rules:
 1. Keep a chunk if it provides ANY fact, number, rate, date, name or definition needed for ANY part of the answer.
 2. Keep chunks marked (Table Continuation) or from the same section that provide necessary rows or context.
-3. Check completeness: Does the combination of previously verified facts and newly kept chunks provide enough information to fully answer the question, or are key facts still completely missing from the document text?
-4. Multi-hop follow-up: If answering requires multiple steps and an earlier search discovered a specific entity, person, customer, or code, formulate missing_search_query using that specific entity name to find the missing details.
+3. Check completeness:
+   - Carefully identify ALL sub-questions and relationship hops in the Question.
+   - For multi-hop questions, you MUST verify that the explicit answer to EVERY requested hop or relationship is stated directly in the kept chunks.
+   - If a chunk points or cross-references another section for the answer (e.g. "see Section X for details") but that section's text is not in the chunks, it is INCOMPLETE. Set "is_complete": false.
+   - Merely seeing related keywords, titles, or entity names without the explicit factual connection asked by the user is NOT sufficient.
+4. Multi-hop follow-up: If any required fact or hop is missing:
+   - Set "is_complete": false.
+   - Formulate "missing_search_query" as a concise, targeted search using the concrete entity names, roles, IDs, or terms discovered from earlier chunks to retrieve the missing connection.
 Respond ONLY with a JSON object:
 {
   "relevant_chunks": [1, 3],
   "is_complete": true or false,
   "missing_search_query": "specific search phrase for what is still missing (or empty string if complete)"
 }`;
+
 
   let keep;
   let isComplete = true;
@@ -529,8 +546,11 @@ Respond ONLY with a JSON object:
     const parsed = JSON.parse(response.choices[0].message.content);
 
     keep = new Set((parsed.relevant_chunks || []).map(Number));
-    isComplete = parsed.is_complete !== false;
-    missingQuery = parsed.missing_search_query || "";
+    const hasMissingQuery =
+      typeof parsed.missing_search_query === "string" &&
+      parsed.missing_search_query.trim().length > 3;
+    isComplete = parsed.is_complete === true && !hasMissingQuery;
+    missingQuery = (parsed.missing_search_query || "").trim();
   } catch (error) {
     console.error(`[CRAG] Grader failed, keeping all chunks:`, error.message);
     keep = new Set(state.documents.slice(0, RAG_CONFIG.GRADER_FALLBACK_CHUNKS).map((_, i) => i + 1));
