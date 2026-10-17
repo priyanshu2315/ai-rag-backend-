@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocuMind Full Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c11;
+    --panel: #0f1218;
+    --line: #1d222c;
+    --text: #e9edf4;
+    --muted: #8b95a6;
+    --mono: #a9b8cc;
+    --green: #5fd38d;
+    --amber: #f0b64a;
+    --teal: #43dcc4;
+    --purple: #b98cff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); }
+  #map { display: block; width: 100vw; height: 100vh; cursor: grab; touch-action: none; user-select: none; }
+  #map.dragging { cursor: grabbing; }
+
+  .lbl { font-family: "IBM Plex Sans", system-ui, sans-serif; font-weight: 600; font-size: 14px; fill: #e9edf4; }
+  .lbl.off { fill: #7d8696; }
+  .fn { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 11.5px; fill: #a9b8cc; }
+  .fn.off { fill: #6b7382; }
+  .chip { font-family: "IBM Plex Sans", system-ui, sans-serif; font-weight: 600; font-size: 11px; letter-spacing: 0.12em; fill: #e9edf4; }
+  .laneNo { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 22px; font-weight: 500; opacity: .45; }
+  .badge { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.08em; font-weight: 500; }
+  .glabel { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.04em; }
+  .alb { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 11.5px; fill: #c3cad6; paint-order: stroke; stroke: #0a0c11; stroke-width: 5px; stroke-linejoin: round; }
+  .ice { font-family: "IBM Plex Sans", system-ui, sans-serif; font-weight: 600; font-size: 12px; letter-spacing: 0.14em; fill: #e9edf4; }
+
+
+</style>
+</head>
+<body>
+
+<svg id="map" role="img" preserveAspectRatio="xMidYMid meet" aria-label="DocuMind full architecture: a small chat interface at the top left; around it ten lanes in two columns covering the API gateway, document extraction, structure and chunking, embedding and summarizing, data and model infrastructure, the question gate, the LangGraph reasoning graph, the retrieval engine, evidence checks and answer delivery, and quality tooling."></svg>
+
+<script>
+(() => {
+  // Two columns of lanes: uploads on the left, questions on the right.
+  const W = 224, H = 112, PX = 254, RG = 44, X0 = 80, COLS = 4, LANE_GAP = 50;
+  const CARDS_R = X0 + (COLS - 1) * PX + W;
+  const LANE_X = X0 - 24, LANE_R = CARDS_R + 24, LANE_W = LANE_R - LANE_X;
+  const COL_W = LANE_R + 88;
+  const COL_X = [0, COL_W + 40];
+  const COL_TOP = [230, 40];
+  const CANVAS_W = COL_X[1] + COL_W;
+  // Gutter tracks are relative to the column a node sits in.
+  const Lx = (n) => n.lane.ox + 58;
+  const Rx = (n, k) => n.lane.ox + LANE_R + 20 * k;
+
+  const C = { gray: "#a3acbb", green: "#5fd38d", blue: "#6fa8ff", amber: "#f0b64a", purple: "#b98cff", teal: "#43dcc4", orange: "#ff9f6b", red: "#ff6b6b" };
+  const BADGES = {
+    llm: ["LLM", C.purple], ml: ["ML MODEL", C.teal], db: ["POSTGRES", C.blue],
+    redis: ["REDIS", "#ff8a8a"], store: ["STORAGE", C.gray], sse: ["LIVE SSE", C.amber],
+  };
+  const STATUS = { b: "built", p: "part", m: "miss" };
+
+  // [id, column, row, title, detail lines, status, badge]
+  const LANES = [
+    { col: 0, title: "API GATEWAY", sub: "Express · authenticated routes", color: C.gray, rows: 1, nodes: [
+      ["api", 0, 0, "Server & auth", ["JWT · accounts · health", "inspect / delete documents"], "b"],
+      ["up", 1, 0, "Upload file", ["in-memory upload", "202 + document record"], "b"],
+      ["prog", 2, 0, "Live progress", ["Redis Pub/Sub → SSE", "live only · no replay"], "p", "sse"],
+      ["ask", 3, 0, "Chat API", ["ask · fetch · clear", "owner + status checks"], "b", "sse"],
+    ]},
+    { col: 0, title: "INGESTION · EXTRACT", sub: "document worker", color: C.green, rows: 1, nodes: [
+      ["store", 0, 0, "Store & queue", ["Supabase file + DB record", "BullMQ / Redis → worker"], "b", "store"],
+      ["adapters", 1, 0, "Validate & adapt", ["PDF · DOCX · text · images", "text + visual sources"], "b"],
+      ["gem", 2, 0, "Gemini extraction", ["page JSON + Markdown", "carry batch context"], "b", "llm"],
+      ["outline", 3, 0, "Normalize & outline", ["titles · flags · appendices", "PDF outline: retry or fail"], "b"],
+    ]},
+    { col: 0, title: "STRUCTURE & CHUNKING", sub: "simple-chunking", color: C.blue, rows: 1, nodes: [
+      ["sections", 0, 0, "Parse & section", ["Markdown AST + boundaries", "AI heading depth may vary"], "p"],
+      ["rows", 1, 0, "Prepare tables", ["recognize continuations", "repeat labels · split rows"], "b"],
+      ["chunks", 2, 0, "Parent + child chunks", ["parents ≤ 1,024 tokens", "children ≤ 256 tokens"], "b", "ml"],
+      ["context", 3, 0, "Attach context", ["title · headings · source", "table / section references", "reading-order links"], "b"],
+    ]},
+    { col: 0, title: "EMBED · SAVE · SUMMARIZE", sub: "document worker", color: C.green, rows: 1, nodes: [
+      ["emb", 0, 0, "Check & embed", ["≤ 256 · never truncate", "MiniLM · normalized 384D"], "b", "ml"],
+      ["save", 1, 0, "Save chunks", ["parents + children", "one DB transaction"], "b", "db"],
+      ["ready", 2, 0, "Open for questions", ["document: COMPLETED", "summary: PROCESSING"], "b"],
+      ["summary", 3, 0, "Build summary", ["batch → merged summary", "failure keeps chunks usable"], "b", "llm"],
+    ]},
+    { col: 1, title: "QUESTION · GATE & MEMORY", sub: "chat service", color: C.amber, rows: 2, nodes: [
+      ["own", 0, 0, "Access & SSE", ["owner + readiness checks", "open answer stream"], "b", "sse"],
+      ["fw", 1, 0, "Injection firewall", ["SAFE / MALICIOUS", "bad JSON → SAFE"], "p", "llm"],
+      ["hist", 2, 0, "Conversation memory", ["save question · load last 6", "prior answers abbreviated"], "b", "db"],
+      ["inv", 3, 0, "Invoke & trace", ["run CRAG graph", "events → SSE + saved trace"], "b"],
+      ["refuse", 1, 1, "Refuse & save", ["stream fixed refusal", "save both messages"], "b"],
+    ]},
+    { col: 1, title: "REASONING GRAPH · LANGGRAPH", sub: "CRAG", color: C.purple, rows: 2, nodes: [
+      ["intent", 0, 0, "Classify intent", ["greeting · summary", "page · search"], "b", "llm"],
+      ["plan", 1, 0, "Plan search", ["dependent tasks", "initial sub-queries"], "b", "llm"],
+      ["retrieve", 2, 0, "Retrieve", ["parallel sub-queries", "hybrid search + context"], "b"],
+      ["grade", 3, 0, "Grade & route", ["verify task coverage", "complete / limit / stall"], "b", "llm"],
+      ["fsum", 0, 1, "Fetch summary", ["check summaryStatus", "require saved summary"], "b", "db"],
+      ["fpage", 1, 1, "Fetch page", ["page_number or", "source_pages match"], "b", "db"],
+      ["correct", 2, 1, "Next hop / rewrite", ["reuse query or rewrite", "new queries only"], "b"],
+      ["generate", 3, 1, "Generate answer", ["selected evidence", "citations required"], "b", "llm"],
+    ]},
+    { col: 1, title: "RETRIEVAL ENGINE", sub: "each sub-query", color: C.teal, rows: 1, nodes: [
+      ["hybrid", 0, 0, "Hybrid search", ["vector + Postgres full text", "one / all completed docs"], "b", "db"],
+      ["rank", 1, 0, "Fuse & rerank", ["RRF → Cohere rerank", "error → fused candidates"], "b", "ml"],
+      ["expand", 2, 0, "Expand context", ["section + chapter context", "tables + relevant refs"], "b", "db"],
+      ["cap", 3, 0, "Cap & deduplicate", ["unique parent IDs", "profile-based round cap"], "b"],
+    ]},
+    { col: 1, title: "EVIDENCE CHECKS & ANSWER", sub: "grade → generate → deliver", color: C.orange, rows: 1, nodes: [
+      ["verify", 0, 0, "Verify & track", ["quotes + dependent values", "grader fallback may lack", "complete task coverage"], "p"],
+      ["select", 1, 0, "Select & fence", ["evidence-first context caps", "nonce XML prompt fence"], "b"],
+      ["cite", 2, 0, "Cite & account", ["file · page · text offsets", "reasoning + token costs"], "b"],
+      ["deliver", 3, 0, "Stream & persist", ["answer + citations + steps", "save message + trace"], "b", "sse"],
+    ]},
+    { col: 0, title: "DATA & MODEL INFRASTRUCTURE", sub: "shared services", color: C.purple, rows: 1, nodes: [
+      ["pg", 0, 0, "Prisma + pgvector", ["users · files · chunks", "conversations + messages"], "b", "db"],
+      ["storage", 1, 0, "Storage & Redis", ["Supabase documents", "BullMQ + live progress"], "b", "store"],
+      ["providers", 2, 0, "LLM routing", ["Groq · OpenRouter", "OpenCode · Gemini", "Gemini for extraction"], "b"],
+      ["models", 3, 0, "Embedding & rerank", ["local MiniLM · 384D", "Cohere rerank"], "b", "ml"],
+    ]},
+    { col: 1, title: "QUALITY & OBSERVABILITY", sub: "supporting tools", color: C.red, rows: 1, nodes: [
+      ["logs", 0, 0, "Traces & operations", ["LangSmith · JSON logs", "queue / index / model tools"], "b"],
+      ["tests", 1, 0, "Tests & datasets", ["outline · evidence · graph", "golden PDFs + eval seeding"], "b"],
+      ["evals", 2, 0, "Quality metrics", ["faithfulness · relevance", "Recall@3 · MRR"], "b"],
+      ["gaps", 3, 0, "Validation gaps", ["stress-test recheck", "auditor · bias · latency"], "p"],
+    ]},
+  ];
+
+  // ---------- layout ----------
+  const N = {};
+  const memberOf = {};
+  const colY = [...COL_TOP];
+  LANES.forEach((L, i) => {
+    const y = colY[L.col];
+    L.i = i; L.y = y; L.ox = COL_X[L.col];
+    L.h = 64 + L.rows * H + (L.rows - 1) * RG + 26;
+    L.nodes = L.nodes.map(([id, c, r, t, f, s, b]) => {
+      const n = { id, c, r, t, f, s, b, lane: L, x: L.ox + X0 + c * PX, y: y + 64 + r * (H + RG), w: W, h: H };
+      n.cx = n.x + W / 2; n.cy = n.y + H / 2;
+      return (N[id] = n);
+    });
+    (L.groups || []).forEach((g) => {
+      const ms = g.m.map((id) => N[id]);
+      const x = Math.min(...ms.map((m) => m.x)) - 10, top = Math.min(...ms.map((m) => m.y)) - 22;
+      const r = Math.max(...ms.map((m) => m.x + W)) + 10, b = Math.max(...ms.map((m) => m.y + H)) + 10;
+      Object.assign(g, { x, y: top, w: r - x, h: b - top, cx: (x + r) / 2, cy: (top + b) / 2, lane: L, color: L.color });
+      g.m.forEach((id) => (memberOf[id] = g.id));
+      N[g.id] = g;
+    });
+    colY[L.col] = y + L.h + LANE_GAP;
+  });
+  const CANVAS_H = Math.max(...colY) - LANE_GAP + 40;
+  const gap = (L) => L.y + L.h + LANE_GAP / 2;
+  const UI = { id: "ui", w: 360, h: 120, y: 36 };
+  UI.x = COL_W - UI.w - 80; UI.cx = UI.x + UI.w / 2; UI.cy = UI.y + UI.h / 2;
+  N.ui = UI;
+
+  // ---------- edges ----------
+  const E = [];
+  const e = (f, t, o = {}) => E.push({ f, t, ...o });
+  const chain = (ids, o = {}) => ids.slice(1).forEach((id, i) => e(ids[i], id, o));
+  const viaLeft = (fx = 0) => (s, t) => [[s.cx + fx, s.y + s.h], [s.cx + fx, gap(s.lane)], [Lx(t), gap(s.lane)], [Lx(t), t.cy], [t.x, t.cy]];
+  // Interface links use separate header tracks so their labels stay clear.
+  e("ui", "up", { c: C.green, label: "upload file",
+    at: (p) => ({ x: p[0][0] + 8, y: 176, anchor: "start" }),
+    pts: (s, t) => [[s.x + 80, s.y + s.h], [s.x + 80, 214], [t.cx, 214], [t.cx, t.y]] });
+  e("ui", "ask", { c: C.teal, both: true, label: "chat ⇅ answer",
+    at: (p) => ({ x: p[0][0] + 8, y: 176, anchor: "start" }),
+    pts: (s, t) => [[s.x + s.w - 80, s.y + s.h], [s.x + s.w - 80, 214], [t.cx, 214], [t.cx, t.y]] });
+  e("prog", "ui", { c: C.amber, dash: true, label: "live progress",
+    at: (p) => ({ x: p[0][0] - 8, y: 190, anchor: "end" }),
+    pts: (s, t) => [[s.cx, s.y], [s.cx, 194], [t.x + 20, 194], [t.x + 20, t.y + t.h]] });
+
+  chain(["store", "adapters", "gem", "outline"]);
+  e("outline", "gem", { k: "ub", dash: true, label: "next batch", d: 14 });
+  e("up", "store", { c: C.green, label: "file", ls: 1, pts: viaLeft() });
+  e("outline", "sections", { c: C.green, label: "Markdown + outline", ls: 1, pts: viaLeft() });
+  chain(["sections", "rows", "chunks", "context"]);
+  e("context", "emb", { c: C.green, label: "contextual chunks", ls: 1, pts: viaLeft() });
+  chain(["emb", "save", "ready", "summary"]);
+  e("save", "prog", { c: C.amber, dash: true, label: "pipeline progress", ls: 2,
+    pts: (s, t) => [[s.cx, s.y + H], [s.cx, gap(s.lane)], [Rx(s, 2), gap(s.lane)], [Rx(s, 2), gap(t.lane) - 8], [t.cx, gap(t.lane) - 8], [t.cx, t.y + H]] });
+
+  chain(["own", "fw", "hist", "inv"]);
+  e("fw", "refuse", { c: C.red, label: "MALICIOUS" });
+  const MID_X = COL_X[1] - 20;
+  e("ask", "own", { c: C.teal, label: "question", ls: 1,
+    pts: (s, t) => [[s.cx, s.y + H], [s.cx, gap(s.lane) + 8], [MID_X, gap(s.lane) + 8], [MID_X, t.cy], [t.x, t.cy]] });
+  e("inv", "intent", { c: C.teal, label: "start graph", ls: 1, pts: viaLeft() });
+
+  // The compact graph retains direct answers, lookups, and corrective retrieval.
+  chain(["intent", "plan", "retrieve", "grade"]);
+  e("intent", "fsum", { label: "summary" });
+  e("intent", "fpage", { label: "page" });
+  e("intent", "generate", { label: "greeting", ls: 2,
+    pts: (s, t) => [[s.cx, s.y], [s.cx, s.y - 20], [Rx(s, 1), s.y - 20], [Rx(s, 1), t.cy], [t.x + W, t.cy]] });
+  e("fsum", "generate", { k: "ub", tx: -40, d: 14 });
+  e("fpage", "generate", { k: "ub", tx: -40, d: 14 });
+  e("grade", "generate", { label: "stop", fx: 45, tx: 45 });
+  e("grade", "correct", { label: "continue", fx: -35, tx: 35 });
+  e("correct", "retrieve", { label: "retry", fx: -40, tx: -40 });
+  e("retrieve", "hybrid", { c: C.teal, label: "sub-query", ls: 2,
+    pts: (s, t) => [[s.x + W, s.cy], [s.x + W + 14, s.cy], [s.x + W + 14, gap(s.lane)], [Lx(t), gap(s.lane)], [Lx(t), t.cy], [t.x, t.cy]] });
+  e("cap", "grade", { c: C.teal, label: "evidence", ls: 2,
+    pts: (s, t) => [[s.x + W, s.cy], [Rx(s, 2), s.cy], [Rx(s, 2), t.lane.y + 50], [t.cx, t.lane.y + 50], [t.cx, t.y]] });
+  e("generate", "deliver", { c: C.teal, label: "answer", ls: 1,
+    pts: (s, t) => [[s.cx + 40, s.y + H], [s.cx + 40, gap(s.lane)], [Rx(s, 3), gap(s.lane)], [Rx(s, 3), t.cy], [t.x + W, t.cy]] });
+
+  chain(["hybrid", "rank", "expand", "cap"]);
+  // These boxes expand the existing grade/generate/delivery stages.
+  chain(["verify", "select", "cite", "deliver"]);
+
+  // ---------- geometry helpers ----------
+  function autoPts(ed, s, t) {
+    const fx = ed.fx || 0, tx = ed.tx || 0;
+    const k = ed.k || (s.y === t.y ? "h" : "v");
+    if (k === "h") {
+      const right = t.x > s.x;
+      const sx = right ? s.x + s.w : s.x, ex = right ? t.x : t.x + t.w;
+      if (s.cy === t.cy) return [[sx, s.cy], [ex, t.cy]];
+      const mx = (sx + ex) / 2;
+      return [[sx, s.cy], [mx, s.cy], [mx, t.cy], [ex, t.cy]];
+    }
+    if (k === "ub") {
+      const yb = Math.max(s.y + s.h, t.y + t.h) + (ed.d || 16);
+      return [[s.cx + fx, s.y + s.h], [s.cx + fx, yb], [t.cx + tx, yb], [t.cx + tx, t.y + t.h]];
+    }
+    if (k === "ut") {
+      const yt = Math.min(s.y, t.y) - (ed.d || 16);
+      return [[s.cx + fx, s.y], [s.cx + fx, yt], [t.cx + tx, yt], [t.cx + tx, t.y]];
+    }
+    const down = t.y > s.y;
+    const sy = down ? s.y + s.h : s.y, ty = down ? t.y : t.y + t.h;
+    const sx = s.cx + fx, ex = t.cx + tx;
+    if (sx === ex) return [[sx, sy], [ex, ty]];
+    const my = ed.my ?? (sy + ty) / 2;
+    return [[sx, sy], [sx, my], [ex, my], [ex, ty]];
+  }
+
+  function rounded(p, r = 9) {
+    const pts = p.filter((q, i) => i === 0 || q[0] !== p[i - 1][0] || q[1] !== p[i - 1][1]);
+    let d = `M${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+      const d1 = Math.hypot(x1 - x0, y1 - y0), d2 = Math.hypot(x2 - x1, y2 - y1);
+      const rr = Math.min(r, d1 / 2, d2 / 2);
+      const ax = x1 + ((x0 - x1) / d1) * rr, ay = y1 + ((y0 - y1) / d1) * rr;
+      const bx = x1 + ((x2 - x1) / d2) * rr, by = y1 + ((y2 - y1) / d2) * rr;
+      d += ` L${ax} ${ay} Q${x1} ${y1} ${bx} ${by}`;
+    }
+    const last = pts[pts.length - 1];
+    return d + ` L${last[0]} ${last[1]}`;
+  }
+
+  function labelAt(p, ls) {
+    let bi = 0, best = -1;
+    for (let i = 0; i < p.length - 1; i++) {
+      const len = Math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]);
+      if (len > best) { best = len; bi = i; }
+    }
+    if (ls != null && ls < p.length - 1) bi = ls;
+    const [a, b] = [p[bi], p[bi + 1]];
+    if (a[1] === b[1]) return { x: (a[0] + b[0]) / 2, y: a[1] - 8, anchor: "middle" };
+    return { x: a[0] + 8, y: (a[1] + b[1]) / 2 + 4, anchor: "start" };
+  }
+
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const markerId = (c) => "m" + c.replace("#", "");
+
+  // ---------- render ----------
+  const colors = new Set();
+  const out = { lanes: "", groups: "", edges: "", labels: "", nodes: "" };
+
+  LANES.forEach((L) => {
+    out.lanes += `<rect x="${L.ox + LANE_X}" y="${L.y}" width="${LANE_W}" height="${L.h}" rx="14" fill="none" stroke="${L.color}" stroke-width="3" opacity=".32" filter="url(#glow)"/>`;
+    out.lanes += `<rect x="${L.ox + LANE_X}" y="${L.y}" width="${LANE_W}" height="${L.h}" rx="14" fill="#0d1016" fill-opacity=".93" stroke="${L.color}" stroke-width="1.4"/>`;
+    out.lanes += `<rect class="chipbox" x="${L.ox + LANE_X + 14}" y="${L.y + 14}" width="${L.title.length * 8.4 + 24}" height="24" rx="5" fill="#0a0c11" stroke="${L.color}" stroke-opacity=".7"/>`;
+    out.lanes += `<text class="chip" x="${L.ox + LANE_X + 26}" y="${L.y + 30}">${esc(L.title)}</text>`;
+    out.lanes += `<text class="fn lanesub" x="${L.ox + LANE_X + L.title.length * 8.4 + 50}" y="${L.y + 30}">${esc(L.sub)}</text>`;
+    out.lanes += `<text class="laneNo" x="${L.ox + LANE_R - 18}" y="${L.y + 36}" text-anchor="end" fill="${L.color}">${String(L.i + 1).padStart(2, "0")}</text>`;
+    (L.groups || []).forEach((g) => {
+      out.groups += `<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="12" fill="${g.color}" fill-opacity=".035" stroke="${g.color}" stroke-opacity=".55" stroke-dasharray="3 4"/>`;
+      out.groups += `<text class="glabel" x="${g.x + 12}" y="${g.y + 15}" fill="${g.color}">${esc(g.label)}</text>`;
+    });
+    L.nodes.forEach((n) => (out.nodes += card(n)));
+  });
+
+  function card(n) {
+    const off = n.s === "m";
+    const stroke = off ? "#5b6372" : n.lane.color;
+    let s = `<g class="node" data-id="${n.id}" aria-label="${esc(n.t + ": " + n.f.join(", "))}"><title>${esc(n.t + ": " + n.f.join("; "))}</title>`;
+    s += `<rect class="card" x="${n.x}" y="${n.y}" width="${W}" height="${H}" rx="10" fill="#121620" stroke="${stroke}" stroke-opacity="${off ? 1 : 0.6}" stroke-width="1.2"${off ? ' stroke-dasharray="5 4"' : ""}/>`;
+    s += `<use href="#s-${STATUS[n.s]}" x="${n.x + 18}" y="${n.y + 24}"/>`;
+    s += `<text class="lbl${off ? " off" : ""}" x="${n.x + 30}" y="${n.y + 28.5}" data-max="${W - 40}">${esc(n.t)}</text>`;
+    n.f.forEach((line, i) => {
+      s += `<text class="fn${off ? " off" : ""}" x="${n.x + 16}" y="${n.y + 51 + i * 16}" data-max="${W - 26}">${esc(line)}</text>`;
+    });
+    if (n.b) {
+      const [txt, col] = BADGES[n.b];
+      s += `<rect class="badgebox" x="${n.x + 16}" y="${n.y + H - 26}" width="${txt.length * 6.6 + 12}" height="16" rx="4" fill="${col}" fill-opacity=".12" stroke="${col}" stroke-opacity=".55"/>`;
+      s += `<text class="badge" x="${n.x + 22}" y="${n.y + H - 14.5}" fill="${col}">${txt}</text>`;
+    }
+    return s + "</g>";
+  }
+
+  E.forEach((ed) => {
+    const s = N[ed.f], t = N[ed.t];
+    const color = ed.c || s.lane?.color || C.gray;
+    colors.add(color);
+    const p = ed.pts ? ed.pts(s, t) : autoPts(ed, s, t);
+    const d = rounded(p);
+    const m = `url(#${markerId(color)})`;
+    const data = `data-f="${ed.f}" data-t="${ed.t}"`;
+    out.edges += `<g class="edge" ${data}><path d="${d}" fill="none" stroke="${color}" stroke-opacity="${ed.dash ? 0.85 : 0.7}" stroke-width="1.5" stroke-linejoin="round"${ed.dash ? ' stroke-dasharray="6 5"' : ""} marker-end="${m}"${ed.both ? ` marker-start="${m}"` : ""}/>`;
+    out.edges += `</g>`;
+    if (ed.label) {
+      const lp = ed.at ? ed.at(p) : labelAt(p, ed.ls);
+      out.labels += `<text class="alb" ${data} x="${lp.x}" y="${lp.y}" text-anchor="${lp.anchor}" fill="${color}" style="fill:${color}">${esc(ed.label)}</text>`;
+    }
+  });
+
+  const markers = [...colors].map((c) =>
+    `<marker id="${markerId(c)}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`).join("");
+
+  const ui = (() => {
+    const { x, y, w, h } = UI;
+    return `<g class="node" data-id="ui" aria-label="Chat interface: upload a document and ask questions">
+      <text class="chip" x="${x}" y="${y - 14}">WHAT THE USER SEES</text>
+      <rect class="card" x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="#11141b" stroke="#e9edf4" stroke-opacity=".55"/>
+      <text class="lbl" x="${x + 20}" y="${y + 28}">DocuMind · chat</text>
+      <rect x="${x + 20}" y="${y + 44}" width="${w - 40}" height="30" rx="10" fill="#1a2a3a"/>
+      <text class="fn" x="${x + 32}" y="${y + 64}">Ask about your document…</text>
+      <text class="fn" x="${x + 20}" y="${y + 100}">Upload → question → cited answer</text>
+    </g>`;
+  })();
+
+  const nodeCount = LANES.reduce((sum, L) => sum + L.nodes.length, 0);
+
+  // Compact key in the empty band left of the chat window.
+  const badge = (key, x, y) => {
+    const [txt, col] = BADGES[key];
+    return `<rect class="badgebox" x="${x}" y="${y - 12}" width="${txt.length * 6.6 + 12}" height="16" rx="4" fill="${col}" fill-opacity=".12" stroke="${col}" stroke-opacity=".55"/>` +
+      `<text class="badge" x="${x + 6}" y="${y - 0.5}" fill="${col}">${txt}</text>`;
+  };
+  const legend = `<g transform="translate(${LANE_X} 34) scale(1.1)">
+    <text class="chip" x="0" y="14" style="fill:#43dcc4">DOCUMIND · SYSTEM MAP</text>
+    <text class="fn" x="0" y="40">Uploads left · questions right</text>
+    <use href="#s-built" x="5" y="62"/><text class="fn" x="18" y="66">built</text>
+    <use href="#s-part" x="90" y="62"/><text class="fn" x="103" y="66">partial / caveat</text>
+    ${badge("llm", 0, 94)}${badge("ml", 64, 94)}${badge("sse", 170, 94)}${badge("db", 270, 94)}
+    <text class="fn" x="0" y="122">Scroll: zoom · drag: pan · 0 / double-click: fit</text>
+  </g>`;
+
+  const svg = document.getElementById("map");
+  svg.setAttribute("viewBox", `0 0 ${CANVAS_W} ${CANVAS_H}`);
+  svg.innerHTML = `
+    <defs>
+      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#141820" stroke-width="1"/></pattern>
+      <filter id="glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="5"/></filter>
+      ${markers}
+      <g id="s-built"><circle r="5" fill="#5fd38d"/></g>
+      <g id="s-part"><circle r="4.5" fill="none" stroke="#f0b64a" stroke-width="1.5"/><path d="M0 -4.5A4.5 4.5 0 0 0 0 4.5Z" fill="#f0b64a"/></g>
+      <g id="s-miss"><circle r="4.5" fill="none" stroke="#7d8696" stroke-width="1.5" stroke-dasharray="2 2"/></g>
+    </defs>
+    <rect x="-4000" y="-4000" width="${CANVAS_W + 8000}" height="${CANVAS_H + 8000}" fill="#0a0c11"/>
+    <rect x="-4000" y="-4000" width="${CANVAS_W + 8000}" height="${CANVAS_H + 8000}" fill="url(#grid)"/>
+    ${legend}
+    <path d="M20 202H${COL_W - 20}" stroke="#e9edf4" stroke-opacity=".35" stroke-width="1.4" stroke-dasharray="10 8"/>
+    <text class="ice" x="${LANE_X}" y="190">▲ THE CHAT INTERFACE</text>
+    <text class="ice" x="${LANE_X}" y="222" style="fill:#43dcc4">▼ BEHIND THE CHAT · ${nodeCount} STEPS · ${LANES.length} LANES</text>
+    <g>${out.lanes}</g>
+    <g>${out.groups}</g>
+    <g>${out.edges}</g>
+    <g>${out.nodes}</g>
+    ${ui}
+    <g>${out.labels}</g>`;
+
+  // ---------- fit text, chips and badges to their boxes ----------
+  function measure() {
+    svg.querySelectorAll("text[data-max]").forEach((t) => {
+      t.style.fontSize = "";
+      const max = +t.dataset.max;
+      let fs = parseFloat(getComputedStyle(t).fontSize), guard = 0;
+      while (t.getComputedTextLength() > max && fs > 8 && guard++ < 16) {
+        fs -= 0.5; t.style.fontSize = fs + "px";
+      }
+    });
+    svg.querySelectorAll(".chipbox").forEach((box) => {
+      const chip = box.nextElementSibling, sub = chip.nextElementSibling;
+      const wpx = chip.getComputedTextLength() + 24;
+      box.setAttribute("width", wpx);
+      sub.setAttribute("x", +box.getAttribute("x") + wpx + 14);
+    });
+    svg.querySelectorAll(".badgebox").forEach((box) => {
+      box.setAttribute("width", box.nextElementSibling.getComputedTextLength() + 12);
+    });
+  }
+  (document.fonts?.ready ?? Promise.resolve()).then(measure);
+
+  // ---------- zoom and pan (changes the viewBox; no scrollbars) ----------
+  const full = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
+  let view = { ...full };
+  const apply = () => svg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`);
+  const toSvg = (cx, cy) => {
+    const pt = new DOMPoint(cx, cy).matrixTransform(svg.getScreenCTM().inverse());
+    return [pt.x, pt.y];
+  };
+  function zoomAt(px, py, factor) {
+    const w = Math.min(full.w, Math.max(full.w / 14, view.w * factor));
+    const f = w / view.w;
+    view = { x: px - (px - view.x) * f, y: py - (py - view.y) * f, w, h: view.h * f };
+    clamp(); apply();
+  }
+  function clamp() {
+    view.x = Math.min(full.w - view.w / 2, Math.max(-view.w / 2, view.x));
+    view.y = Math.min(full.h - view.h / 2, Math.max(-view.h / 2, view.y));
+  }
+  svg.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const [px, py] = toSvg(ev.clientX, ev.clientY);
+    zoomAt(px, py, Math.exp(ev.deltaY * (ev.ctrlKey ? 0.01 : 0.0015)));
+  }, { passive: false });
+
+  let drag = null;
+  svg.addEventListener("pointerdown", (ev) => {
+    drag = { x: ev.clientX, y: ev.clientY, scale: svg.getScreenCTM().a };
+    svg.setPointerCapture(ev.pointerId);
+    svg.classList.add("dragging");
+  });
+  svg.addEventListener("pointermove", (ev) => {
+    if (!drag) return;
+    view.x -= (ev.clientX - drag.x) / drag.scale;
+    view.y -= (ev.clientY - drag.y) / drag.scale;
+    drag.x = ev.clientX; drag.y = ev.clientY;
+    clamp(); apply();
+  });
+  const endDrag = () => { drag = null; svg.classList.remove("dragging"); };
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
+  svg.addEventListener("dblclick", () => { view = { ...full }; apply(); });
+  window.addEventListener("keydown", (ev) => {
+    const cx = view.x + view.w / 2, cy = view.y + view.h / 2;
+    if (ev.key === "+" || ev.key === "=") zoomAt(cx, cy, 0.8);
+    else if (ev.key === "-") zoomAt(cx, cy, 1.25);
+    else if (ev.key === "0") { view = { ...full }; apply(); }
+  });
+})();
+</script>
+</body>
+</html>

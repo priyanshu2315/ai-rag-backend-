@@ -1,0 +1,994 @@
+[
+    {
+        "id": 1,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what is the web 3.0 sop even for",
+        "answer": "Its objective is to guide the team on how to implement Web 3.0. The scope is that people can implement new tech in their own projects.",
+        "references": [
+            {
+                "document": "Web 3.0 Implementation (SOP2022050601)",
+                "section": "1. Objective, 2. Scope"
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "whats the week wise plan for learning web3",
+        "answer": "Week 1: learn Solidity and how to create smart contracts (marked Done). Week 2: use smart contracts with Node JS. Week 3: deploy the smart contract on a test network. Week 4: test the smart contracts on the deployed network and integrate the JS code with it.",
+        "references": [
+            {
+                "document": "Web 3.0 Implementation (SOP2022050601)",
+                "section": "3. Plan of action (a-d)"
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "in which week do we deploy the smart contract on testnet",
+        "answer": "Week 3.",
+        "references": [
+            {
+                "document": "Web 3.0 Implementation (SOP2022050601)",
+                "section": "3. Plan of action (c)"
+            }
+        ]
+    },
+    {
+        "id": 4,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "who made the web 3.0 sop and when did it start",
+        "answer": "The SOP owner is Ankit Arora, the approver is NA, and the implementation date and creation date (Version 1.0) is May 06, 2022.",
+        "references": [
+            {
+                "document": "Web 3.0 Implementation (SOP2022050601)",
+                "section": "Header and Version History"
+            }
+        ]
+    },
+    {
+        "id": 5,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "why did we even make an aws account management sop",
+        "answer": "The objective is to set up a process for handling the AWS account. The reason is that there have been 2 unknown activities on the account so far, which created larger-sized instances and led to higher cost. After the account stayed secure for over a year, a second such activity happened, so the SOP is meant to monitor the AWS account on a regular basis.",
+        "references": [
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "1. Objective, 3. Challenges, 5. Problem Statement"
+            }
+        ]
+    },
+    {
+        "id": 6,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what security stuff did we turn on after the first aws incident",
+        "answer": "CloudTrail was enabled, IAM users were enabled for internal access (only 2 users), Budget Alarms were enabled, MFA was enabled on the Root account, and GuardDuty was enabled.",
+        "references": [
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "4. Background - History"
+            }
+        ]
+    },
+    {
+        "id": 7,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "how often do we need to change the aws security credentials",
+        "answer": "Every 3 months. The update should also say when the credentials were last changed and when the next update is scheduled.",
+        "references": [
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "6c. Update Security Credentials"
+            }
+        ]
+    },
+    {
+        "id": 8,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what should the aws update message contain",
+        "answer": "The update is titled like 'VAYUZ AWS | Weekly Updates | <date range>' and includes: Security Creds (last updated date and next update scheduled date); Instances (actual instances running vs. instances that should be running, the latter coming from the engineering team); Cost (current vs. expected, in $); and Total Services count.",
+        "references": [
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "7. Update Structure"
+            }
+        ]
+    },
+    {
+        "id": 9,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "when and where do we share the aws update",
+        "answer": "The update goes out on Friday on or before 7 PM, through a channel on Teams. Section 6 says the regular update is shared once in 2 weeks, on a Friday, on whichever platform everyone is using at the time (Teams for now). The template title says 'Weekly Updates' but covers a two-week date range (Dec 12 - Dec 26, 2022), so the SOP is slightly inconsistent about frequency.",
+        "references": [
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "6a. Regular Monitoring, 7b. Update Time, 7c. Update Method"
+            }
+        ]
+    },
+    {
+        "id": 10,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "which sites go down from friday 7pm till monday morning",
+        "answer": "Bridge.vayuz.com and Social.vayuz.com are down from Friday 7 PM to Monday 9:30.",
+        "references": [
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "10b. Exceptions"
+            }
+        ]
+    },
+    {
+        "id": 11,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what if the person doing the aws check cant access MFA",
+        "answer": "The person will try to contact the MFA holder by call. If they are still not reachable, the update can still be shared along with the reason.",
+        "references": [
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "10a. Exceptions - Individual Unavailability (ii)"
+            }
+        ]
+    },
+    {
+        "id": 12,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "how many people are needed for aws monitoring and what do they do",
+        "answer": "Two people. Person 1 does the necessary checks and Person 2 monitors whether Person 1 is working as expected. This can be rotational between the two. Both are currently TBD.",
+        "references": [
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "6. Solutions, 8. Who will do it"
+            }
+        ]
+    },
+    {
+        "id": 13,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "who can be a project owner",
+        "answer": "It is mandatory that the person is actively working on that project and is aware of what is going on in it.",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "3f. Who can be the project owner?"
+            }
+        ]
+    },
+    {
+        "id": 14,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what all should a project owner know about the project",
+        "answer": "Submission date, delay reasons, current progress, open issues, and SOS count.",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "5. What Project Owner should know"
+            }
+        ]
+    },
+    {
+        "id": 15,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "how can the team replace a project owner",
+        "answer": "It is a team decision. In the review call, feedback is taken and whoever gets more votes democratically from the team can do the job, and the project owner can be replaced. Once replaced, if the team wants the earlier person back, the Project Evangelist can mail that individual.",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "4. Request for Changing Project Owner"
+            }
+        ]
+    },
+    {
+        "id": 16,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "when can a project owner give a red flag for open loop stuff",
+        "answer": "If a dependency or open discussion is taking longer than the required timeline, the Project Owner can assign a RED FLAG to the team member. The person has to complete the work if they want to revoke it. The maximum wait time is decided by mutual discussion between the Project Owner and the Project Evangelist.",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "3d. Open Loop"
+            }
+        ]
+    },
+    {
+        "id": 17,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "if two projects are fighting for hours which one gets priority",
+        "answer": "The project owner does task allocation, and based on the project's current situation the project manager can propose the number of hours needed. If there is a conflict, the project that has more delay is prioritized first.",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "3b. Task Allocation"
+            }
+        ]
+    },
+    {
+        "id": 18,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what are the cases where SOS can be shared",
+        "answer": "When the Project Owner forecasts delays, or when things are not happening as expected or are taking long. Possible reasons include gaps in planning, gaps in the foundation doc, incorrect task estimation, need for more clarity, too many discussions on the existing flow, and communication issues (such as workload on other projects, the team delaying work because of another project, interviews/health issues/events, or team members not working as expected and not communicating).",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "3g. SOS Sharing"
+            }
+        ]
+    },
+    {
+        "id": 19,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what time is the weekly trello planning",
+        "answer": "The entire team should keep planning time on Fridays from 4:30 PM to 5:30 PM (0430-0530 PM).",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "2. Prerequisite"
+            }
+        ]
+    },
+    {
+        "id": 20,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what should every trello card have for development work",
+        "answer": "The module targeted for next week should be in the pipeline with a due date and a member attached. Every card must also have a checklist covering all the steps needed to complete that module.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "3a. Development"
+            }
+        ]
+    },
+    {
+        "id": 21,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "how do we plan trello for issues, not development",
+        "answer": "Time should be mentioned on every pointer on GitHub. Based on the total time of the reported pointers, a card is created in the project Trello with the start date and end date of the reported pointers. The plan for the submitted pointers is discussed with the product team.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "3b. In case of issues"
+            }
+        ]
+    },
+    {
+        "id": 22,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what happens if i get 2 or 3 red flags for the same thing",
+        "answer": "2 Red Flags for the same instance within a 90-day period lead to 1 LWP. 3 Red Flags for the same incident within 90 days lead to a Red Notice.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "5. Repercussions"
+            }
+        ]
+    },
+    {
+        "id": 23,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "how long can the trello planning meeting go and what if i have meetings for many projects",
+        "answer": "The meeting can be 20 to 60 minutes. People working on multiple projects must handle all those meetings within the 1-hour slot, with no exceptions, and plan timings beforehand in the standup. If it runs beyond 1 hour, they must inform the project owners of the other projects (whose meetings they could not attend) that they will share the update by a stated time, and this must be done the same day.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "4. Duration"
+            }
+        ]
+    },
+    {
+        "id": 24,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "how do i ask for a resource from another project, what should the mail look like",
+        "answer": "Subject: Project Name | Resource Request | Duration. The body says you want Resource Name in Project X for around the given duration (hrs) and asks when you can discuss it. The mail must be sent before 2 PM so the agenda can change in the second half. The project owner replies with the subject changed to 'Project Name | Resource Request | Duration | Approved/Rejected' keeping the resource in cc. The project evangelist mails the project owner with reasons, and the decision comes from their mutual discussion on the same mail thread.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "6b. Resource Requirements"
+            }
+        ]
+    },
+    {
+        "id": 25,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what were the problems with trello sop 1.0",
+        "answer": "Child Sprint was not defined; people working on both development and issues (or on multiple projects) are hard to track, which makes individual performance tracking difficult; dependencies are not getting cleared in the given time; when a person is not working, the card is marked delayed and archived, making it hard to track who is responsible; delayed calculation needs the number of hours; and a weekly label needs to be defined (listed as the solution).",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "Problems in SOP 1.0"
+            }
+        ]
+    },
+    {
+        "id": 26,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "whats our code backup cycle",
+        "answer": "Backups are done every Thursday. The distribution structure is 'none'.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "6. Code Backup and distribution structure"
+            }
+        ]
+    },
+    {
+        "id": 27,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "do we need any tool for code review",
+        "answer": "No separate tool is needed. GitHub is enough.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "19. Code review tool"
+            }
+        ]
+    },
+    {
+        "id": 28,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "how long should the weekly code review be",
+        "answer": "45 minutes to 1 hour per week per review. The weekly review to check whether standards are followed can be done in the Agile call.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "16. Duration per week per review, 10. Weekly Review"
+            }
+        ]
+    },
+    {
+        "id": 29,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what are the naming and versioning rules in code review sop",
+        "answer": "Variable names use camel case, though this may vary by language so use what is best for that language. Static or constant values should be defined in a file and imported. Comments should be written wherever complex logic is involved. For versioning, show the version in Settings or the hamburger icon on the frontend, maintain API versions on the backend once delivery is done, and use semantic versioning such as 1.0.0.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "2. Defining nomenclature and convention, 3. Defining version"
+            }
+        ]
+    },
+    {
+        "id": 30,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what security checks are mentioned in the code review sop",
+        "answer": "Implementation of JWT via cookies and CSRF, using auth-tokens with each API call to validate the user, and Google Recaptcha.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "5. Defining checks and balances"
+            }
+        ]
+    },
+    {
+        "id": 31,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what things are checked for the code review score",
+        "answer": "Camel case, proper commenting, knowing the purpose of the code, reusable functions/components, proper use of environment variables, proper validations/security checks, no shortcuts, no unnecessary packages, proper file and project structure, previously shared inputs incorporated, optimized business logic, and consistency across files. Backend: API doc maintained, optimized APIs/lookups, no repetitive code in API calls. Frontend: proper network handling, unused code removed, no obsolete packages. The score is out of 10 as the initial metric, and the calculator is still to be created.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "11. Code Review Score, 17a. Key metrics"
+            }
+        ]
+    },
+    {
+        "id": 32,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what do i need to do before pushing code to production",
+        "answer": "Once the code is approved it can be pushed, referring to the GitHub doc. If code is pushed to production, an entry must be added in the build release form. A code review should be run before pushing to the main branch, and all developers should work on development branches even if they are the sole contributor.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "9. How to push approved code to production"
+            }
+        ]
+    },
+    {
+        "id": 33,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "do we check for plagiarism and actionable code review",
+        "answer": "No. Plagiarism checking is marked 'Not Required (IMO)' and actionable code review is marked 'Not Required'.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "12. Plagiarism, 20. Actionable Code Review"
+            }
+        ]
+    },
+    {
+        "id": 34,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "which code review metrics are we using, defect density and all",
+        "answer": "Initially the same parameters as the code review score (out of 10) are used. Later, Defect Density (lines of code containing defects) and Inspection Rate (lines of code that has been reviewed) can be introduced. Defect rate per LOC is marked not required.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "17. Key metrics"
+            }
+        ]
+    },
+    {
+        "id": 35,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "which expense categories can i pick in keka",
+        "answer": "Travel Expenses (Business Trips), Fuel (petrol, diesel, fuel expenses), Expenses Behalf of VAYUZ (anything paid on behalf of VAYUZ), and Other Expenses (general official expenses). Do not select 'Reimbursement' unless specifically instructed by the Accounts/Finance team.",
+        "references": [
+            {
+                "document": "SOP - Expenses Submission Process",
+                "section": "1. Expense Category Selection"
+            }
+        ]
+    },
+    {
+        "id": 36,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what details are mandatory when submitting an expense",
+        "answer": "Expense Title, Expense Date, Merchant/Vendor Name, Amount, Bill Number (if available), correct Expense Category, and Comment/Summary.",
+        "references": [
+            {
+                "document": "SOP - Expenses Submission Process",
+                "section": "2. Mandatory Details While Submitting Expense"
+            }
+        ]
+    },
+    {
+        "id": 37,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what do i write in the comment box of an expense",
+        "answer": "Mention what the expense was, why it was incurred, and who approved it. Example: 'Client meeting CLIENT NAME travel expense EXPENSES TYPE approved by Team Lead LEAD NAME.'",
+        "references": [
+            {
+                "document": "SOP - Expenses Submission Process",
+                "section": "3. Comment Section Guidelines"
+            }
+        ]
+    },
+    {
+        "id": 38,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "by when do i need to submit my monthly expenses",
+        "answer": "On or before the 1st of every month for the previous month. For example, August expenses must be submitted by 1st September.",
+        "references": [
+            {
+                "document": "SOP - Expenses Submission Process",
+                "section": "5. Submission Timeline"
+            }
+        ]
+    },
+    {
+        "id": 39,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "who approves expense claims and in what order",
+        "answer": "First Reporting Manager approval, then Accounts/Finance verification. Only approved claims are processed further.",
+        "references": [
+            {
+                "document": "SOP - Expenses Submission Process",
+                "section": "6. Approval Process"
+            }
+        ]
+    },
+    {
+        "id": 40,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what if my bill is blurry",
+        "answer": "Uploaded bills must be clear, readable and complete. Blurry or incomplete bills may result in rejection or delay in processing.",
+        "references": [
+            {
+                "document": "SOP - Expenses Submission Process",
+                "section": "4. Receipt / Bill Upload Rules"
+            }
+        ]
+    },
+    {
+        "id": 41,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "can i claim personal expenses or an edited bill",
+        "answer": "No. Personal expenses are not allowed and fake or edited bills are strictly prohibited. Wrong category selection may delay processing, and expenses without approval may be rejected.",
+        "references": [
+            {
+                "document": "SOP - Expenses Submission Process",
+                "section": "7. Important Rules"
+            }
+        ]
+    },
+    {
+        "id": 42,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "which days are holidays in 2026 for vayuzers",
+        "answer": "Jan 26 (Monday) Republic Day; Mar 04 (Wednesday) Holi; May 27 (Wednesday) Eid-Ul-Adha (moon dependent); Aug 28 (Friday) Raksha Bandhan; Oct 01 (Thursday) CONVERGENCE XI; Oct 02 (Friday) Gandhi Jayanti; Oct 20 (Tuesday) Dussehra; Nov 09 and Nov 10 (Monday, Tuesday) Diwali Break; Nov 11 (Wednesday) Bhai Duj; Dec 25 (Friday) Christmas. The Nov dates are described as an extended 5-day break.",
+        "references": [
+            {
+                "document": "Holiday Calendar 2026",
+                "section": "Page 1 - Holiday List 2026"
+            }
+        ]
+    },
+    {
+        "id": 43,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "when is diwali break this year",
+        "answer": "The listed Diwali break dates are Nov 9 (Monday) and Nov 10 (Tuesday), followed by Bhai Duj on Nov 11 (Wednesday), described as an extended 5-day break. Diwali itself is Nov 08, which falls on a weekend.",
+        "references": [
+            {
+                "document": "Holiday Calendar 2026",
+                "section": "Page 1 - Holiday List; Page 3 - holidays falling on Saturday/Sunday"
+            }
+        ]
+    },
+    {
+        "id": 44,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "what are the restricted holidays for 2026",
+        "answer": "Mar 21 (Saturday) Id-ul-Fitr (moon dependent); Mar 31 (Tuesday) Mahavir Jayanti; Sep 4 (Friday) Janmashtami; Sep 14 (Monday) Ganesh Chaturthi; Oct 29 (Thursday) Karva Chauth; Nov 24 (Tuesday) Guru Nanak Jayanti. These apply to all VAYUZers except VIPs.",
+        "references": [
+            {
+                "document": "Holiday Calendar 2026",
+                "section": "Page 2 - Restricted Holidays in 2026"
+            }
+        ]
+    },
+    {
+        "id": 45,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "whats the rule for taking RH, how many can i take and who can",
+        "answer": "A maximum of 3 RHs can be availed in the year and a maximum of 1 per month. RH can be availed only by PROs. It must be pre-approved by Line Managers 30 days in advance, otherwise it won't be considered an RH. RH cannot be clubbed with any other leaves.",
+        "references": [
+            {
+                "document": "Holiday Calendar 2026",
+                "section": "Page 3 - RH rules"
+            }
+        ]
+    },
+    {
+        "id": 46,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "which holidays fall on saturday or sunday in 2026",
+        "answer": "As listed in the document: February 26 - Mahashivratri, August 15 - Independence Day, and November 08 - Diwali. (Note: Feb 26, 2026 is actually a Thursday, so that date in the document may be a typo.)",
+        "references": [
+            {
+                "document": "Holiday Calendar 2026",
+                "section": "Page 3 - holidays falling on Saturday/Sunday"
+            }
+        ]
+    },
+    {
+        "id": 47,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "how long should a sprint be in the new iteration process",
+        "answer": "A sprint should be 10 days only (2 business weeks), with a specific set of deliverables. On the 3rd week there is a meeting with everyone on what went wrong and what can be improved, i.e. a retrospection.",
+        "references": [
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "New Process (Proposal)"
+            }
+        ]
+    },
+    {
+        "id": 48,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what counts as an iteration and when does it become an enhancement",
+        "answer": "Any change in the existing business logic can be considered an iteration. If the time given for iterations has passed, further changes should be considered an enhancement. The SOW should have a separate section explaining what an iteration is and defining it properly, plus a separate closure time.",
+        "references": [
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Iterations Handling - Development"
+            }
+        ]
+    },
+    {
+        "id": 49,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "client keeps asking for look and feel changes after the sprint, how do we avoid that",
+        "answer": "For UI/UX, build working designs from Figma designs. Once finalized, start development, so it should not lead to iterations during development. If iterations still happen, share the number of hours and process accordingly.",
+        "references": [
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Iterations Handling - UI/UX"
+            }
+        ]
+    },
+    {
+        "id": 50,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what do we do if iterations come at the time of closure",
+        "answer": "Focus on getting the main product delivered and clearing the billing, and only then start the iterations.",
+        "references": [
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Iterations Handling - Development"
+            }
+        ]
+    },
+    {
+        "id": 51,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "client is not giving closure what's the escalation",
+        "answer": "Escalate to the Product team first. If not resolved, escalate to the Business team. If there is still no conclusion, share it with Sir and Ma'am. If there is no solution, the entire Engine team goes on a call, something like a RED Notice, and a jury decides what needs to be done.",
+        "references": [
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "In case client is not giving the closure"
+            }
+        ]
+    },
+    {
+        "id": 52,
+        "type": "single_doc",
+        "difficulty": "easy",
+        "question": "where do documentation issues get tracked",
+        "answer": "In the GitHub tracker, the same way development issues are reported and handled, rather than in discussions.",
+        "references": [
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Documentation Issues"
+            }
+        ]
+    },
+    {
+        "id": 53,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what if the client coordinator leaves the company midway",
+        "answer": "The Product team has to give the download (handover) again to the new coordinator, and it should be billed as additional hours. The example given is ITG, where Kush gave the download to newly assigned coordinators from India Today.",
+        "references": [
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Some Exceptional cases"
+            }
+        ]
+    },
+    {
+        "id": 54,
+        "type": "single_doc",
+        "difficulty": "medium",
+        "question": "what if client doesn't do module wise delivery or UAT",
+        "answer": "If the client is not following module-wise delivery, it should be escalated to the Business team. Where we are told we can't ask the client to do UAT, every iteration reported should be logged in GitHub with time, and at the end the total time spent on iterations is shared. Client review of submitted modules also needs a decided threshold time before escalation.",
+        "references": [
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Iterations Handling - Development; Module wise Iterations; In case Module wise delivery is not being followed"
+            }
+        ]
+    },
+    {
+        "id": 55,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "who can give red flags and for what reasons across our sops",
+        "answer": "The Project Owner can raise a RED Flag if the team has not set a weekly plan, for open loops/dependencies taking too long (the person must finish the work to revoke it), and in Trello planning if the team is not planning at the modular level. If the Project Owner is unavailable, the Project Evangelist can share red flags. In the AWS SOP, a Yellow/RED flag system for missed updates is only proposed (Person 2 could report Person 1) and the team's opinion is requested. Per the Trello SOP, 2 red flags for the same instance in 90 days lead to 1 LWP, and 3 lead to a Red Notice.",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "3a. Planning Issues, 3d. Open Loop"
+            },
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "5. Repercussions, 6a. Individual Unavailability"
+            },
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "9. Repercussions"
+            }
+        ]
+    },
+    {
+        "id": 56,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "if something gets stuck who do we escalate to, like project owner vs client closure issues",
+        "answer": "If the Project Owner is not working as expected, the Product/Project Evangelist can complain, and if things still don't align it can escalate to the Co-Founders. If a client is not giving closure on iterations, the escalation goes Product team, then Business team, then Sir and Ma'am, and finally an entire Engine team call (a RED Notice-style call where a jury decides).",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "6. Repercussions"
+            },
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "In case client is not giving the closure"
+            }
+        ]
+    },
+    {
+        "id": 57,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "where all do we use github in our process",
+        "answer": "For code review, GitHub is considered enough as the review tool, and there is a GitHub doc for how to push code and approved code goes to production per that doc. For Trello planning of issues, time is mentioned on every pointer on GitHub and a Trello card is created from the total time. For iterations, documentation issues are handled in the GitHub tracker, and where UAT is not possible each iteration is logged in GitHub with time so the total can be shared.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "7. How to push a code, 9. Push to production, 19. Code review tool"
+            },
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "3b. In case of issues"
+            },
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Documentation Issues; In case Module wise delivery is not being followed"
+            }
+        ]
+    },
+    {
+        "id": 58,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "what all do i have to do on fridays",
+        "answer": "Trello planning for next week happens Fridays from 4:30 to 5:30 PM, with the project owner able to give red flags if it isn't done at module level. The AWS update must be shared on Friday on or before 7 PM in the Teams channel (the regular AWS update is every 2 weeks). Also, from Friday 7 PM to Monday 9:30, Bridge.vayuz.com and Social.vayuz.com are down.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "2. Prerequisite, 5. Repercussions"
+            },
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "6a. Regular Monitoring, 7b. Update Time, 10b. Exceptions"
+            }
+        ]
+    },
+    {
+        "id": 59,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "what happens on thursdays, i heard something about backups and leaves",
+        "answer": "Code backup is done every Thursday per the Code Review SOP. Also, if someone is on leave or has to leave, the whole Trello planning cycle should be completed on Thursday, and the AWS check cycle should likewise be completed on Thursday with the update shared.",
+        "references": [
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "6. Code Backup and distribution structure"
+            },
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "6a. Individual Unavailability"
+            },
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "10a. Individual Unavailability"
+            }
+        ]
+    },
+    {
+        "id": 60,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "some fridays are holidays in 2026, so what happens to the friday trello planning and aws update then",
+        "answer": "The Holiday Calendar shows Fridays that are holidays: Aug 28 (Raksha Bandhan), Oct 02 (Gandhi Jayanti) and Dec 25 (Christmas), plus restricted holiday Sep 04 (Janmashtami). The SOPs do not explicitly cover holidays, but the closest rule is the individual unavailability exception: if someone is off, the entire cycle should be completed on Thursday and the update shared. So on those Fridays the Trello planning and the AWS update would be done the Thursday before. This is an inference, not stated directly.",
+        "references": [
+            {
+                "document": "Holiday Calendar 2026",
+                "section": "Page 1 Holiday List; Page 2 Restricted Holidays"
+            },
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "6a. Individual Unavailability"
+            },
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "10a. Individual Unavailability"
+            }
+        ]
+    },
+    {
+        "id": 61,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "i need to submit september expenses, is the deadline on a working day",
+        "answer": "Monthly expenses must be submitted on or before the 1st of the following month, so September expenses are due by 1st October. According to the Holiday Calendar 2026, Oct 01 (Thursday) is CONVERGENCE XI, a company holiday, so the deadline falls on a holiday. The documents do not give an extension, so it's safest to submit before Oct 01 (for example by Sep 30).",
+        "references": [
+            {
+                "document": "SOP - Expenses Submission Process",
+                "section": "5. Submission Timeline"
+            },
+            {
+                "document": "Holiday Calendar 2026",
+                "section": "Page 1 - Holiday List (October 01, CONVERGENCE XI)"
+            }
+        ]
+    },
+    {
+        "id": 62,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "someone from my project is needed in another project, who decides and how do we ask",
+        "answer": "A person working on a project should not work on any other project. If that is needed, the project evangelist mails the project owner with the reason, and the decision is taken through mutual discussion between the project owner and project evangelist on the same mail thread. The mail subject is 'Project Name | Resource Request | Duration', it must be sent before 2 PM, and the project owner replies with Approved/Rejected added to the subject and the resource in cc. If you are the project owner and are told to change your plan, you can decide on your own whether you need to work on that project. The project owner is also the one who does task allocation, and in a hours conflict the project with more delay gets priority.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "6b. Resource Requirements"
+            },
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "3b. Task Allocation, 3d. Open Loop"
+            }
+        ]
+    },
+    {
+        "id": 63,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "how is module wise work handled in planning, code review and iterations",
+        "answer": "In Trello planning, the module a person targets next week goes into the pipeline with a due date, a member and a checklist of steps, and not planning at the modular level can lead to red flags. In code review, the lines of code (LOC) to be reviewed are those of the module being worked on. In iterations, module-wise delivery must be followed very strictly (escalate to the Business team if the client doesn't follow it), and both client review and internal review (Arka, Product team, Tej Sir) should be done module wise rather than reviewing the complete product at once.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "3a. Development, 5a. Repercussions"
+            },
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "15. LOC to be reviewed"
+            },
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Iterations Handling; Module wise Iterations"
+            }
+        ]
+    },
+    {
+        "id": 64,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "who owns most of the sops and who approves them",
+        "answer": "Ankit Arora is the SOP owner on the Web 3.0, AWS Account Management, Project Owner Roles, Weekly Trello Planning, Code Review and Iteration Finalization SOPs. The approver is NA for Web 3.0, Project Owner Roles and Weekly Trello Planning. For AWS Account Management the approver is Tejveer Singh. For Code Review and Iteration Finalization the approver field says 'COE Lead' but no name is filled in. The Expenses Submission SOP and Holiday Calendar do not list an owner or approver.",
+        "references": [
+            {
+                "document": "Web 3.0 Implementation (SOP2022050601)",
+                "section": "Header"
+            },
+            {
+                "document": "AWS Account Management (SOP_2022122601)",
+                "section": "Header"
+            },
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "Header"
+            },
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "Header"
+            },
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "Header"
+            },
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Header"
+            }
+        ]
+    },
+    {
+        "id": 65,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "why do some sops have the same sop number",
+        "answer": "The Web 3.0 Implementation SOP and the Weekly Trello Planning SOP both show SOP # SOP2022050601, and the Code Review Process and Iteration Finalization SOPs both show SOP # SOP2022021701. The documents do not explain why; it looks like the number was reused or copied from a template.",
+        "references": [
+            {
+                "document": "Web 3.0 Implementation (SOP2022050601)",
+                "section": "Header - SOP #"
+            },
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "Header - SOP #"
+            },
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "Header - SOP #"
+            },
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "Header - SOP #"
+            }
+        ]
+    },
+    {
+        "id": 66,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "what is a red notice in our company",
+        "answer": "In the Trello planning SOP, 3 Red Flags for the same incident within 90 days lead to a Red Notice (2 lead to 1 LWP). In the Iteration Finalization SOP, if a client gives no closure and nothing is resolved after escalation, the entire Engine team goes on a call 'something like RED Notice' where a jury decides what to do. The documents do not give a full formal definition of Red Notice beyond these two uses.",
+        "references": [
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "5. Repercussions"
+            },
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "In case client is not giving the closure"
+            }
+        ]
+    },
+    {
+        "id": 67,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "weekly review calls, where do they happen across sops",
+        "answer": "Project Owner SOP says weekly review calls need to be set up, because currently people work on other projects without completing the first one, and in the review call feedback is taken to decide on replacing a project owner by team vote. The Project Manager and Project Owner also discuss last week's plan vs what was achieved. The Code Review SOP says the weekly review to check whether standards are followed can be done in the Agile call, for 45 minutes to 1 hour. The Trello SOP has a separate Friday planning slot (4:30-5:30 PM) for next week's plan.",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "3c. Reviewing last week's plan, 3e. Weekly Review calls, 4. Request for Changing Project Owner"
+            },
+            {
+                "document": "Code Review Process (SOP2022021701)",
+                "section": "10. Weekly Review, 16. Duration"
+            },
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "2. Prerequisite"
+            }
+        ]
+    },
+    {
+        "id": 68,
+        "type": "multi_doc",
+        "difficulty": "medium",
+        "question": "the team is delaying work, whats the process to handle it, red flag or sos or what",
+        "answer": "If dependencies or open discussions take longer than required, the Project Owner can assign a RED Flag to the team member, who must complete the work to revoke it. The Project Owner can also share an SOS when delays are forecast or things are taking long (reasons include planning gaps, wrong estimation, workload on other projects). In Trello planning, not planning at module level can bring red flags, and 2 red flags for the same instance in 90 days lead to 1 LWP and 3 lead to a Red Notice. For client-side delays on iterations, escalate to Product team, then Business team, then Sir and Ma'am.",
+        "references": [
+            {
+                "document": "Project Owner Roles & Responsibilities (2022051701)",
+                "section": "3d. Open Loop, 3g. SOS Sharing"
+            },
+            {
+                "document": "Weekly Trello Planning (SOP2022050601)",
+                "section": "5. Repercussions"
+            },
+            {
+                "document": "Iteration Finalization (SOP2022021701)",
+                "section": "In case client is not giving the closure"
+            }
+        ]
+    }
+]
