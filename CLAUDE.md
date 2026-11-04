@@ -1,13 +1,17 @@
 @AGENTS.md
 
-# Session handoff — reviewed 5 October 2026
+# Session handoff — reviewed 4 November 2026
 
-Read the shared instructions imported above before acting. They contain the current architecture, approval rule, recent migration history, inspection APIs, and confirmed failures. A request to inspect or explain authorizes reading only; edit files only when the user explicitly requests the change.
+Read the shared instructions imported above before acting. They contain the current architecture, approval rule, migration history, inspection APIs, and known gaps. A request to inspect or explain authorizes reading only; edit files only when the user explicitly requests the change. The user often prefers step-by-step guidance in chat and applies code changes manually.
 
-Recent work added task-based provider routing, separate chunk/summary readiness, section context in parent/child `searchText`, same-section parent links and search expansion, inspection responses, detailed live events/logs, and embedding token checks. The development reset/migrations were approved and applied on 4 October; that does not authorize another reset.
+Latest work (4 November): hybrid search now uses structured planner queries `{ text, keywords, identifiers, entities }`, converted by `buildSearchTiers()` into identifier (`ILIKE`, 2.5x), phrase (`<->`, 1.5x), keyword (planner keywords, 1.0x), and vector (1.0x) tiers merged with weighted RRF (k=10). `retrieveNode` runs queries in parallel and passes only the query text to embeddings, Cohere, events, and `allQueries`. Planned next: live per-tier tracking (`matchedBy`, per-tier ranks, before/after rerank positions), a final score `ORDER BY` on search candidates, and tiers for follow-up/rewrite queries.
 
-Current code disables Redis progress history to save storage. Saved chunks remain inspectable after refresh, but original extracted pages and upload event history are not replayed. The older replay description in `docs/frontend-chunk-inspector.md` must be checked against `src/config/uploadProgress.js`.
+AI routing is set in code (`DEFAULT_TASK_PROVIDERS` in `src/config/ai.js`); env provider overrides are no longer read, but `rag.config.js` still picks its limit profile from env. Ingestion was reworked after 5 October (AI-model extraction with a contents outline, `simple-chunking.service.js`); verify its details in source before describing them.
 
-The stress test still exposes heading hierarchy errors, interrupted tables assigned to the wrong section, missing links from section 5A to section 5, and table rows separated from column labels. Kettleby's correct city-proper population for 31 December 2023 is 163,482; 158,744 is the earlier census. These defects were diagnosed, not fixed. Keep document identity generic; do not require company names from users.
+Redis progress history is disabled: upload events are live only, while saved chunks stay inspectable through REST. Chat trace events (non-token) are saved in assistant message `metadata.steps`.
 
-Use `docs/architecture.html` for the current visual map and `docs/pipeline.js` for the development timeline. Earlier timeline entries describe historical stages; the October entries explain the present behavior and remaining work. Verify runtime details against source code.
+The 5 October stress-test defects (heading hierarchy, interrupted tables, section 5A -> 5 link, table rows without column labels) were found with the old chunker and have not been re-tested. Kettleby's correct city-proper population for 31 December 2023 is 163,482; 158,744 is the earlier census. Keep document identity generic; do not require company names from users.
+
+Never print `.env` values or API keys in command output; filter by key name, not by value.
+
+`docs/architecture.html`, `docs/pipeline.js`, and `docs/chat-pipeline.md` predate the November search changes. Treat them as historical orientation and verify runtime details against source code.
