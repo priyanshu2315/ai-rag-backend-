@@ -114,8 +114,16 @@ Rules:
 8. For dated changes, include both the baseline and applicable amendments as required tasks.
 9. For questions asking for a calculated total, payment, or entitlement (e.g. "How much dividend does [Investor] receive?", "What is the total cost/revenue of [X]?"):
    Plan tasks to find BOTH the unit rate/price AND the relevant quantity/holdings/shares (e.g. "find shares held by [Investor]" and "find final dividend per share"). Do not frame user-stated premises as mere confirmation tasks; extract the actual quantities needed for the calculation.
+10. For each starting query return an object:
+   - "text": one short standalone search sentence for that task. Resolve pronouns from history, keep names, codes, and dates, and drop filler such as greetings, "please tell me", or "according to the document". Do not paste the whole user question when it asks several things.
+   - "keywords": 2-6 important single words for exact keyword search (e.g. vessel, carrier, dividend). Skip vague words such as new, that, details, information, document. Do not repeat identifiers or entities here.
+   - "identifiers": codes, serial numbers, invoice IDs, container numbers, or alphanumeric tags from the question or history (e.g. PBLU-4471902, INV-102, D08). Copy them exactly as written.
+   - "entities": multi-word names of places, organizations, people, or roles (e.g. New Zealand, Audit Committee).
+   Use [] when a list has nothing. Never invent values that are not in the question or history.
+Example query object for "hey, can you tell me what the late fee is on invoice INV-102 from Acme Logistics?":
+{"text":"late fee for invoice INV-102 from Acme Logistics","keywords":["late","fee","invoice"],"identifiers":["INV-102"],"entities":["Acme Logistics"]}
 Return ONLY JSON:
-{"queries":["starting search"],"hops":[{"id":"h1","task":"first required fact","dependsOn":[]},{"id":"h2","task":"dependent relationship","dependsOn":["h1"]}]}`;
+{"queries":[{"text":"short search sentence","keywords":[],"identifiers":[],"entities":[]}],"hops":[{"id":"h1","task":"first required fact","dependsOn":[]},{"id":"h2","task":"dependent relationship","dependsOn":["h1"]}]}`;
 
     const costs = [];
     for (let planningAttempt = 1; planningAttempt <= 2; planningAttempt++) {
@@ -143,27 +151,53 @@ Return ONLY JSON:
         });
         const parsed = JSON.parse(response.choices[0].message.content);
         const hopPlan = validateHopPlan(parsed.hops);
-        if (
-          !Array.isArray(parsed.queries) ||
-          !parsed.queries.length ||
-          parsed.queries.some(
-            (query) => typeof query !== "string" || !query.trim(),
+
+        const toList = (value) =>
+          Array.isArray(value)
+            ? value.map((item) => String(item ?? "").trim()).filter(Boolean)
+            : [];
+
+        // Accept new { text, identifiers, entities } objects and old plain strings
+
+        const normalizedQueries = (
+          Array.isArray(parsed.queries) ? parsed.queries : []
+        )
+          .map((query) =>
+            typeof query === "string"
+              ? {
+                  text: query.trim(),
+                  keywords: [],
+                  identifiers: [],
+                  entities: [],
+                }
+              : {
+                  text: String(query?.text ?? "").trim(),
+                  keywords: toList(query?.keywords),
+                  identifiers: toList(query?.identifiers),
+                  entities: toList(query?.entities),
+                },
           )
-        ) {
+          .filter((query) => query.text);
+
+        if (!normalizedQueries.length) {
           throw new Error("Question planner returned invalid starting queries");
         }
+
         const queries = [
           ...new Map(
-            parsed.queries.map((query) => [queryKey(query), query.trim()]),
+            normalizedQueries.map((query) => [queryKey(query.text), query]),
           ).values(),
         ].slice(0, RAG_CONFIG.MAX_SUB_QUERIES);
+
         emit(config, {
           type: "tool_finish",
           tool: "Question Splitter",
           message: `${queries.length} starting search(es); ${hopPlan.length} required task(s).`,
-          queries,
+          queries: queries.map((query) => query.text),
+          searchTiers: queries,
           hopPlan,
         });
+
         return {
           subQueries: queries,
           hopPlan,
@@ -422,20 +456,28 @@ Return ONLY valid JSON:
   const retrieveNode = async (state, config) => {
     const queries =
       state.subQueries.length > 0 ? state.subQueries : [state.question];
+    console.log(queries, "queries");
+    // Planner queries are { text, identifiers, entities }; follow-up queries are plain strings
+    const queryTexts = queries.map((query) =>
+      typeof query === "string" ? query : query.text,
+    );
     const collected = new Map();
 
     // Run all subqueries in parallel instead of one after another
     await Promise.all(
-      queries.map(async (query) => {
+      queries.map(async (query, index) => {
+        const queryText = queryTexts[index];
+
         emit(config, {
           type: "tool_start",
           tool: "Hybrid Search",
-          query: `Attempt ${state.loopCount + 1}: ${query}`,
+          query: `Attempt ${state.loopCount + 1}: ${queryText}`,
         });
 
-        const embedding = await aiService.getEmbedding(query);
+        const embedding = await aiService.getEmbedding(queryText);
         const vectorStr = `[${embedding.join(",")}]`;
 
+        // The repository gets the full query so it can use identifier and entity tiers
         const matched = state.documentId
           ? await chatRepository.searchSingleDocument(
               state.documentId,
@@ -453,14 +495,14 @@ Return ONLY valid JSON:
         emit(config, {
           type: "retrieval_candidates",
           attempt: state.loopCount + 1,
-          query,
+          query: queryText,
           documents: matched,
         });
 
         const best =
           matched.length > 0
             ? await aiService.rerankChunks(
-                query,
+                queryText,
                 matched,
                 RAG_CONFIG.RERANK_TOP_N,
               )
@@ -469,7 +511,7 @@ Return ONLY valid JSON:
         emit(config, {
           type: "rerank_result",
           attempt: state.loopCount + 1,
-          query,
+          query: queryText,
           documents: best,
         });
 
@@ -540,11 +582,11 @@ Return ONLY valid JSON:
     return {
       documents,
       loopCount: 1,
-      allQueries: queries,
+      allQueries: queryTexts,
       searchRounds: [
         {
           attempt: state.loopCount + 1,
-          queries,
+          queries: queryTexts,
           retrievedParentIds: documents.map((doc) => doc.id),
         },
       ],
@@ -791,12 +833,10 @@ Do not repeat any executed query. Return ONLY the raw search phrase, without quo
                 (hop) => hop.status === "resolved",
               ),
               executedQueries: state.allQueries,
-              candidatePassages: state.documents
-                .slice(0, 3)
-                .map((doc) => ({
-                  id: doc.id,
-                  text: (doc.searchText || doc.text || "").slice(0, 1000),
-                })),
+              candidatePassages: state.documents.slice(0, 3).map((doc) => ({
+                id: doc.id,
+                text: (doc.searchText || doc.text || "").slice(0, 1000),
+              })),
             }),
           },
         ],

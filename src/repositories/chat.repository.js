@@ -40,42 +40,182 @@
 import prisma from "../config/db.js";
 import { RAG_CONFIG } from "../config/rag.config.js";
 
+function buildRelaxedTsQuery(queryText) {
+  if (!queryText) return "";
+  const stopWords = new Set([
+    "what",
+    "is",
+    "the",
+    "in",
+    "of",
+    "and",
+    "to",
+    "for",
+    "a",
+    "an",
+    "on",
+    "with",
+    "how",
+    "when",
+    "where",
+    "which",
+    "did",
+    "does",
+  ]);
+  const terms = queryText
+    .replace(/[^\w\s-]/g, " ")
+    .split(/\s+/)
+    .map((t) => t.trim().toLowerCase())
+    .filter((t) => t.length > 1 && !stopWords.has(t));
+
+  // Only stop words left: skip keyword search instead of sending invalid tsquery syntax
+  if (terms.length === 0) return "";
+  // Join with ' | ' (OR) so partial keyword matches still surface chunks containing specific IDs or codes
+  return terms.join(" | ");
+}
+
+// Accepts a plain string or { text, keywords, identifiers, entities } from the question planner
+export function buildSearchTiers(queryInput) {
+  const isObject = typeof queryInput === "object" && queryInput !== null;
+  const text = String((isObject ? queryInput.text : queryInput) || "");
+  const keywords =
+    isObject && Array.isArray(queryInput.keywords) ? queryInput.keywords : [];
+  const identifiers =
+    isObject && Array.isArray(queryInput.identifiers)
+      ? queryInput.identifiers
+      : [];
+  const entities =
+    isObject && Array.isArray(queryInput.entities) ? queryInput.entities : [];
+
+  // Tier 1: exact codes, e.g. '%PBLU-4471902%'. Very short IDs would match almost everything.
+  const idPatterns = identifiers
+    .map((id) => String(id).trim())
+    .filter((id) => id.length >= 3)
+    .map((id) => `%${id}%`);
+
+  // Tier 2: names as phrases, e.g. '(new <-> zealand) | (audit <-> committee)'
+  const phraseQuery = entities
+    .map((entity) =>
+      String(entity)
+        .replace(/[^\w\s]/g, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .join(" <-> "),
+    )
+    .filter(Boolean)
+    .map((phrase) => `(${phrase})`)
+    .join(" | ");
+
+  // Tier 3: planner keywords when given; plain-string queries fall back to every useful word in the text.
+  // Both go through buildRelaxedTsQuery so odd characters never reach to_tsquery.
+  const wordQuery = buildRelaxedTsQuery(
+    keywords.length ? keywords.join(" ") : text,
+  );
+
+  return { text, idPatterns, phraseQuery, wordQuery };
+}
+
 export const searchSingleDocument = async (
   documentId,
   vectorStr,
-  queryText,
+  queryInput,
   count = RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
 ) => {
+  const { text, idPatterns, phraseQuery, wordQuery } =
+    buildSearchTiers(queryInput);
   const res = await prisma.$queryRaw`
     WITH vector_matches AS (
       SELECT 
         "parentId",
-        ROW_NUMBER() OVER (ORDER BY "embedding" <=> ${vectorStr}::vector ASC) AS rank
+        ROW_NUMBER() OVER (
+          ORDER BY "embedding" <=> ${vectorStr}::vector ASC
+        ) AS rank
       FROM "ChildChunk"
-      WHERE "documentId" = ${documentId}        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'  -- <--- ADD HERE (line 55)
-
+      WHERE "documentId" = ${documentId}
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
       ORDER BY "embedding" <=> ${vectorStr}::vector ASC
       LIMIT ${RAG_CONFIG.SEARCH_VECTOR_MATCH_LIMIT}
     ),
+
+    id_matches AS (
+      SELECT 
+        "parentId",
+        ROW_NUMBER() OVER (ORDER BY id) AS rank
+      FROM "ChildChunk"
+      WHERE "documentId" = ${documentId}
+        AND "searchText" ILIKE ANY(${idPatterns}::text[])
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+      ORDER BY rank
+      LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
+    ),
+
+    phrase_matches AS (
+      SELECT 
+        "parentId",
+        ROW_NUMBER() OVER (
+          ORDER BY ts_rank_cd(
+            to_tsvector('english', "searchText"),
+            to_tsquery('english', ${phraseQuery})
+          ) DESC
+        ) AS rank
+      FROM "ChildChunk"
+      WHERE "documentId" = ${documentId}
+        AND ${phraseQuery}::text <> ''
+        AND to_tsvector('english', "searchText")
+            @@ to_tsquery('english', ${phraseQuery})
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+      ORDER BY rank
+      LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
+    ),
+
     keyword_matches AS (
       SELECT 
         "parentId",
         ROW_NUMBER() OVER (
-          ORDER BY ts_rank_cd(to_tsvector('english', "searchText"), plainto_tsquery('english', ${queryText})) DESC
+          ORDER BY ts_rank_cd(
+            to_tsvector('english', "searchText"),
+            to_tsquery('english', ${wordQuery})
+          ) DESC
         ) AS rank
       FROM "ChildChunk"
       WHERE "documentId" = ${documentId}
-        AND to_tsvector('english', "searchText") @@ plainto_tsquery('english', ${queryText})
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'  -- <--- ADD HERE (line 55)
-
-      ORDER BY ts_rank_cd(to_tsvector('english', "searchText"), plainto_tsquery('english', ${queryText})) DESC
+        AND ${wordQuery}::text <> ''
+        AND to_tsvector('english', "searchText")
+            @@ to_tsquery('english', ${wordQuery})
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+      ORDER BY rank
       LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
     ),
+
+    keyword_debug AS (
+      SELECT COUNT(*) AS keyword_count
+      FROM "ChildChunk"
+      WHERE "documentId" = ${documentId}
+        AND ${wordQuery}::text <> ''
+        AND to_tsvector('english', "searchText")
+            @@ to_tsquery('english', ${wordQuery})
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+    ),
+
+    vector_debug AS (
+      SELECT COUNT(*) AS vector_count
+      FROM "ChildChunk"
+      WHERE "documentId" = ${documentId}
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+    ),
+
+    -- Weighted RRF: exact IDs count most, then phrases, then vector and keywords
     combined_scores AS (
       SELECT "parentId", (1.0 / (10 + rank)) AS score FROM vector_matches
       UNION ALL
+      SELECT "parentId", (2.5 / (10 + rank)) AS score FROM id_matches
+      UNION ALL
+      SELECT "parentId", (1.5 / (10 + rank)) AS score FROM phrase_matches
+      UNION ALL
       SELECT "parentId", (1.0 / (10 + rank)) AS score FROM keyword_matches
     ),
+
     ranked_parents AS (
       SELECT 
         "parentId",
@@ -85,7 +225,9 @@ export const searchSingleDocument = async (
       ORDER BY total_score DESC
       LIMIT ${count}
     )
-    SELECT   p.id,
+
+    SELECT
+      p.id,
       p.text,
       p."searchText",
       p."documentId",
@@ -94,62 +236,142 @@ export const searchSingleDocument = async (
       d."fileUrl",
       d.filename AS "documentTitle",
       p.metadata,
-      r.total_score::double precision AS "retrievalScore"
+      r.total_score::double precision AS "retrievalScore",
+      (SELECT keyword_count FROM keyword_debug) AS "keywordCount",
+      (SELECT vector_count FROM vector_debug) AS "vectorCount"
+
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id
     JOIN "Document" d ON p."documentId" = d.id;
-
   `;
+
+  console.log("🔍 SINGLE DOCUMENT SEARCH DEBUG:", {
+    documentId,
+    queryText: text,
+    idPatterns,
+    phraseQuery,
+    relaxedQuery: wordQuery,
+    keywordMatches: Number(res[0]?.keywordCount ?? 0),
+    vectorCandidates: Number(res[0]?.vectorCount ?? 0),
+    finalParents: res.length,
+  });
+
   return res;
 };
 
 export const searchAllUserDocuments = async (
   userId,
   vectorStr,
-  queryText,
+  queryInput,
   count = RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
 ) => {
+  const { text, idPatterns, phraseQuery, wordQuery } =
+    buildSearchTiers(queryInput);
+
   const vectorLimit = Math.max(30, RAG_CONFIG.SEARCH_VECTOR_MATCH_LIMIT);
   const keywordLimit = Math.max(30, RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT);
   const candidateCount = Math.max(20, count);
 
-  return await prisma.$queryRaw`
+  const res = await prisma.$queryRaw`
     WITH active_docs AS (
       SELECT DISTINCT ON (filename) id
       FROM "Document"
-      WHERE "userId" = ${userId} AND "status" = 'COMPLETED'
+      WHERE "userId" = ${userId}
+        AND "status" = 'COMPLETED'
       ORDER BY filename, "createdAt" DESC
     ),
+
     vector_matches AS (
       SELECT 
         c."parentId",
-        ROW_NUMBER() OVER (ORDER BY c."embedding" <=> ${vectorStr}::vector ASC) AS rank
+        ROW_NUMBER() OVER (
+          ORDER BY c."embedding" <=> ${vectorStr}::vector ASC
+        ) AS rank
       FROM "ChildChunk" c
       JOIN active_docs ad ON c."documentId" = ad.id
       WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
-
       ORDER BY c."embedding" <=> ${vectorStr}::vector ASC
       LIMIT ${vectorLimit}
     ),
+
+    id_matches AS (
+      SELECT 
+        c."parentId",
+        ROW_NUMBER() OVER (ORDER BY c.id) AS rank
+      FROM "ChildChunk" c
+      JOIN active_docs ad ON c."documentId" = ad.id
+      WHERE c."searchText" ILIKE ANY(${idPatterns}::text[])
+        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+      ORDER BY rank
+      LIMIT ${keywordLimit}
+    ),
+
+    phrase_matches AS (
+      SELECT 
+        c."parentId",
+        ROW_NUMBER() OVER (
+          ORDER BY ts_rank_cd(
+            to_tsvector('english', c."searchText"),
+            to_tsquery('english', ${phraseQuery})
+          ) DESC
+        ) AS rank
+      FROM "ChildChunk" c
+      JOIN active_docs ad ON c."documentId" = ad.id
+      WHERE ${phraseQuery}::text <> ''
+        AND to_tsvector('english', c."searchText")
+            @@ to_tsquery('english', ${phraseQuery})
+        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+      ORDER BY rank
+      LIMIT ${keywordLimit}
+    ),
+
     keyword_matches AS (
       SELECT 
         c."parentId",
         ROW_NUMBER() OVER (
-          ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
+          ORDER BY ts_rank_cd(
+            to_tsvector('english', c."searchText"),
+            to_tsquery('english', ${wordQuery})
+          ) DESC
         ) AS rank
       FROM "ChildChunk" c
       JOIN active_docs ad ON c."documentId" = ad.id
-      WHERE to_tsvector('english', c."searchText") @@ plainto_tsquery('english', ${queryText})
+      WHERE ${wordQuery}::text <> ''
+        AND to_tsvector('english', c."searchText")
+            @@ to_tsquery('english', ${wordQuery})
         AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
-
-      ORDER BY ts_rank_cd(to_tsvector('english', c."searchText"), plainto_tsquery('english', ${queryText})) DESC
+      ORDER BY rank
       LIMIT ${keywordLimit}
     ),
+
+    keyword_debug AS (
+      SELECT COUNT(*) AS keyword_count
+      FROM "ChildChunk" c
+      JOIN active_docs ad ON c."documentId" = ad.id
+      WHERE ${wordQuery}::text <> ''
+        AND to_tsvector('english', c."searchText")
+            @@ to_tsquery('english', ${wordQuery})
+        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+    ),
+
+    vector_debug AS (
+      SELECT COUNT(*) AS vector_count
+      FROM "ChildChunk" c
+      JOIN active_docs ad ON c."documentId" = ad.id
+      WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+    ),
+
+    -- Weighted RRF: exact IDs count most, then phrases, then vector and keywords
     combined_scores AS (
       SELECT "parentId", (1.0 / (10 + rank)) AS score FROM vector_matches
       UNION ALL
+      SELECT "parentId", (2.5 / (10 + rank)) AS score FROM id_matches
+      UNION ALL
+      SELECT "parentId", (1.5 / (10 + rank)) AS score FROM phrase_matches
+      UNION ALL
       SELECT "parentId", (1.0 / (10 + rank)) AS score FROM keyword_matches
     ),
+
     ranked_parents AS (
       SELECT 
         "parentId",
@@ -159,7 +381,9 @@ export const searchAllUserDocuments = async (
       ORDER BY total_score DESC
       LIMIT ${candidateCount}
     )
-    SELECT   p.id,
+
+    SELECT
+      p.id,
       p.text,
       p."searchText",
       p."documentId",
@@ -168,11 +392,27 @@ export const searchAllUserDocuments = async (
       p.metadata,
       d."fileUrl",
       d.filename AS "documentTitle",
-      r.total_score::double precision AS "retrievalScore"
+      r.total_score::double precision AS "retrievalScore",
+      (SELECT keyword_count FROM keyword_debug) AS "keywordCount",
+      (SELECT vector_count FROM vector_debug) AS "vectorCount"
+
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id
     JOIN "Document" d ON p."documentId" = d.id;
   `;
+
+  console.log("🔍 SEARCH DEBUG:", {
+    userId,
+    queryText: text,
+    idPatterns,
+    phraseQuery,
+    relaxedQuery: wordQuery,
+    keywordMatches: Number(res[0]?.keywordCount ?? 0),
+    vectorCandidates: Number(res[0]?.vectorCount ?? 0),
+    finalParents: res.length,
+  });
+
+  return res;
 };
 
 export const getChunksByPage = async (documentId, pageNumber) => {
@@ -197,8 +437,12 @@ export const getChunksByPage = async (documentId, pageNumber) => {
   return result;
 };
 
-
-export const saveMessage = async (conversationId, role, content, metadata = null) => {
+export const saveMessage = async (
+  conversationId,
+  role,
+  content,
+  metadata = null,
+) => {
   return await prisma.message.create({
     data: { conversationId, role, content, metadata },
   });
@@ -285,8 +529,14 @@ export const clearConversationMessages = async (userId, documentId) => {
   return result.count;
 };
 
-export async function getParentNeighbors(parents, userId, question = null, db = prisma) {
-  const prismaClient = (db && typeof db === "object" && db.parentChunk) ? db : prisma;
+export async function getParentNeighbors(
+  parents,
+  userId,
+  question = null,
+  db = prisma,
+) {
+  const prismaClient =
+    db && typeof db === "object" && db.parentChunk ? db : prisma;
   const result = [...parents];
   const addedIds = new Set(parents.map((parent) => parent.id));
 
@@ -305,7 +555,9 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
     if (!sectionId) continue;
 
     // A) Immediate Siblings: Fetch predecessor (prevParentId) and successor (nextParentId)
-    const siblingIds = [parent.prevParentId, parent.nextParentId].filter(Boolean);
+    const siblingIds = [parent.prevParentId, parent.nextParentId].filter(
+      Boolean,
+    );
     if (siblingIds.length > 0) {
       const siblings = await prismaClient.parentChunk.findMany({
         where: {
@@ -323,8 +575,13 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
           result.push({
             ...chunk,
             fileUrl: chunk.document?.fileUrl || parent.fileUrl || null,
-            documentTitle: chunk.document?.filename || parent.documentTitle || null,
-            retrievalOrigin: { type: "section_sibling", seedParentId: parent.id, sectionId },
+            documentTitle:
+              chunk.document?.filename || parent.documentTitle || null,
+            retrievalOrigin: {
+              type: "section_sibling",
+              seedParentId: parent.id,
+              sectionId,
+            },
           });
         }
       }
@@ -350,18 +607,29 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
         result.push({
           ...sectionLead,
           fileUrl: sectionLead.document?.fileUrl || parent.fileUrl || null,
-          documentTitle: sectionLead.document?.filename || parent.documentTitle || null,
-          retrievalOrigin: { type: "section_lead", seedParentId: parent.id, sectionId },
+          documentTitle:
+            sectionLead.document?.filename || parent.documentTitle || null,
+          retrievalOrigin: {
+            type: "section_lead",
+            seedParentId: parent.id,
+            sectionId,
+          },
         });
       }
     }
 
-
     // C) Chapter / Workflow Expansion: If user asks for a full process or policy, fetch sequential chapter chunks
     const rootChapter = parent.metadata?.heading_path?.[0];
-    const isProcessOrOverview = /process|step|flow|procedure|overview|policy|guide|sop/i.test(questionLower);
+    const isProcessOrOverview =
+      /process|step|flow|procedure|overview|policy|guide|sop/i.test(
+        questionLower,
+      );
 
-    if (isProcessOrOverview && rootChapter && result.length < MAX_TOTAL_CHUNKS) {
+    if (
+      isProcessOrOverview &&
+      rootChapter &&
+      result.length < MAX_TOTAL_CHUNKS
+    ) {
       const chapterChunks = await prismaClient.$queryRaw`
         SELECT p.id, p.text, p."searchText", p."documentId", p."prevParentId", p."nextParentId",
                p.metadata, d."fileUrl", d.filename AS "documentTitle"
@@ -383,16 +651,16 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
             ...chunk,
             fileUrl: chunk.fileUrl || parent.fileUrl || null,
             documentTitle: chunk.documentTitle || parent.documentTitle || null,
-            retrievalOrigin: { type: "chapter_expansion", seedParentId: parent.id, chapter: rootChapter },
+            retrievalOrigin: {
+              type: "chapter_expansion",
+              seedParentId: parent.id,
+              chapter: rootChapter,
+            },
           });
         }
       }
     }
-
   }
-
-
-
 
   // 2. Table Continuation: If a table crossed page/section boundaries, fetch related table part
   const tableKeys = new Map();
@@ -421,7 +689,9 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
         document: { userId, status: "COMPLETED" },
         OR: [
           { metadata: { path: ["table_ids"], array_contains: [tableId] } },
-          { metadata: { path: ["linked_table_ids"], array_contains: [tableId] } },
+          {
+            metadata: { path: ["linked_table_ids"], array_contains: [tableId] },
+          },
         ],
       },
       include: {
@@ -437,7 +707,11 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
           ...parent,
           fileUrl: parent.document?.fileUrl || null,
           documentTitle: parent.document?.filename || null,
-          retrievalOrigin: { type: "table_continuation", seedParentId, tableId },
+          retrievalOrigin: {
+            type: "table_continuation",
+            seedParentId,
+            tableId,
+          },
         });
       }
     }
@@ -447,7 +721,8 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
   const referencedTargets = new Map();
 
   for (const parent of seedParents) {
-    const refs = parent.metadata?.references || parent.metadata?.cross_references || [];
+    const refs =
+      parent.metadata?.references || parent.metadata?.cross_references || [];
     for (const ref of refs) {
       if (!ref || typeof ref !== "string") continue;
       const cleanRef = ref.trim();
@@ -455,22 +730,36 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
 
       // Determine relevance:
       // A) High-value overrides: Resolutions, Restatements, Amendments, Appendices, Technical Notes
-      const isOverride = /(resolution|restatement|amendment|appendix|annex|addendum|tn-\d+)/i.test(cleanRef);
+      const isOverride =
+        /(resolution|restatement|amendment|appendix|annex|addendum|tn-\d+)/i.test(
+          cleanRef,
+        );
       // B) Question topic match: Does the question specifically cite or ask about this reference?
-      const idMatch = cleanRef.match(/(?:figure|table|note|tn|form|resolution|appendix|section|§)\s*([a-z0-9\.\-_]+)/i);
+      const idMatch = cleanRef.match(
+        /(?:figure|table|note|tn|form|resolution|appendix|section|§)\s*([a-z0-9\.\-_]+)/i,
+      );
       const identifier = idMatch ? idMatch[1].toLowerCase() : refLower;
-      const isCitedInQuestion = questionLower.includes(refLower) ||
+      const isCitedInQuestion =
+        questionLower.includes(refLower) ||
         (identifier.length >= 2 && questionLower.includes(identifier));
       // C) Navigation / Guide reference: If the seed chunk is a Reading Guide / Table of Contents / Where to Find What,
       // or if the text surrounding the reference in the seed chunk matches terms in the question:
-      const isGuideOrToc = parent.metadata?.is_toc ||
-        /(reading guide|where to find what|table of contents|contents|document control)/i.test(parent.text || "");
+      const isGuideOrToc =
+        parent.metadata?.is_toc ||
+        /(reading guide|where to find what|table of contents|contents|document control)/i.test(
+          parent.text || "",
+        );
       let isRelevantGuideRef = false;
       if (isGuideOrToc) {
         const parentLines = (parent.text || "").split("\n");
-        const lineWithRef = parentLines.find((l) => l.toLowerCase().includes(refLower));
+        const lineWithRef = parentLines.find((l) =>
+          l.toLowerCase().includes(refLower),
+        );
         if (lineWithRef) {
-          const lineWords = lineWithRef.toLowerCase().split(/\W+/).filter((w) => w.length >= 4);
+          const lineWords = lineWithRef
+            .toLowerCase()
+            .split(/\W+/)
+            .filter((w) => w.length >= 4);
           isRelevantGuideRef = lineWords.some((w) => questionLower.includes(w));
         }
       }
@@ -479,14 +768,19 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
         continue;
       }
 
-      const searchPattern = cleanRef.startsWith("§") ? cleanRef.slice(1).trim() : cleanRef;
+      const searchPattern = cleanRef.startsWith("§")
+        ? cleanRef.slice(1).trim()
+        : cleanRef;
       if (searchPattern.length >= 2) {
-        referencedTargets.set(`${parent.documentId}:${searchPattern.toLowerCase()}`, {
-          documentId: parent.documentId,
-          searchPattern,
-          originalRef: cleanRef,
-          seedParentId: parent.id,
-        });
+        referencedTargets.set(
+          `${parent.documentId}:${searchPattern.toLowerCase()}`,
+          {
+            documentId: parent.documentId,
+            searchPattern,
+            originalRef: cleanRef,
+            seedParentId: parent.id,
+          },
+        );
       }
     }
   }
@@ -495,9 +789,14 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
   let addedRefCount = 0;
   const MAX_REF_CHUNKS = RAG_CONFIG.MAX_REFERENCE_CHUNKS;
 
-  for (const { documentId, searchPattern, originalRef, seedParentId } of referencedTargets.values()) {
-    if (result.length >= MAX_TOTAL_CHUNKS || addedRefCount >= MAX_REF_CHUNKS) break;
-
+  for (const {
+    documentId,
+    searchPattern,
+    originalRef,
+    seedParentId,
+  } of referencedTargets.values()) {
+    if (result.length >= MAX_TOTAL_CHUNKS || addedRefCount >= MAX_REF_CHUNKS)
+      break;
 
     const matched = await prismaClient.parentChunk.findMany({
       where: {
@@ -519,20 +818,38 @@ export async function getParentNeighbors(parents, userId, question = null, db = 
       const bHeading = (b.metadata?.heading_path || []).join(" ").toLowerCase();
       const aInHeading = aHeading.includes(patternLower) ? 3 : 0;
       const bInHeading = bHeading.includes(patternLower) ? 3 : 0;
-      const aStarts = (a.text || "").trim().toLowerCase().startsWith(patternLower) ? 2 : 0;
-      const bStarts = (b.text || "").trim().toLowerCase().startsWith(patternLower) ? 2 : 0;
-      return (bInHeading + bStarts) - (aInHeading + aStarts);
+      const aStarts = (a.text || "")
+        .trim()
+        .toLowerCase()
+        .startsWith(patternLower)
+        ? 2
+        : 0;
+      const bStarts = (b.text || "")
+        .trim()
+        .toLowerCase()
+        .startsWith(patternLower)
+        ? 2
+        : 0;
+      return bInHeading + bStarts - (aInHeading + aStarts);
     });
     // 3. Take the top-ranked definition chunk
     for (const chunk of contentMatched.slice(0, 1)) {
-      if (!addedIds.has(chunk.id) && result.length < MAX_TOTAL_CHUNKS && addedRefCount < MAX_REF_CHUNKS) {
+      if (
+        !addedIds.has(chunk.id) &&
+        result.length < MAX_TOTAL_CHUNKS &&
+        addedRefCount < MAX_REF_CHUNKS
+      ) {
         addedIds.add(chunk.id);
         addedRefCount++;
         result.push({
           ...chunk,
           fileUrl: chunk.document?.fileUrl || null,
           documentTitle: chunk.document?.filename || null,
-          retrievalOrigin: { type: "reference_following", seedParentId, reference: originalRef },
+          retrievalOrigin: {
+            type: "reference_following",
+            seedParentId,
+            reference: originalRef,
+          },
         });
       }
     }
