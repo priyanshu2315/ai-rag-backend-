@@ -74,6 +74,14 @@ function buildRelaxedTsQuery(queryText) {
   return terms.join(" | ");
 }
 
+// Tags each parent with the searches that found it, so the chat trace can show where it came from
+const SEARCH_SOURCES = ["vector", "identifier", "phrase", "keyword"];
+const withMatchSources = (rows) =>
+  rows.map((row) => ({
+    ...row,
+    matchedBy: SEARCH_SOURCES.filter((source) => row[`${source}Rank`] != null),
+  }));
+
 // Accepts a plain string or { text, keywords, identifiers, entities } from the question planner
 export function buildSearchTiers(queryInput) {
   const isObject = typeof queryInput === "object" && queryInput !== null;
@@ -207,19 +215,24 @@ export const searchSingleDocument = async (
 
     -- Weighted RRF: exact IDs count most, then phrases, then vector and keywords
     combined_scores AS (
-      SELECT "parentId", (1.0 / (10 + rank)) AS score FROM vector_matches
+      SELECT "parentId", 'vector' AS source, rank, (1.0 / (10 + rank)) AS score FROM vector_matches
       UNION ALL
-      SELECT "parentId", (2.5 / (10 + rank)) AS score FROM id_matches
+      SELECT "parentId", 'identifier', rank, (2.5 / (10 + rank)) FROM id_matches
       UNION ALL
-      SELECT "parentId", (1.5 / (10 + rank)) AS score FROM phrase_matches
+      SELECT "parentId", 'phrase', rank, (1.5 / (10 + rank)) FROM phrase_matches
       UNION ALL
-      SELECT "parentId", (1.0 / (10 + rank)) AS score FROM keyword_matches
+      SELECT "parentId", 'keyword', rank, (1.0 / (10 + rank)) FROM keyword_matches
     ),
 
     ranked_parents AS (
       SELECT 
         "parentId",
-        SUM(score) AS total_score
+        SUM(score) AS total_score,
+        -- Best child rank per search; NULL means that search did not find this parent
+        MIN(rank) FILTER (WHERE source = 'vector') AS vector_rank,
+        MIN(rank) FILTER (WHERE source = 'identifier') AS identifier_rank,
+        MIN(rank) FILTER (WHERE source = 'phrase') AS phrase_rank,
+        MIN(rank) FILTER (WHERE source = 'keyword') AS keyword_rank
       FROM combined_scores
       GROUP BY "parentId"
       ORDER BY total_score DESC
@@ -237,12 +250,18 @@ export const searchSingleDocument = async (
       d.filename AS "documentTitle",
       p.metadata,
       r.total_score::double precision AS "retrievalScore",
-      (SELECT keyword_count FROM keyword_debug) AS "keywordCount",
-      (SELECT vector_count FROM vector_debug) AS "vectorCount"
+      (SELECT keyword_count FROM keyword_debug)::int AS "keywordCount",
+      (SELECT vector_count FROM vector_debug)::int AS "vectorCount",
+
+      r.vector_rank::int AS "vectorRank",
+      r.identifier_rank::int AS "identifierRank",
+      r.phrase_rank::int AS "phraseRank",
+      r.keyword_rank::int AS "keywordRank"
 
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id
-    JOIN "Document" d ON p."documentId" = d.id;
+    JOIN "Document" d ON p."documentId" = d.id
+    ORDER BY r.total_score DESC;
   `;
 
   console.log("🔍 SINGLE DOCUMENT SEARCH DEBUG:", {
@@ -256,7 +275,7 @@ export const searchSingleDocument = async (
     finalParents: res.length,
   });
 
-  return res;
+  return withMatchSources(res);
 };
 
 export const searchAllUserDocuments = async (
@@ -363,19 +382,24 @@ export const searchAllUserDocuments = async (
 
     -- Weighted RRF: exact IDs count most, then phrases, then vector and keywords
     combined_scores AS (
-      SELECT "parentId", (1.0 / (10 + rank)) AS score FROM vector_matches
+      SELECT "parentId", 'vector' AS source, rank, (1.0 / (10 + rank)) AS score FROM vector_matches
       UNION ALL
-      SELECT "parentId", (2.5 / (10 + rank)) AS score FROM id_matches
+      SELECT "parentId", 'identifier', rank, (2.5 / (10 + rank)) FROM id_matches
       UNION ALL
-      SELECT "parentId", (1.5 / (10 + rank)) AS score FROM phrase_matches
+      SELECT "parentId", 'phrase', rank, (1.5 / (10 + rank)) FROM phrase_matches
       UNION ALL
-      SELECT "parentId", (1.0 / (10 + rank)) AS score FROM keyword_matches
+      SELECT "parentId", 'keyword', rank, (1.0 / (10 + rank)) FROM keyword_matches
     ),
 
     ranked_parents AS (
       SELECT 
         "parentId",
-        SUM(score) AS total_score
+        SUM(score) AS total_score,
+        -- Best child rank per search; NULL means that search did not find this parent
+        MIN(rank) FILTER (WHERE source = 'vector') AS vector_rank,
+        MIN(rank) FILTER (WHERE source = 'identifier') AS identifier_rank,
+        MIN(rank) FILTER (WHERE source = 'phrase') AS phrase_rank,
+        MIN(rank) FILTER (WHERE source = 'keyword') AS keyword_rank
       FROM combined_scores
       GROUP BY "parentId"
       ORDER BY total_score DESC
@@ -393,12 +417,18 @@ export const searchAllUserDocuments = async (
       d."fileUrl",
       d.filename AS "documentTitle",
       r.total_score::double precision AS "retrievalScore",
-      (SELECT keyword_count FROM keyword_debug) AS "keywordCount",
-      (SELECT vector_count FROM vector_debug) AS "vectorCount"
+        (SELECT keyword_count FROM keyword_debug)::int AS "keywordCount",
+      (SELECT vector_count FROM vector_debug)::int AS "vectorCount",
+
+      r.vector_rank::int AS "vectorRank",
+      r.identifier_rank::int AS "identifierRank",
+      r.phrase_rank::int AS "phraseRank",
+      r.keyword_rank::int AS "keywordRank"
 
     FROM ranked_parents r
     JOIN "ParentChunk" p ON r."parentId" = p.id
-    JOIN "Document" d ON p."documentId" = d.id;
+    JOIN "Document" d ON p."documentId" = d.id
+    ORDER BY r.total_score DESC;
   `;
 
   console.log("🔍 SEARCH DEBUG:", {
@@ -412,7 +442,7 @@ export const searchAllUserDocuments = async (
     finalParents: res.length,
   });
 
-  return res;
+  return withMatchSources(res);
 };
 
 export const getChunksByPage = async (documentId, pageNumber) => {

@@ -492,30 +492,43 @@ Return ONLY valid JSON:
               RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
             );
 
+        // Remember each parent's pre-rerank position so the UI can show how the reranker moved it
+        const candidates = matched.map((chunk, i) => ({
+          ...chunk,
+          retrievalRank: i + 1,
+        }));
+
         emit(config, {
           type: "retrieval_candidates",
           attempt: state.loopCount + 1,
           query: queryText,
-          documents: matched,
+          searchInputs: chatRepository.buildSearchTiers(query),
+          documents: candidates,
         });
 
         const best =
-          matched.length > 0
+          candidates.length > 0
             ? await aiService.rerankChunks(
                 queryText,
-                matched,
+                candidates,
                 RAG_CONFIG.RERANK_TOP_N,
               )
             : [];
+        const reranked = best.map((chunk, i) => ({
+          ...chunk,
+          rerankRank: i + 1,
+        }));
 
         emit(config, {
           type: "rerank_result",
           attempt: state.loopCount + 1,
           query: queryText,
-          documents: best,
+          // rerankChunks falls back to top search hits without scores when Cohere fails
+          rerankApplied: reranked.some((chunk) => chunk.rerankScore != null),
+          documents: reranked,
         });
 
-        for (const chunk of best) {
+        for (const chunk of reranked) {
           collected.set(chunk.id, {
             ...chunk,
             retrievalOrigin: { type: "search" },
