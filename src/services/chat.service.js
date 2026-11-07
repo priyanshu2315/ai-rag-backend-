@@ -30,8 +30,8 @@ export const generateAnswer = traceable(
     }
 
     // 2. Load History
-    await chatRepository.saveMessage(conversationId, "user", question);
     const historyText = await chatRepository.getChatHistory(conversationId);
+    await chatRepository.saveMessage(conversationId, "user", question);
 
     // 3. Invoke the LangGraph State Machine
     onEvent({ type: "status", message: "Processing your question..." });
@@ -78,7 +78,7 @@ export const generateAnswer = traceable(
         {
           citations,
           steps: traceSteps,
-          reasoningChain
+          reasoningChain,
         },
       );
     }

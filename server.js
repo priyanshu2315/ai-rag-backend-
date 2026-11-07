@@ -4,6 +4,7 @@ import { startWorker } from "./src/workers/document.worker.js";
 import chatRoutes from "./src/routes/chat.routes.js";
 import authRoutes from "./src/routes/auth.routes.js";
 import healthRoutes from "./src/routes/health.routes.js";
+import pipelineRoutes from "./src/routes/pipeline.routes.js";
 import cors from "cors";
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 
 // Mount routes
 app.use("/api/health", healthRoutes);
+app.use("/api/pipeline", pipelineRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", authRoutes);

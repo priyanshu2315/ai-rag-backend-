@@ -486,15 +486,18 @@ export const getChatHistory = async (conversationId, limit = 6) => {
   });
   // Reverse to chronological order and format for the LLM
   return messages
-    .reverse()
-    .map((m) => {
+    .map((m, index) => {
+      const maxChars =
+        index < 4
+          ? 3000
+          : 200;
       let content = m.content.trim();
-      // Truncate long assistant answers so history stays under ~200 tokens
-      if (m.role === "assistant" && content.length > 200) {
-        content = content.slice(0, 200).replace(/\n+/g, " ") + "...";
+      if (content.length > maxChars) {
+        content = content.slice(0, maxChars).replace(/\n+/g, " ") + "...";
       }
       return `${m.role.toUpperCase()}: ${content}`;
     })
+    .reverse() // back to oldest-first reading order for the LLM
     .join("\n");
 };
 

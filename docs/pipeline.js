@@ -1,7 +1,8 @@
 /**
- * The engineering timeline behind DocuMind, reviewed 5 October 2026.
+ * The engineering timeline behind DocuMind, reviewed 7 November 2026.
  * Earlier entries describe historical stages, not guarantees about the current
- * implementation. The October entries record current behavior and open gaps.
+ * implementation. The November entries record the latest search, history and
+ * grading behavior.
  *
  * Content only: the About page renders it and holds no copy of its own, so a
  * new phase is one entry here rather than an edit to the markup.
@@ -727,6 +728,68 @@ export const PIPELINE = [
       "PostgreSQL Metadata Storage",
     ],
     date: "October 11, 2026",
+  },
+  {
+    id: 59,
+    title: "Hybrid Search Tiers & Search Provenance",
+    problem:
+      "Keyword search turned every word of the question into a search term, including vague words like 'that' or 'new', so common words outranked what mattered. Exact identifiers such as 'PBLU-4471902' or 'R-07' were split into pieces by the PostgreSQL text parser, and multi-word names like 'New Zealand' were matched as unrelated single words. After an agent model switch, the planner also copied the raw user question into search. On top of that, the trace could not show which search found a chunk or how the reranker moved it, candidates arrived unsorted, and BigInt counts crashed trace serialization.",
+    solution:
+      "The planner now returns structured queries { text, keywords, identifiers, entities }, and buildSearchTiers() turns them into four searches: identifiers through ILIKE (weight 2.5), entities as adjacent-word phrases (1.5), planner-chosen keywords joined with OR (1.0), and vector search on the query text (1.0), merged with weighted Reciprocal Rank Fusion (k=10). websearch_to_tsquery was considered but not used, because it joins plain words with AND and splits identifiers. Each tier sorts before its LIMIT, the final result is ordered by total score, and an empty keyword query no longer crashes. Each candidate carries matchedBy, per-tier ranks, retrievalRank, rerankRank and rerankApplied for the frontend trace.",
+    terms: [
+      "Tiered Hybrid Search",
+      "Weighted Reciprocal Rank Fusion",
+      "Structured Query Planning",
+      "Exact Identifier Matching",
+      "Retrieval Provenance",
+    ],
+    date: "November 4, 2026",
+  },
+  {
+    id: 60,
+    title: "Chat History: Duplicate Questions & Truncated Answers",
+    problem:
+      "The user's message was saved before history was loaded, so the planner and answer step received the current question twice. Every assistant answer in history was also cut to 200 characters. For the follow-up 'What is the group ownership of the last two?', the planner saw only the first row of the previous subsidiaries table, so it either planned a three-step chain to rebuild the list or guessed the wrong subsidiary.",
+    solution:
+      "History is now loaded before the question is saved. The last two question/answer pairs are kept in full (up to 3,000 characters each), and older messages are cut to 200 characters. Summarizing older history and semantic history retrieval were considered and postponed, because document follow-ups mostly refer to the latest answer. The same follow-up now plans the correct two subsidiaries by name and finishes in one round.",
+    terms: [
+      "Conversation Memory",
+      "Sliding Window Memory",
+      "History Token Budget",
+      "Coreference Resolution",
+    ],
+    date: "November 7, 2026",
+  },
+  {
+    id: 61,
+    title: "Relevance Grader: Discarded Evidence & Missed Amendments",
+    problem:
+      "The 20B grader often found the right answer but filled its JSON badly: an empty value on a list task, empty inputBindings on dependent tasks, and quotes that dropped or reworded lines. Validation rejected the whole task, the rejection cascaded to every dependent task, and correct rounds were thrown away; one follow-up used three rounds and over two minutes for an answer found in round one. The grader also kept only the chunk that resolved a task, so a later board resolution raising Vantara Gulf FZE's ownership from 74% to 90% was mentioned only by luck.",
+    solution:
+      "The grader moved from the fast 20B model to the larger agent model, which filled values and bindings correctly in testing; inputBindings validation was kept on purpose. Quote checking now accepts a quote when at least 80% of its lines or '...' pieces appear in the chunk in order, instead of requiring one exact copy. A new rule keeps chunks that change, amend or supersede a fact the question asks about, without changing the task's value, so the answer step can explain both the baseline and the change. The follow-up now finishes in one round and mentions the pending 90% resolution.",
+    terms: [
+      "Evidence Verification",
+      "Validation Cascade",
+      "Fuzzy Quote Matching",
+      "Amendment Awareness",
+      "Model Capacity for Structured Output",
+    ],
+    date: "November 7, 2026",
+  },
+  {
+    id: 62,
+    title: "Query Rewriter Answering Instead of Searching",
+    problem:
+      "The rewriter received candidate passages that already contained the answer, and the small model replied with a markdown table answer instead of a search phrase. Code only checked that the reply was at least 4 characters and not repeated, so the table became the next search query. Keyword search filled with junk terms, and the reranker scored almost every chunk near 1.0 because the query contained the answer itself.",
+    solution:
+      "cleanSearchQuery() accepts only a single line of at most 150 characters and 20 words with no table syntax, for both the rewriter and the grader's next_query. A rejected reply stops the loop with an 'invalid_query' reason and is kept as rawQuery in the trace. The rewriter prompt also says never to answer the question.",
+    terms: [
+      "LLM Output Validation",
+      "Query Sanitization",
+      "Instruction Drift",
+      "Guarded Query Rewriting",
+    ],
+    date: "November 7, 2026",
   },
 ];
 

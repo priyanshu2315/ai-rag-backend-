@@ -9,8 +9,10 @@ Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
 ### Nov 4 (4 hrs)
 - [x] Replace `plainto_tsquery` (keyword search optimization)
   - Done with custom `buildSearchTiers()`: identifier (`ILIKE`), phrase, and keyword tiers plus weighted RRF. `websearch_to_tsquery` was not used because it ANDs words and splits IDs.
-- [ ] Fix duplicate question injection in history
-- [ ] Add token-budget trimming
+- [x] Fix duplicate question injection in history
+  - History is now loaded before the current question is saved (`chat.service.js`).
+- [x] Add token-budget trimming
+  - History budget in `getChatHistory()`: last 4 messages up to 3,000 chars, older ones 200 chars. Retrieved context was already capped by `MAX_CONTEXT_CHARS`.
 
 ### Nov 5 (4 hrs)
 - [~] Multi-hop pointer expansion (K-hop backward/forward along `prevParentId`/`nextParentId`)
@@ -34,6 +36,12 @@ Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
 - [x] Per-tier `ORDER BY` before `LIMIT`, empty-tsquery crash fix, `searchAllUserDocuments` parity
 - [x] Live search tracking: `matchedBy`, per-tier ranks, `retrievalRank`/`rerankRank`/`rerankApplied`/`searchInputs`, final `ORDER BY total_score`
 - [x] BigInt serialization fix (`::int` on counts)
+- [x] Search query output check for rewriter and grader `next_query` (`cleanSearchQuery`, `invalid_query` stop reason)
+- [x] Grader moved from `fast` (gpt-oss-20b) to `agent` (deepseek-v4-flash): follow-up went from 3 rounds to 1
+- [x] Grader quotes that skip lines: accepted when at least 80% of the quote's lines appear in order (`isQuoteInDocText`)
+  - Missing `value`/`inputBindings` not seen with the larger model; a dependent chain (h2 after h1) passed with bindings filled. `inputBindings` kept on purpose.
+- [x] Grader keeps chunks that later change a fact the question asks about (LATER CHANGES rule), so the answer can mention amendments
+- [x] History: last 2 question/answer pairs in full (3,000 chars each), older messages cut to 200 chars
 - [ ] Frontend steps panel redesign (prompt given, frontend repo)
 
 ## Step 2: Document-Wise RBAC & Access Security (8 hrs)
