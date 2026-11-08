@@ -27,9 +27,15 @@ Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
   - Exists today: `table_continuation` via `table_ids`/`linked_table_ids`. No `list_id`.
 
 ### Nov 7 (4 hrs)
-- [~] Upgrade decompose for sequential two-stage dependent lookups
-  - Exists today: hop plan with `dependsOn` plus `next_hop` follow-up searches. Follow-up queries are plain strings without tiers.
-- [ ] Validate on `Chunking_Stress_Test_Document.pdf`
+- [x] Upgrade decompose for sequential two-stage dependent lookups
+  - Planner rule 7 "one hop = one lookup" (generic example, not from a test document). Verified 7 Nov: "name of the person who owns the risk linked to the Hosur expansion project" planned as 3 hops (project -> risk ID -> owner role -> name), each resolved in its own round with `inputBindings` filled.
+  - Grader `next_query` and the rewriter now return the same `{ text, keywords, identifiers, entities }` object as the planner (`toSearchQuery()`), so follow-up rounds run ID and Name search too.
+  - Also verified 8 Nov on a second document (KHI annual report): 3 chain questions, all correct in 2 rounds.
+- [ ] Planner fixes from the 8 Nov KHI traces (next task)
+  - Rule 7 adds "if needed" name hops even when the previous hop already gives a name.
+  - "Who had to approve" was looked up directly instead of amount -> approval-threshold table; the table only arrived as a neighbor chunk.
+  - Planning takes 27-33 s (2,600-3,400 hidden-thinking tokens) vs about 7 s before rule 7.
+- [ ] Validate on `Chunking_Stress_Test_Document.pdf` (then build only the Nov 5/6 gaps it shows)
 
 ### Extra work done in Step 1 (not in the original plan)
 - [x] Planner returns `{ text, keywords, identifiers, entities }` per query
@@ -42,7 +48,15 @@ Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
   - Missing `value`/`inputBindings` not seen with the larger model; a dependent chain (h2 after h1) passed with bindings filled. `inputBindings` kept on purpose.
 - [x] Grader keeps chunks that later change a fact the question asks about (LATER CHANGES rule), so the answer can mention amendments
 - [x] History: last 2 question/answer pairs in full (3,000 chars each), older messages cut to 200 chars
-- [ ] Frontend steps panel redesign (prompt given, frontend repo)
+- [x] Grader status example says "resolved or pending" (stops the misleading `invalid_task_result` label)
+- [x] Search rules tell the grader/rewriter not to copy codes or names from already-resolved tasks
+- [x] Prompt examples made generic (no names or codes from test documents)
+- [~] Reranker drops the right chunk in long tables (parked 8 Nov)
+  - Seen on Vantara only: the org chart was ranked #4 (score 0.039) as a whole chunk vs #1 (0.686) when its child pieces were scored. On KHI every answer chunk was kept at #1 with scores above 0.9. Fix designed (rerank child pieces, parent = best piece) but not applied; recheck on the stress test.
+- [~] Frontend steps panel (built in the frontend repo)
+  - Bugs seen 8 Nov: Final chunks cards mix round, query and rank from different rounds; neighbor chunks are shown with a search rank instead of "nearby"; rerank score only in the Developer tab. Fix prompt given.
+- [ ] Update `tests/crag-multi-hop.test.js` mocks (planner objects, JSON rewriter)
+- [ ] Add 7-8 Nov work (follow-up search objects, planner rule 7) to `docs/pipeline.js`
 
 ## Step 2: Document-Wise RBAC & Access Security (8 hrs)
 

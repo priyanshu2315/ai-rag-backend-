@@ -24,6 +24,7 @@ import {
   readModelContent,
   modelFailureDetails,
   cleanSearchQuery,
+  toSearchQuery,
 } from "./hop-evidence.service.js";
 
 // 1. Define the State Payload
@@ -49,6 +50,8 @@ export const GraphState = Annotation.Root({
   stopReason: Annotation({ reducer: (x, y) => y, default: () => "" }),
   searchRounds: Annotation({ reducer: mergeSearchRounds, default: () => [] }),
   missingQuery: Annotation({ reducer: (x, y) => y, default: () => "" }),
+  nextQuery: Annotation({ reducer: (x, y) => y, default: () => null }),
+
   accumulatedDocs: Annotation({ reducer: (x, y) => y, default: () => [] }),
   tokenBreakdown: Annotation({
     reducer: (x, y) => (x || []).concat(y || []),
@@ -73,6 +76,15 @@ const emit = (config, event) => {
   }
   config?.configurable?.onEvent?.(payload);
 };
+
+// Same search object the planner returns; used by the grader's next_query and the rewriter
+const SEARCH_OBJECT_RULES = `Search object fields:
+- "text": a short standalone search sentence (at most 12 words). Never an answer.
+- "keywords": 2-6 specific words from the task or passages; no vague words like "details" or "information".
+- "identifiers": exact codes copied from the verified facts or passages (e.g. INV-102, PO-7731, SKU 44-B).
+- "entities": multi-word names, roles, places or organizations written exactly as the passages write them (e.g. Audit Committee, North Region, Acme Logistics).
+Only include identifiers and entities the pending task searches for; do not copy codes or names from tasks that are already resolved.
+Use [] when a list has nothing. Never invent values that are not in the question, facts or passages.`;
 
 // Dependency injection lets graph tests exercise the real edges without
 // model calls, embeddings, or database access. Production uses these defaults.
@@ -100,7 +112,6 @@ export function createCragPipeline(dependencies = {}) {
       : "";
 
     const prompt = `You are a search query planner for a document search engine.
-${getLeavePlanningInstructions(now())}
 ${historyContext}
 User Question: "${state.question}"
 
@@ -111,11 +122,17 @@ Rules:
 4. Order hops so all prerequisites occur before their dependents. Use at most twelve hops.
 5. A simple fact question still needs one hop. Independent facts have independent hops and can use parallel queries.
 6. For a dependent chain, return starting queries ONLY for its entry-point tasks. Do not guess the intermediate entities.
-7. Later tasks refer to earlier outputs. For "risk owner, who they report to, boss's committee", plan owner -> boss -> committee.
+7. One hop = one lookup. Split the question at every relationship ("linked to", "owned by", "of the", "reports to", "responsible for", "approved by") into its own hop, because documents usually store each link in a different table or section. When the question asks for a person's name, write the hop that finds the person as "find the owner (the person's name, not only the role)". Do not add a separate hop for the name. Every hop must be required: never write optional tasks such as "if needed" or "if applicable".
+   Example: "What is the email of the manager of the team that owns ticket T-88?"
+   hops: h1 "find the team that owns ticket T-88" dependsOn []; h2 "find the manager of the team found in h1" dependsOn ["h1"]; h3 "find the email of the manager found in h2" dependsOn ["h2"]
+   starting queries: only for h1, e.g. {"text":"team that owns ticket T-88","keywords":["team","owns","ticket"],"identifiers":["T-88"],"entities":[]}
 8. For dated changes, include both the baseline and applicable amendments as required tasks.
 9. For questions asking for a calculated total, payment, or entitlement (e.g. "How much dividend does [Investor] receive?", "What is the total cost/revenue of [X]?"):
    Plan tasks to find BOTH the unit rate/price AND the relevant quantity/holdings/shares (e.g. "find shares held by [Investor]" and "find final dividend per share"). Do not frame user-stated premises as mere confirmation tasks; extract the actual quantities needed for the calculation.
-10. For each starting query return an object:
+10. "Who had to / must / is required to approve, sign, review" asks for what a rule requires, not for what happened. Plan separate entry-point hops for (a) the case's deciding value (amount, category, rating), found in the event itself, and (b) the rule table that maps values to approvers, then a final hop that applies (b) to (a). Do not answer from the event alone, because the event shows who did approve.
+   Example: "Who had to sign off purchase order PO-7731?" hops: h1 "find the value of PO-7731" []; h2 "find the sign-off limits by value" []; h3 "find who must sign off the value from h1 under the limits from h2" ["h1","h2"]
+
+11. For each starting query return an object:
    - "text": one short standalone search sentence for that task. Resolve pronouns from history, keep names, codes, and dates, and drop filler such as greetings, "please tell me", or "according to the document". Do not paste the whole user question when it asks several things.
    - "keywords": 2-6 important single words for exact keyword search (e.g. vessel, carrier, dividend). Skip vague words such as new, that, details, information, document. Do not repeat identifiers or entities here.
    - "identifiers": codes, serial numbers, invoice IDs, container numbers, or alphanumeric tags from the question or history (e.g. PBLU-4471902, INV-102, D08). Copy them exactly as written.
@@ -655,12 +672,13 @@ CHANGES & EXHAUSTIVE LOGS:
 TOTAL ENTITLEMENTS & COMPUTATIONS:
 - When a task asks for the total dividend, payment, or calculated amount received by an investor/entity, a unit rate alone (e.g. "USD 0.42 per share") does NOT resolve the total amount received unless the entity's holding/share volume is also accounted for or the total payment is explicitly stated.
 Propose next_query for the FIRST pending task whose prerequisites are resolved, using discovered names or IDs.
+${SEARCH_OBJECT_RULES}
 Do not repeat an executed query. Use null for next_query when all tasks are resolved.
 Return ONLY JSON:
 {
   "relevant_chunk_ids": ["exact parent ID"],
-  "hops": [{"hopId":"h1","status":"resolved","value":"concise established value or empty string","inputBindings":{},"evidence":[{"chunkId":"exact parent ID","quote":"exact supporting passage"}]}],
-  "next_query": {"hopId":"pending task ID","query":"targeted search phrase"}
+  "hops": [{"hopId":"h1","status":"resolved or pending","value":"concise established value or empty string","inputBindings":{},"evidence":[{"chunkId":"exact parent ID","quote":"exact supporting passage"}]}],
+  "next_query": {"hopId":"pending task ID","text":"targeted search sentence","keywords":[],"identifiers":[],"entities":[]}
 }`;
       try {
         response = await chatCompletion("agent", {
@@ -754,9 +772,14 @@ Return ONLY JSON:
       ? ""
       : chooseFollowUp(state.hopPlan, hopProgress, proposal, state.allQueries);
 
+    const nextQuery = missingQuery
+      ? toSearchQuery({ ...proposal, text: missingQuery })
+      : null;
+
     emit(config, {
       type: "grading_result",
       attempt: state.loopCount,
+      nextQuery,
       decisionSource,
       keptParentIds: documents.map((doc) => doc.id),
       decisions: gradingDocs.map((doc) => ({
@@ -803,6 +826,7 @@ Return ONLY JSON:
       hopProgress,
       missingQuery,
       ...decision,
+      nextQuery,
       searchRounds: [
         {
           attempt: state.loopCount,
@@ -838,6 +862,7 @@ Return ONLY JSON:
     let costInfo = null;
     let query = "";
     let rawQuery = "";
+    let nextQuery = null;
 
     let planningError = null;
 
@@ -853,7 +878,8 @@ If no prerequisite is resolved, search the task's original anchor with alternati
 Candidate passages are unverified; do not promote them to established facts.
 Do not repeat any executed query.
 Never answer the question, even if the passages contain the answer. Your output is only used to search.
-Return ONLY one line: a search phrase of at most 12 words, without quotes, tables or explanations.`,
+${SEARCH_OBJECT_RULES}
+Return ONLY JSON: {"text":"search sentence","keywords":[],"identifiers":[],"entities":[]}`,
           },
           {
             role: "user",
@@ -872,10 +898,18 @@ Return ONLY one line: a search phrase of at most 12 words, without quotes, table
           },
         ],
         temperature: 0,
+        response_format: { type: "json_object" },
       });
 
       rawQuery = readModelContent(response).trim();
-      query = cleanSearchQuery(rawQuery);
+      let parsedQuery = null;
+      try {
+        parsedQuery = JSON.parse(rawQuery);
+      } catch {
+        parsedQuery = null; // not JSON -> treated as invalid_query below
+      }
+      nextQuery = toSearchQuery(parsedQuery);
+      query = nextQuery?.text ?? "";
 
       costInfo = calculateCostINR(response.model || "fast", response.usage);
 
@@ -908,6 +942,7 @@ Return ONLY one line: a search phrase of at most 12 words, without quotes, table
       query,
       // What the AI actually returned, so a rejected reply is visible in the trace
       rawQuery,
+      searchTiers: nextQuery,
       message: fresh
         ? `New query: ${query}`
         : planningError
@@ -922,7 +957,7 @@ Return ONLY one line: a search phrase of at most 12 words, without quotes, table
     });
 
     return {
-      subQueries: fresh ? [query] : [],
+      subQueries: fresh ? [nextQuery] : [],
       missingQuery: fresh ? query : "",
       stopReason,
       tokenBreakdown: costInfo
@@ -1078,7 +1113,6 @@ Return ONLY one line: a search phrase of at most 12 words, without quotes, table
     } else {
       systemPromptContent = `You are a strict corporate AI assistant. Your ONLY purpose is to synthesize answers from the provided RETRIEVED DOCUMENT DATA.
 
-${getLeavePlanningInstructions(now())}
 
 STRUCTURE & HIERARCHY RULES:
 - TABLES:
@@ -1252,13 +1286,16 @@ ${contextText}`;
   // Fast-track node: Uses grader's missing query directly without calling another LLM
   const nextHopNode = (state, config) => {
     const query = state.missingQuery.trim();
+    const next = state.nextQuery ?? toSearchQuery(query);
+
     emit(config, {
       type: "tool_finish",
       tool: "Query Rewriter",
       message: `Follow-up search for: ${query}`,
-      query: query,
+      query,
+      searchTiers: next,
     });
-    return { subQueries: [query] };
+    return { subQueries: [next] };
   };
 
   // Resolves accurate page numbers for PDF, DOCX, and text documents (never returns "Unknown")

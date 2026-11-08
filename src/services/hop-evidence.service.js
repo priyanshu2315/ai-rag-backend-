@@ -32,6 +32,26 @@ export const cleanSearchQuery = (raw) => {
   return query;
 };
 
+const toList = (value) =>
+  Array.isArray(value)
+    ? value.map((item) => String(item ?? "").trim()).filter(Boolean)
+    : [];
+
+// Turns a grader or rewriter reply into the same { text, keywords, identifiers, entities }
+// shape the planner returns. The AI fills the lists; code only cleans them.
+// Returns null when text is not a valid one-line search phrase.
+export const toSearchQuery = (input) => {
+  const isObject = typeof input === "object" && input !== null;
+  const text = cleanSearchQuery(isObject ? (input.text ?? input.query) : input);
+  if (text.length < 4) return null;
+  return {
+    text,
+    keywords: isObject ? toList(input.keywords) : [],
+    identifiers: isObject ? toList(input.identifiers) : [],
+    entities: isObject ? toList(input.entities) : [],
+  };
+};
+
 export function validateHopPlan(plan) {
   if (!Array.isArray(plan) || !plan.length || plan.length > 12) {
     throw new Error("Expected between one and twelve question tasks");
@@ -297,13 +317,14 @@ export function nextPendingHop(plan, progress) {
 
 export function chooseFollowUp(plan, progress, proposal, executedQueries) {
   const pending = nextPendingHop(plan, progress);
+  const proposed = proposal?.text ?? proposal?.query;
   if (
     !pending ||
     proposal?.hopId !== pending.id ||
-    typeof proposal.query !== "string"
+    typeof proposed !== "string"
   )
     return "";
-  const query = cleanSearchQuery(proposal.query);
+  const query = cleanSearchQuery(proposed);
   if (
     query.length < 4 ||
     executedQueries.some((old) => queryKey(old) === queryKey(query))
