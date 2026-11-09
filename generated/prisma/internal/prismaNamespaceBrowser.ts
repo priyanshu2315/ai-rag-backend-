@@ -52,6 +52,9 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   User: 'User',
+  Role: 'Role',
+  UserRole: 'UserRole',
+  RoleDocument: 'RoleDocument',
   Document: 'Document',
   ParentChunk: 'ParentChunk',
   ChildChunk: 'ChildChunk',
@@ -79,12 +82,46 @@ export const UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
   password: 'password',
+  name: 'name',
+  type: 'type',
+  isActive: 'isActive',
+  mustChangePassword: 'mustChangePassword',
   resetOtp: 'resetOtp',
   resetOtpExpiresAt: 'resetOtpExpiresAt',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const RoleScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RoleScalarFieldEnum = (typeof RoleScalarFieldEnum)[keyof typeof RoleScalarFieldEnum]
+
+
+export const UserRoleScalarFieldEnum = {
+  userId: 'userId',
+  roleId: 'roleId',
+  assignedAt: 'assignedAt'
+} as const
+
+export type UserRoleScalarFieldEnum = (typeof UserRoleScalarFieldEnum)[keyof typeof UserRoleScalarFieldEnum]
+
+
+export const RoleDocumentScalarFieldEnum = {
+  roleId: 'roleId',
+  documentId: 'documentId',
+  addedAt: 'addedAt'
+} as const
+
+export type RoleDocumentScalarFieldEnum = (typeof RoleDocumentScalarFieldEnum)[keyof typeof RoleDocumentScalarFieldEnum]
 
 
 export const DocumentScalarFieldEnum = {
@@ -130,6 +167,7 @@ export const ConversationScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   documentId: 'documentId',
+  type: 'type',
   title: 'title',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

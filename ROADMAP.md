@@ -31,11 +31,15 @@ Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
   - Planner rule 7 "one hop = one lookup" (generic example, not from a test document). Verified 7 Nov: "name of the person who owns the risk linked to the Hosur expansion project" planned as 3 hops (project -> risk ID -> owner role -> name), each resolved in its own round with `inputBindings` filled.
   - Grader `next_query` and the rewriter now return the same `{ text, keywords, identifiers, entities }` object as the planner (`toSearchQuery()`), so follow-up rounds run ID and Name search too.
   - Also verified 8 Nov on a second document (KHI annual report): 3 chain questions, all correct in 2 rounds.
-- [ ] Planner fixes from the 8 Nov KHI traces (next task)
-  - Rule 7 adds "if needed" name hops even when the previous hop already gives a name.
-  - "Who had to approve" was looked up directly instead of amount -> approval-threshold table; the table only arrived as a neighbor chunk.
-  - Planning takes 27-33 s (2,600-3,400 hidden-thinking tokens) vs about 7 s before rule 7.
-- [ ] Validate on `Chunking_Stress_Test_Document.pdf` (then build only the Nov 5/6 gaps it shows)
+- [~] Planner fixes from the 8 Nov KHI traces
+  - Found: rule 7 added "if needed" name hops; "who had to approve" was looked up directly instead of amount -> approval-threshold table (the table only arrived as a neighbor chunk); planning took 27-33 s (2,600-3,400 hidden-thinking tokens).
+  - Done 8 Nov: rule 7 reworded (name asked inside the hop, no optional hops) and rule 10 added for "had to / must approve" questions. Verified on the KHI EPC risk question: 4 hops, no extra name hop, 1,095 planning tokens (was 3,408-5,606), correct answer.
+  - Not verified: reworded rule 10 (the first wording was ignored), and the Vantara CFO name question after the rule 7 change.
+- [~] Validate on `Chunking_Stress_Test_Document.pdf`: skipped 8 Nov by the user's decision (checked several times before); focus moved to RBAC and search at scale
+- [ ] Small search fixes before RBAC (no migration, about 1 hour; to do later)
+  - Remove the `keyword_debug` and `vector_debug` full-table counts from `searchSingleDocument` and `searchAllUserDocuments` (they run on every query only for the log line).
+  - Order the identifier tier's `ROW_NUMBER()` by relevance instead of child ID.
+  - Bigger search work (vector index, `documentId` indexes, identifier index, document-level routing) waits until RBAC is in and a large knowledge base is loaded, so it can be measured.
 
 ### Extra work done in Step 1 (not in the original plan)
 - [x] Planner returns `{ text, keywords, identifiers, entities }` per query
@@ -56,16 +60,65 @@ Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
 - [~] Frontend steps panel (built in the frontend repo)
   - Bugs seen 8 Nov: Final chunks cards mix round, query and rank from different rounds; neighbor chunks are shown with a search rank instead of "nearby"; rerank score only in the Developer tab. Fix prompt given.
 - [ ] Update `tests/crag-multi-hop.test.js` mocks (planner objects, JSON rewriter)
-- [ ] Add 7-8 Nov work (follow-up search objects, planner rule 7) to `docs/pipeline.js`
+- [x] Add 7-9 Nov work to `docs/pipeline.js` (entries 63-67: follow-up search objects, one-hop planning, planner over-planning, RBAC, email onboarding)
 
-## Step 2: Document-Wise RBAC & Access Security (8 hrs)
+## Step 2: User module, roles & document access (RBAC)
 
-### Nov 8 (4 hrs)
-- [ ] Fix ownership checks on `/api/documents/` and `/api/chat`
-- [ ] Prisma migrations for roles (ADMIN, MANAGER, EMPLOYEE) and permissions
+Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order after this step: frontend restructure (header, sidebar modules, multiple chats), then the large knowledge base, then measured search optimization.
 
-### Nov 9 (4 hrs)
-- [ ] Inject RBAC permission filters into the pgvector and full-text SQL in `chat.repository.js`
+### Agreed model
+- One library: every uploaded document is in one place. Only the admin uploads.
+- Role = a name + a list of documents picked from a dropdown of the library.
+- User = name, email, temporary password (set at creation), one or more roles.
+- Access rule: a user sees and searches a document only if one of their roles includes it. Several roles = all their documents together. Admin sees all documents.
+- No direct document-to-user access: to give one person one document, create a role with that document and assign it.
+- Admin = a flag on the user, separate from roles (roles are document lists). Only the admin creates roles and users; normal users can only search and see their own roles and documents.
+- Chats: many global chats per user (like Claude), each with its own history, searching all the user's documents. Document chat stays one chat per user per document.
+- Current account becomes admin through a one-time database update; old accounts are cleaned up later by hand.
+
+### Phase A: Data
+- [x] 1. Plan the tables in words, review together: user name, admin flag, active flag, "must change password" flag; roles; role documents; user roles; conversation type (global or document)
+- [x] 2. Migration + Prisma Client generate (only after explicit approval)
+- [x] 3. Set the current account as admin in the database
+  - Test: account shows admin; every old document still opens
+
+### Phase B: Login and access
+- [x] 4. Login returns name, admin flag and "must change password"; public registration turned off; disabled users cannot log in
+- [x] 5. Admin guard: admin-only routes reject normal users
+- [x] 6. Change password: a user with a temporary password must set a new one first
+  - Test: normal user is forbidden on admin routes; temporary password works only until changed
+- [x] 7. One access check, "which documents can this user see?" (admin: all; user: documents of all their roles)
+  - Test: two roles sharing a document, user with both sees it once
+
+### Phase C: Admin modules
+- [x] 8. Role module: create, list, rename, delete; add/remove documents (dropdown uses the library list)
+- [x] 9. User module: create (name, email, temporary password, roles), list, edit roles, disable
+  - Test: role "Finance" with the KHI document, a user with that role sees only KHI
+
+### Phase D: Apply access everywhere
+- [x] 10. Document list shows only the user's documents; upload and delete become admin-only
+- [x] 11. Document chat and chunk inspector use the access check ("not found" without access)
+- [x] 12. Global search filters to the user's documents; remove the "newest file per filename" rule in `searchAllUserDocuments`
+  - Test: the Finance user asks a Vantara question; the answer must not use Vantara
+
+### Phase E: Chats
+- [x] 13. Global chats: new, list, rename, delete, each with its own history
+- [x] 14. Document chat stays one per user per document, as now
+  - Test: two global chats keep separate histories; document chat unchanged
+
+### Phase F: Check and tidy
+- [x] 15. Full check with two test users, different roles, admin vs user vs disabled user
+  - Tested by the user 9 Nov: roles and access, admin knowledge base (after the `req.user` fix), asking about a document outside the user's roles.
+  - Forgot-password returned the reset code in its response until email existed (no attempt limit on the code).
+- [x] Email service (9 Nov): new users and admin password resets get an email with the platform link and temporary password (`emailSent` in the response); forgot-password emails the code
+  - Still open: forgot-password response still includes `otp` (leaks the code, 500 for unknown emails); `resetPassword` should lowercase the email; no attempt limit on the code. Not yet tested end to end.
+- [x] 16. Update `AGENTS.md`, `ROADMAP.md` and the frontend notes (9 Nov; frontend contract in `docs/frontend-rbac-prompt.md`)
+
+### What happens on change
+- A document removed from a role: users lose it on their next question; old chat answers that cited it stay in history.
+- A document deleted: it disappears from every role.
+- A role deleted: users lose its documents; their chats stay.
+- The frontend admin pages need the new endpoints from Phases B, C and E; the UI shell (header, sidebar) can be built alongside Phase B.
 
 ## Step 3: Delta Versioning & Pointer Splicing (10 hrs)
 

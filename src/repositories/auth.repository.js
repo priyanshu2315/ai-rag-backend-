@@ -3,6 +3,9 @@ import prisma from "../config/db.js";
 export const findUserByEmail = async (email) => {
   return await prisma.user.findUnique({ where: { email } });
 };
+export const findUserById = async (id) => {
+  return await prisma.user.findUnique({ where: { id } });
+};
 
 export const setResetOtp = async (userId, otp, expiresAt) => {
   return await prisma.user.update({
@@ -21,6 +24,6 @@ export const clearResetOtp = async (userId) => {
 export const updatePassword = async (userId, hashedPassword) => {
   return await prisma.user.update({
     where: { id: userId },
-    data: { password: hashedPassword },
+    data: { password: hashedPassword, mustChangePassword: false },
   });
 };

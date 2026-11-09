@@ -1,44 +1,12 @@
-// import prisma from "../config/db.js";
-
-// export const searchSingleDocument = async (
-//   documentId,
-//   vectorStr,
-//   count = 5,
-// ) => {
-//   // Step 1: Find the top matching child sentences
-//   // Step 2: Return their distinct parent paragraphs
-//   return await prisma.$queryRaw`
-//     WITH top_children AS (
-//       SELECT "parentId", "embedding" <=> ${vectorStr}::vector AS distance
-//       FROM "ChildChunk"
-//       WHERE "documentId" = ${documentId}
-//       ORDER BY distance
-//       LIMIT ${count}
-//     )
-//     SELECT DISTINCT p.text
-//     FROM top_children t
-//     JOIN "ParentChunk" p ON t."parentId" = p.id;
-//   `;
-// };
-
-// export const searchAllUserDocuments = async (userId, vectorStr, count = 5) => {
-//   return await prisma.$queryRaw`
-//     WITH top_children AS (
-//       SELECT c."parentId", c."embedding" <=> ${vectorStr}::vector AS distance
-//       FROM "ChildChunk" c
-//       JOIN "Document" d ON c."documentId" = d.id
-//       WHERE d."userId" = ${userId}
-//       ORDER BY distance
-//       LIMIT ${count}
-//     )
-//     SELECT DISTINCT p.text
-//     FROM top_children t
-//     JOIN "ParentChunk" p ON t."parentId" = p.id;
-//   `;
-// };
-
 import prisma from "../config/db.js";
 import { RAG_CONFIG } from "../config/rag.config.js";
+
+const conversationListSelect = {
+  id: true,
+  title: true,
+  createdAt: true,
+  updatedAt: true,
+};
 
 function buildRelaxedTsQuery(queryText) {
   if (!queryText) return "";
@@ -279,7 +247,7 @@ export const searchSingleDocument = async (
 };
 
 export const searchAllUserDocuments = async (
-  userId,
+  documentIds,
   vectorStr,
   queryInput,
   count = RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
@@ -293,11 +261,10 @@ export const searchAllUserDocuments = async (
 
   const res = await prisma.$queryRaw`
     WITH active_docs AS (
-      SELECT DISTINCT ON (filename) id
+      SELECT id
       FROM "Document"
-      WHERE "userId" = ${userId}
-        AND "status" = 'COMPLETED'
-      ORDER BY filename, "createdAt" DESC
+      WHERE id= ANY(${documentIds}::text[])        
+       AND "status" = 'COMPLETED'
     ),
 
     vector_matches AS (
@@ -432,7 +399,7 @@ export const searchAllUserDocuments = async (
   `;
 
   console.log("🔍 SEARCH DEBUG:", {
-    userId,
+    documentCount: documentIds.length,
     queryText: text,
     idPatterns,
     phraseQuery,
@@ -487,10 +454,7 @@ export const getChatHistory = async (conversationId, limit = 6) => {
   // Reverse to chronological order and format for the LLM
   return messages
     .map((m, index) => {
-      const maxChars =
-        index < 4
-          ? 3000
-          : 200;
+      const maxChars = index < 4 ? 3000 : 200;
       let content = m.content.trim();
       if (content.length > maxChars) {
         content = content.slice(0, maxChars).replace(/\n+/g, " ") + "...";
@@ -527,44 +491,30 @@ export const getDocumentSummaryState = (documentId) =>
 
 export const getOrCreateConversation = async (userId, documentId) => {
   let conversation = await prisma.conversation.findFirst({
-    where: {
-      userId: userId,
-      documentId: documentId || null,
-    },
-    include: {
-      messages: { orderBy: { createdAt: "asc" } },
-    },
+    where: { userId, documentId, type: "DOCUMENT" },
+    include: { messages: { orderBy: { createdAt: "asc" } } },
     orderBy: { updatedAt: "desc" },
   });
 
   if (!conversation) {
     conversation = await prisma.conversation.create({
-      data: {
-        userId: userId,
-        documentId: documentId || null,
-      },
+      data: { userId, documentId, type: "DOCUMENT" },
       include: { messages: true },
     });
   }
-
   return conversation;
 };
 
 export const clearConversationMessages = async (userId, documentId) => {
   const result = await prisma.message.deleteMany({
-    where: {
-      conversation: {
-        userId: userId,
-        documentId: documentId || null,
-      },
-    },
+    where: { conversation: { userId, documentId, type: "DOCUMENT" } },
   });
   return result.count;
 };
 
 export async function getParentNeighbors(
   parents,
-  userId,
+  allowedDocumentIds,
   question = null,
   db = prisma,
 ) {
@@ -595,7 +545,7 @@ export async function getParentNeighbors(
       const siblings = await prismaClient.parentChunk.findMany({
         where: {
           id: { in: siblingIds },
-          document: { userId, status: "COMPLETED" },
+          document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         },
         include: {
           document: { select: { fileUrl: true, filename: true } },
@@ -627,7 +577,7 @@ export async function getParentNeighbors(
         where: {
           documentId: parent.documentId,
           metadata: { path: ["section_id"], equals: sectionId },
-          document: { userId, status: "COMPLETED" },
+          document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         },
         orderBy: { createdAt: "asc" },
         include: {
@@ -669,10 +619,10 @@ export async function getParentNeighbors(
         FROM "ParentChunk" p
         JOIN "Document" d ON p."documentId" = d.id
         WHERE p."documentId" = ${parent.documentId}
-          AND d."userId" = ${userId}
-          AND d."status" = 'COMPLETED'
-          AND (p.metadata->>'is_toc') IS DISTINCT FROM 'true'
-          AND p.metadata->'heading_path'->>0 = ${rootChapter}
+        AND d.id = ANY(${allowedDocumentIds}::text[])          
+        AND d."status" = 'COMPLETED'
+        AND (p.metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND p.metadata->'heading_path'->>0 = ${rootChapter}
         ORDER BY (p.metadata->>'chunk_index')::int ASC
         LIMIT ${RAG_CONFIG.MAX_CHAPTER_EXPANSION_CHUNKS};
       `;
@@ -719,7 +669,7 @@ export async function getParentNeighbors(
     const related = await prismaClient.parentChunk.findMany({
       where: {
         documentId,
-        document: { userId, status: "COMPLETED" },
+        document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         OR: [
           { metadata: { path: ["table_ids"], array_contains: [tableId] } },
           {
@@ -834,7 +784,7 @@ export async function getParentNeighbors(
     const matched = await prismaClient.parentChunk.findMany({
       where: {
         documentId,
-        document: { userId, status: "COMPLETED" },
+        document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         searchText: { contains: searchPattern, mode: "insensitive" },
       },
       include: { document: { select: { fileUrl: true, filename: true } } },
@@ -890,3 +840,49 @@ export async function getParentNeighbors(
 
   return result;
 }
+
+export const listGlobalConversations = (userId) =>
+  prisma.conversation.findMany({
+    where: { userId, type: "GLOBAL" },
+    select: conversationListSelect,
+    orderBy: { updatedAt: "desc" },
+  });
+
+export const createGlobalConversation = (userId, title) =>
+  prisma.conversation.create({
+    data: {
+      userId,
+      type: "GLOBAL",
+      documentId: null,
+      ...(title ? { title } : {}),
+    },
+    select: conversationListSelect,
+  });
+
+export const getOwnedConversation = (userId, id) =>
+  prisma.conversation.findFirst({
+    where: { id, userId },
+    include: { messages: { orderBy: { createdAt: "asc" } } },
+  });
+
+export const renameConversation = (userId, id, title) =>
+  prisma.conversation.updateMany({ where: { id, userId }, data: { title } });
+
+export const deleteGlobalConversation = (userId, id) =>
+  prisma.conversation.deleteMany({ where: { id, userId, type: "GLOBAL" } });
+
+// Moves the chat to the top of the list; names it after the first question
+export const touchConversation = async (id, question) => {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id },
+    select: { title: true },
+  });
+  const needsTitle =
+    !conversation?.title || conversation.title === "New Conversation";
+  return prisma.conversation.update({
+    where: { id },
+    data: needsTitle
+      ? { title: question.trim().replace(/\s+/g, " ").slice(0, 60) }
+      : { updatedAt: new Date() },
+  });
+};

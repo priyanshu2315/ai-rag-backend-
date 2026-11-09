@@ -1,5 +1,10 @@
 import * as chatService from "../services/chat.service.js";
 import prisma from "../config/db.js";
+import {
+  canAccessDocument,
+  getAccessibleDocumentIds,
+} from "../services/access.service.js";
+import { handle } from "../utils/http.js";
 
 export const askQuestion = async (req, res) => {
   try {
@@ -9,15 +14,30 @@ export const askQuestion = async (req, res) => {
     if (!question) {
       throw new Error("Please provide a question");
     }
+    if (!conversationId) {
+      return res.status(400).json({ error: "conversationId is required" });
+    }
 
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+      select: { documentId: true },
+    });
+    if (
+      !conversation ||
+      (conversation.documentId ?? null) !== (documentId || null)
+    ) {
+      return res.status(404).json({ error: "Conversation not found." });
+    }
+
+    let allowedDocumentIds;
     if (documentId) {
-      const doc = await prisma.document.findFirst({
-        where: { id: documentId, userId },
-      });
-
-      if (!doc) {
+      if (!(await canAccessDocument(req.user, documentId))) {
         return res.status(404).json({ error: "Document not found." });
       }
+      const doc = await prisma.document.findUnique({
+        where: { id: documentId },
+        select: { status: true },
+      });
 
       if (doc.status === "PROCESSING") {
         return res.status(202).json({
@@ -25,14 +45,17 @@ export const askQuestion = async (req, res) => {
             "Your document is still processing. Please wait a few seconds!",
         });
       }
-
       if (doc.status === "FAILED") {
         return res.status(500).json({
           error:
             "This document failed to process. Please try uploading it again.",
         });
       }
+      allowedDocumentIds = [documentId];
+    } else {
+      allowedDocumentIds = await getAccessibleDocumentIds(req.user);
     }
+
     // 2. Set headers for Server-Sent Events (SSE)
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -45,6 +68,7 @@ export const askQuestion = async (req, res) => {
         question,
         documentId,
         userId,
+        allowedDocumentIds,
         conversationId,
       },
       (event) => {
@@ -81,6 +105,15 @@ export const fetchConversation = async (req, res) => {
     const userId = req.user.id;
     // Extract documentId from the query string (e.g., ?documentId=...)
     const documentId = req.query.documentId || null;
+    if (!documentId) {
+      return res.status(400).json({
+        error:
+          "documentId is required; use /api/chat/conversations for global chats.",
+      });
+    }
+    if (!(await canAccessDocument(req.user, documentId))) {
+      return res.status(404).json({ error: "Document not found." });
+    }
 
     const conversation = await chatService.getConversationSession(
       userId,
@@ -99,6 +132,15 @@ export const clearConversation = async (req, res) => {
   try {
     const userId = req.user.id;
     const documentId = req.query.documentId || null;
+    if (!documentId) {
+      return res.status(400).json({
+        error:
+          "documentId is required; use /api/chat/conversations for global chats.",
+      });
+    }
+    if (!(await canAccessDocument(req.user, documentId))) {
+      return res.status(404).json({ error: "Document not found." });
+    }
 
     const deletedMessages = await chatService.clearConversation(
       userId,
@@ -116,3 +158,24 @@ export const clearConversation = async (req, res) => {
       .json({ success: false, error: "Failed to clear conversation." });
   }
 };
+
+export const listConversations = handle((req) =>
+  chatService.listGlobalConversations(req.user.id),
+);
+export const createConversation = handle(
+  (req) => chatService.createGlobalConversation(req.user.id, req.body?.title),
+  201,
+);
+export const getConversation = handle((req) =>
+  chatService.getConversation(req.user, req.params.conversationId),
+);
+export const renameConversation = handle((req) =>
+  chatService.renameConversation(
+    req.user.id,
+    req.params.conversationId,
+    req.body?.title,
+  ),
+);
+export const deleteConversation = handle((req) =>
+  chatService.deleteGlobalConversation(req.user.id, req.params.conversationId),
+);

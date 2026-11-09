@@ -1,8 +1,8 @@
 /**
- * The engineering timeline behind DocuMind, reviewed 7 November 2026.
+ * The engineering timeline behind DocuMind, reviewed 9 November 2026.
  * Earlier entries describe historical stages, not guarantees about the current
- * implementation. The November entries record the latest search, history and
- * grading behavior.
+ * implementation. The November entries record the latest search, history,
+ * grading, planning, access-control and email behavior.
  *
  * Content only: the About page renders it and holds no copy of its own, so a
  * new phase is one entry here rather than an edit to the markup.
@@ -790,6 +790,82 @@ export const PIPELINE = [
       "Guarded Query Rewriting",
     ],
     date: "November 7, 2026",
+  },
+  {
+    id: 63,
+    title: "Follow-up Searches Lost Exact-Match Tiers",
+    problem:
+      "Only the first round used the structured query { text, keywords, identifiers, entities }. The grader's next_query and the query rewriter returned plain sentences, so every follow-up round ran only vector and keyword search. A chain like 'project -> risk R-04 -> owner' found the risk code in round one, but round two could not search for 'R-04' as an exact identifier, and the owner's row was missed or ranked low.",
+    solution:
+      "The grader's next_query and the rewriter now return the same search object as the planner, validated by toSearchQuery() and stored as nextQuery in the graph state, so identifier and phrase search run in every round. One shared set of search-object rules (with generic examples only) is used by the grader and the rewriter, and it forbids copying codes or names from tasks that are already resolved. On the test question, round two ran the identifier tier for R-04 and every fact in the three-step chain was found on purpose.",
+    terms: [
+      "Structured Follow-up Queries",
+      "Multi-Round Retrieval",
+      "Exact Identifier Matching",
+      "Shared Output Schema",
+    ],
+    date: "November 7, 2026",
+  },
+  {
+    id: 64,
+    title: "Dependent Questions Planned as One Lookup",
+    problem:
+      "Questions such as 'Who owns the risk linked to the expansion project?' need several facts that live in different tables: the project's risk, the risk's owner role, then the person holding that role. The planner often wrote one task for the whole chain, so the grader marked it resolved as soon as one passage looked close, and a role title was returned where a name was asked for.",
+    solution:
+      "Planner rule 'one hop = one lookup' splits the question at every relationship ('linked to', 'owned by', 'reports to', 'approved by') into its own task with dependsOn, and gives starting queries only for the first task. Its worked example (ticket -> team -> manager -> email) is deliberately unrelated to any test document. Verified on two synthetic reports: a three-step risk-owner chain and three chain questions on a second report all answered correctly.",
+    terms: [
+      "Query Decomposition",
+      "Multi-Hop Planning",
+      "Dependency Graph",
+      "Entity Resolution",
+    ],
+    date: "November 7, 2026",
+  },
+  {
+    id: 65,
+    title: "Planner Over-Planning & Slow Planning",
+    problem:
+      "After the one-hop rule, the planner added optional 'find the name, if needed' tasks even when the previous task already returned a name, and spent 2,600-5,600 hidden reasoning tokens (27-55 seconds) deciding them. Questions like 'Which body had to approve the budget increase?' were planned as a direct lookup, so the answer came from the meeting minutes (who did approve) and the approval-threshold table that states who must approve arrived only by luck as a neighboring chunk.",
+    solution:
+      "The rule now asks for the person's name inside the task that finds the person ('the owner, the person's name, not only the role') and forbids optional tasks. A new rule says 'had to / must approve' questions need the case's deciding value and the rule table, then a task that applies one to the other. On the test chain question the plan dropped from five tasks to four and planning from 5,606 to 1,095 tokens with the same correct answer. The approval rule is not yet verified: the model ignored its first wording.",
+    terms: [
+      "Prompt Ambiguity",
+      "Reasoning Token Budget",
+      "Rule-Based Question Planning",
+      "Planner Latency",
+    ],
+    date: "November 8, 2026",
+  },
+  {
+    id: 66,
+    title: "Single-Owner Documents to Role-Based Access",
+    problem:
+      "Every document belonged to the user who uploaded it, and access was checked separately in about ten places. There was no way to give a team a set of documents. Several gaps showed up during the redesign: the document list endpoint returned every document with its summary to any logged-in user, the chat accepted any conversation ID without checking its owner, global search kept only the newest document per filename (which would hide another user's file with the same name), a disabled account kept working until its 7-day token expired, and each user had only one global chat.",
+    solution:
+      "Admins upload documents into one library, create roles (a name plus documents) and users (with one or more roles), and only role links decide access: no copied user-document table to keep in sync. One access service answers 'which documents can this user see' (admin: all; user: documents of all their roles), and every list, inspector, document chat and search uses it, answering 404 rather than 403 so hidden documents are not revealed. Chat computes allowedDocumentIds once per question and passes it through the graph state into the search SQL, where every tier joins only those documents, and into neighbor expansion. The auth middleware loads the user on every request (disabled users are out immediately, temporary passwords must be changed first), and users get many global chats titled from their first question. One lesson: passing a user ID instead of the user object made the role filter undefined, which Prisma silently ignores, and briefly showed documents from other roles.",
+    terms: [
+      "Role-Based Access Control (RBAC)",
+      "Many-to-Many Join Tables",
+      "Query-Time Access Filtering",
+      "Least Privilege",
+      "Session Revalidation",
+    ],
+    date: "November 9, 2026",
+  },
+  {
+    id: 67,
+    title: "Account Onboarding by Email",
+    problem:
+      "With public sign-up removed, the admin had to pass each new user's temporary password by hand. The forgot-password endpoint returned the reset code in its API response because there was no email, so anyone who knew an address could reset that account, including the admin's.",
+    solution:
+      "An SMTP mail service sends new users the platform link, their email and the temporary password, sends a new temporary password when the admin resets one, and sends forgot-password codes. Sending never throws: a mail failure does not undo the user change, and the response says emailSent true or false so the admin can share the details manually. Removing the code from the forgot-password response is the remaining step.",
+    terms: [
+      "Transactional Email",
+      "Credential Delivery",
+      "Graceful Degradation",
+      "Account Recovery",
+    ],
+    date: "November 9, 2026",
   },
 ];
 

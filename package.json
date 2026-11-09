@@ -39,6 +39,7 @@
     "langsmith": "^0.10.1",
     "mammoth": "^1.12.1",
     "multer": "^2.2.0",
+    "nodemailer": "^10.4.0",
     "openai": "^7.10.0",
     "pdf-parse": "^2.4.5",
     "pg": "^8.23.0",

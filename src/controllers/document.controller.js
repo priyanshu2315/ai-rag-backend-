@@ -7,13 +7,14 @@ import {
 } from "../config/uploadProgress.js";
 import { randomUUID } from "node:crypto";
 import prisma from "../config/db.js";
+import { canAccessDocument } from "../services/access.service.js";
 
 export const streamProgress = async (req, res) => {
   const documentId = req.params.docId;
 
   // 1. Make sure the doc exists and belongs to this user
   const doc = await prisma.document.findUnique({ where: { id: documentId } });
-  if (!doc || doc.userId !== req.user.id) {
+  if (!doc || !(await canAccessDocument(req.user, documentId))) {
     return res
       .status(404)
       .json({ success: false, error: "Document not found" });
@@ -99,16 +100,19 @@ export const streamProgress = async (req, res) => {
   }
   if (fresh.status === "COMPLETED") {
     send({ type: "chunks_ready" });
-    if (fresh.summaryStatus === "COMPLETED" || fresh.summaryStatus === "FAILED") {
+    if (
+      fresh.summaryStatus === "COMPLETED" ||
+      fresh.summaryStatus === "FAILED"
+    ) {
       return finish({
-        type: fresh.summaryStatus === "COMPLETED" ? "completed" : "summary_failed",
+        type:
+          fresh.summaryStatus === "COMPLETED" ? "completed" : "summary_failed",
       });
     }
     if (fresh.summaryStatus === "PROCESSING") {
       send({ type: "summarizing" });
     }
   }
-
 };
 
 export const uploadDocument = async (req, res) => {
@@ -173,8 +177,7 @@ export const listDocuments = async (req, res) => {
 
 export const getMyDocuments = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const documents = await documentService.getUserDocuments(userId);
+    const documents = await documentService.getUserDocuments(req.user);
 
     return res.status(200).json({
       success: true,
@@ -190,7 +193,10 @@ export const getMyDocuments = async (req, res) => {
 
 export const deleteDocument = async (req, res) => {
   try {
-    const result = await documentService.deleteDocument(req.params.docId, req.user?.id);
+    const result = await documentService.deleteDocument(
+      req.params.docId,
+      req.user?.id,
+    );
     return res.status(200).json({
       success: true,
       message: "Document deleted successfully",
@@ -198,10 +204,13 @@ export const deleteDocument = async (req, res) => {
     });
   } catch (error) {
     const status = error.statusCode || 500;
-    if (status >= 500) console.error("Document deletion failed:", error.message);
+    if (status >= 500)
+      console.error("Document deletion failed:", error.message);
     return res.status(status).json({
       success: false,
-      error: error.statusCode ? error.message : "Failed to delete document. Please try again.",
+      error: error.statusCode
+        ? error.message
+        : "Failed to delete document. Please try again.",
     });
   }
 };
@@ -209,7 +218,10 @@ export const deleteDocument = async (req, res) => {
 export const getAllParentChunks = async (req, res) => {
   try {
     const docId = req.params.docId;
-    const parentChunks = await documentService.getAllParentChunks(docId, req.user.id);
+    const parentChunks = await documentService.getAllParentChunks(
+      docId,
+      req.user,
+    );
     return res.status(200).json({
       success: true,
       data: parentChunks,
@@ -225,7 +237,10 @@ export const getAllParentChunks = async (req, res) => {
 export const getChildChunksOfParent = async (req, res) => {
   try {
     const parentId = req.params.parentId;
-    const result = await documentService.getChildChunksOfParent(parentId, req.user.id);
+    const result = await documentService.getChildChunksOfParent(
+      parentId,
+      req.user,
+    );
     return res.status(200).json({
       success: true,
       data: result,

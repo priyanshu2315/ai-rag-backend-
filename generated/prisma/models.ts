@@ -9,6 +9,9 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/User.ts'
+export type * from './models/Role.ts'
+export type * from './models/UserRole.ts'
+export type * from './models/RoleDocument.ts'
 export type * from './models/Document.ts'
 export type * from './models/ParentChunk.ts'
 export type * from './models/ChildChunk.ts'

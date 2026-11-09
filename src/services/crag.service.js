@@ -39,6 +39,7 @@ export const GraphState = Annotation.Root({
   loopCount: Annotation({ reducer: (x, y) => x + y, default: () => 0 }),
   documentId: Annotation({ reducer: (x, y) => y, default: () => null }),
   userId: Annotation({ reducer: (x, y) => y, default: () => null }),
+  allowedDocumentIds: Annotation({ reducer: (x, y) => y, default: () => [] }),
   historyText: Annotation({ reducer: (x, y) => y, default: () => "" }),
   intent: Annotation({ reducer: (x, y) => y, default: () => "search" }),
   page_number: Annotation({ reducer: (x, y) => y, default: () => null }),
@@ -504,7 +505,7 @@ Return ONLY valid JSON:
               RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
             )
           : await chatRepository.searchAllUserDocuments(
-              state.userId,
+              state.allowedDocumentIds,
               vectorStr,
               query,
               RAG_CONFIG.SEARCH_PARENT_CANDIDATES,
@@ -564,7 +565,7 @@ Return ONLY valid JSON:
     const seeds = [...collected.values()];
     const documents = await chatRepository.getParentNeighbors(
       seeds,
-      state.userId,
+      state.allowedDocumentIds,
       state.question, // Pass question so repository knows whether to expand full section or local
     );
 

@@ -1,5 +1,14 @@
 import prisma from "../config/db.js";
 
+const documentListSelect = {
+  id: true,
+  filename: true,
+  createdAt: true,
+  fileUrl: true,
+  status: true,
+  summaryStatus: true,
+};
+
 export const createDocument = async (filename, userId, fileUrl) => {
   return await prisma.document.create({
     data: {
@@ -12,6 +21,7 @@ export const createDocument = async (filename, userId, fileUrl) => {
 
 export const findAllDocuments = async () => {
   return await prisma.document.findMany({
+    select: documentListSelect,
     orderBy: { createdAt: "desc" },
   });
 };
@@ -27,38 +37,23 @@ export const findSimilarChunks = async (questionEmbeddingArray, limit = 3) => {
   return similarChunks;
 };
 
-export const getDocumentsByUserId = async (userId) => {
-  return await prisma.document.findMany({
-    where: { userId },
-    select: {
-      id: true,
-      filename: true,
-      createdAt: true,
-      fileUrl: true,
-      status: true,
-      summaryStatus: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-};
-
 export const getDocumentById = async (id) => {
   return await prisma.document.findUnique({
     where: { id },
   });
 };
 
-export const getOwnedDocument = async (id, userId) => {
-  return prisma.document.findFirst({
-    where: { id, userId },
+export const getDocumentForDelete = async (id) => {
+  return prisma.document.findUnique({
+    where: { id },
     select: { id: true, userId: true, fileUrl: true, status: true },
   });
 };
 
-export const deleteOwnedDocument = async (id, userId) => {
-  // Existing foreign keys cascade to parents, children, conversations and messages.
+export const deleteDocumentById = async (id) => {
+  // Existing foreign keys cascade to parents, children, role links, conversations and messages.
   return prisma.document.deleteMany({
-    where: { id, userId, status: { in: ["COMPLETED", "FAILED"] } },
+    where: { id, status: { in: ["COMPLETED", "FAILED"] } },
   });
 };
 
@@ -81,7 +76,7 @@ export const getAllParentChunks = async (id) => {
 
 export const getParentChunkById = async (parentId, userId) => {
   return await prisma.parentChunk.findFirst({
-    where: { id: parentId, document: { userId } },
+    where: { id: parentId },
     select: {
       id: true,
       text: true,
@@ -170,3 +165,11 @@ export async function saveDocumentChunks(documentId, parents) {
     },
   );
 }
+
+export const getDocumentsByIds = async (ids) => {
+  return await prisma.document.findMany({
+    where: { id: { in: ids } },
+    select: documentListSelect,
+    orderBy: { createdAt: "desc" },
+  });
+};
