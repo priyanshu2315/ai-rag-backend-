@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Project Charter PRJ-11: Ardmoor Rig Control Upgrade</title><link rel="stylesheet" href="kb.css"></head>
+<body>
+<p class="company">CALDERWICK PUMP SYSTEMS LTD</p>
+<h1>Project Charter PRJ-11: Ardmoor Rig Control Upgrade</h1>
+<table class="control">
+<tr><td>Project</td><td>PRJ-11</td></tr>
+<tr><td>Version</td><td>1.1 (1 August 2025)</td></tr>
+<tr><td>Sponsor</td><td>Chief Operating Officer</td></tr>
+<tr><td>Project manager</td><td>Project Manager, Ardmoor Rig Upgrade</td></tr>
+<tr><td>Budget approved by</td><td>Board of Directors, Resolution 2025-08 of 19 June 2025</td></tr>
+<tr><td>Classification</td><td>Internal</td></tr>
+</table>
+
+<h2>1. Why this project</h2>
+
+<p>The hydraulic test rigs at Calderwick Pump Systems Ltd's Ardmoor plant run on control software and panels installed between 2012 and 2016. Spare parts are scarce, the firmware has known faults, and the old controls cannot be separated from the office network, which is a cyber security risk. The project replaces the control systems of all five rigs with a common design.</p>
+
+<h2>2. Scope</h2>
+
+<ul><li>New control engineering and integration for rigs TR-1, TR-2, TR-3, TR-4 and TR-5.</li><li>New AC-HPU-7 PLC controllers on the hydraulic power units of all five rigs, the same controller family already used at Ardmoor; the controllers removed are kept as spares.</li><li>New operator panels (HMI) on all five rigs.</li><li>A separate, segmented OT network for the rigs with vendor access only through the jump host.</li><li>Out of scope: mechanical work on the rigs and the test hall building.</li></ul>
+
+<p>Rig TR-5 was transferred from Hollins Cross, mechanically refurbished and entered service at Ardmoor on 29 September 2025 with its old controls; it receives the new controls in March 2026.</p>
+
+<h2>3. Budget</h2>
+
+<p class="caption">Table 1 - Budget</p>
+<table>
+<thead><tr><th>Item</th><th>Budget (USD)</th></tr></thead>
+<tbody>
+<tr><td>Control engineering and integration (Ardent Controls Ltd, tender TE-2025-03)</td><td>192,500</td></tr>
+<tr><td>PLC controllers AC-HPU-7, 5 units</td><td>162,000</td></tr>
+<tr><td>Operator panels AC-HMI-12, 5 units</td><td>36,500</td></tr>
+<tr><td>OT network and security</td><td>41,000</td></tr>
+<tr><td>Contingency</td><td>48,000</td></tr>
+<tr><td>Total</td><td>480,000</td></tr>
+</tbody>
+</table>
+
+<h2>4. Milestones</h2>
+
+<p class="caption">Table 2 - Milestones</p>
+<table>
+<thead><tr><th>Milestone</th><th>Date</th></tr></thead>
+<tbody>
+<tr><td>Design freeze</td><td>30 September 2025</td></tr>
+<tr><td>TR-1 cut-over</td><td>3 to 7 November 2025</td></tr>
+<tr><td>TR-2 cut-over</td><td>1 to 5 December 2025</td></tr>
+<tr><td>TR-3 cut-over</td><td>12 to 16 January 2026</td></tr>
+<tr><td>TR-4 cut-over</td><td>9 to 13 February 2026</td></tr>
+<tr><td>TR-5 cut-over</td><td>9 to 13 March 2026</td></tr>
+<tr><td>Project closure</td><td>31 March 2026</td></tr>
+</tbody>
+</table>
+
+<p>Each rig may be out of service for at most one week. The Plant Manager, Ardmoor reschedules customer tests around the cut-overs.</p>
+
+<h2>5. Roles</h2>
+
+<p class="caption">Table 3 - Project roles</p>
+<table>
+<thead><tr><th>Role in project</th><th>Calderwick role</th><th>Person</th></tr></thead>
+<tbody>
+<tr><td>Sponsor</td><td>Chief Operating Officer</td><td>Adaeze Okafor</td></tr>
+<tr><td>Project manager</td><td>Project Manager, Ardmoor Rig Upgrade</td><td>Ishaan Kapoor</td></tr>
+<tr><td>Technical lead</td><td>OT Systems Engineer</td><td>Elif Demir</td></tr>
+<tr><td>Security adviser</td><td>Information Security Officer</td><td>Yusuf Karimi</td></tr>
+<tr><td>Site lead</td><td>Plant Manager, Ardmoor (P2)</td><td>Ragnar Holt</td></tr>
+</tbody>
+</table>
+
+<h2>6. Risks and change control</h2>
+
+<p>The main risks are R-07 (single maintenance supplier for the rigs) and R-11 (cyber attack on plant control networks); see the Risk Register. Changes that raise the budget by more than 5% need the sponsor's approval; more than 10% needs a new Board resolution.</p>
+</body></html>

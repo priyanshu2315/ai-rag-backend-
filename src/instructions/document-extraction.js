@@ -8,11 +8,16 @@ Use # once for the complete document title, ## for main sections, and ### for st
 If a company name or logo appears above the document title, use the actual SOP,
 report, or document title as documentTitle and the single # heading. Do not use
 the company name as the title or add a second # heading for the document title.
+Keep that company or organisation name as a plain text line above the # heading;
+never drop it, because it tells readers which organisation the document belongs to.
 Do not repeat the # heading on later pages or in later batches.
 Keep a section active across pages; do not repeat its heading at every page break.
 Do not append "(continued)", "(cont.)", or similar suffix labels to section headings.
 Use bold text for body callouts rather than making them new sections.
 Render tables with their column labels, dates, and units on each continuation.
+A block of label/value pairs without column headings (such as a document control
+block listing owner, version and effective date) is written as one "- Label: value"
+line per pair, never as a table.
 If the document defines short column names (such as A, B, and C) in a note,
 use those definitions and units in every table header, including earlier rows
 and later page continuations. Keep the short name too, for example:

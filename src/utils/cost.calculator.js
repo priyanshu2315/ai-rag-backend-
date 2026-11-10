@@ -13,6 +13,11 @@ const MODEL_PRICING_USD = {
   "gemini-2.0-flash": { input: 0.075, output: 0.3 },
   "gemini-1.5-flash": { input: 0.075, output: 0.3 },
 
+  // OpenRouter models (prices checked 9 Nov 2026)
+  "qwen/qwen3.8-flash": { input: 0.15, output: 0.47 },
+  // AI Router models (prices checked 9 Nov 2026)
+  "alibaba/qwen3.8-omni-flash": { input: 0.15, output: 0.47 },
+
   // Default fallback
   default: { input: 0.15, output: 0.3 },
 };
@@ -40,4 +45,3 @@ export function calculateCostINR(modelName, usage) {
     formattedINR: `₹${costINR < 0.01 ? costINR.toFixed(4) : costINR.toFixed(2)}`,
   };
 }
-

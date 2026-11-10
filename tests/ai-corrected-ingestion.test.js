@@ -53,7 +53,7 @@ test("PDF images are sent to the configured extraction model in ordered batches"
   assert.ok(sectionParents.every((parent) => parent.metadata.section_id === sectionParents[0].metadata.section_id));
   assert.equal(sectionParents[0].nextParentId, sectionParents[1].id);
   assert.equal(sectionParents[1].prevParentId, sectionParents[0].id);
-  assert.ok(parents.every((parent) => parent.metadata.chunker_version === "ai-corrected-markdown-v3"));
+  assert.ok(parents.every((parent) => parent.metadata.chunker_version === "ai-corrected-markdown-v4"));
   assert.ok(parents.every((parent) => parent.metadata.source_text === "ai_extracted_markdown"));
 });
 

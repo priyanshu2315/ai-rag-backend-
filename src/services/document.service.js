@@ -120,7 +120,7 @@ export const getAllParentChunks = async (docId, user) => {
   return await documentRepository.getAllParentChunks(docId);
 };
 
-export const getChildChunksOfParent = async (parentId, userId) => {
+export const getChildChunksOfParent = async (parentId, user) => {
   if (!parentId) {
     throw new Error("Parent chunk id is required");
   }

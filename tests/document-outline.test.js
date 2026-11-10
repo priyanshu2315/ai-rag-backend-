@@ -37,22 +37,23 @@ test("dot leaders recover generic appendix identity, pages and explicit lengths"
 
 test("empty and partially populated model outlines recover without a paid retry", async () => {
   for (const entries of [[], [outline[0]]]) {
-    const result = await resolveContentsOutline({
+    const { outline: result, warnings } = await resolveContentsOutline({
       result: { pages: [contents], tableOfContents: entries, isTableOfContents: false },
       totalPages: 24, retry: neverRetry,
     });
     assert.equal(result.length, 5);
+    assert.deepEqual(warnings, []);
     assert.deepEqual(missingAppendices([contents], result), []);
   }
 });
 
 test("later contents batches add mappings and batches without contents keep the outline", async () => {
   const first = [outline[0], outline[1]];
-  const combined = await resolveContentsOutline({
+  const { outline: combined } = await resolveContentsOutline({
     previous: first, totalPages: 24, retry: neverRetry,
     result: { pages: [], tableOfContents: outline.slice(2) },
   });
-  const retained = await resolveContentsOutline({
+  const { outline: retained } = await resolveContentsOutline({
     previous: combined, totalPages: 24, retry: neverRetry,
     result: { pages: [{ markdown: "Body text" }], tableOfContents: [] },
   });
@@ -71,27 +72,33 @@ test("a focused retry fills a missing mapping from a contents format without dot
     },
   });
   assert.equal(calls, 1);
-  assert.deepEqual(resolved, [outline[1]]);
+  assert.deepEqual(resolved.outline, [outline[1]]);
+  assert.equal(resolved.retried, true);
 });
 
-test("an unresolved appendix fails after one retry instead of silently losing identity", async () => {
+test("an unresolved appendix is reported after one retry instead of failing the document", async () => {
   let calls = 0;
-  await assert.rejects(resolveContentsOutline({
+  const resolved = await resolveContentsOutline({
     result: { pages: [{ isTableOfContents: true, markdown: "Appendix B - Minutes 20" }], tableOfContents: [] },
     totalPages: 24,
     retry: async () => { calls++; return { tableOfContents: [] }; },
-  }), /Contents mapping remains incomplete: appendix b/);
+  });
   assert.equal(calls, 1);
+  assert.deepEqual(resolved.outline, []);
+  assert.deepEqual(resolved.warnings.map((warning) => warning.type), ["no_contents_mapping", "unmapped_appendices"]);
+  assert.deepEqual(resolved.warnings[1].codes, ["appendix b"]);
 });
 
 test("an earlier outline cannot hide missing entries on a later contents page", async () => {
   let calls = 0;
-  await assert.rejects(resolveContentsOutline({
+  const resolved = await resolveContentsOutline({
     previous: [outline[0]], totalPages: 24,
     result: { pages: [{ isTableOfContents: true, markdown: "| Section | Page |\n| --- | --- |\n| Technical Notes | 24 |" }], tableOfContents: [] },
     retry: async () => { calls++; return { tableOfContents: [] }; },
-  }), /Contents mapping remains incomplete/);
+  });
   assert.equal(calls, 1);
+  assert.deepEqual(resolved.outline, [outline[0]]);
+  assert.ok(resolved.warnings.some((warning) => warning.type === "no_contents_mapping"));
 });
 
 test("appendix entries in a contents table also require usable mappings", () => {
@@ -100,10 +107,13 @@ test("appendix entries in a contents table also require usable mappings", () => 
   }], []), ["appendix b"]);
 });
 
-test("conflicting, out-of-range and malformed mappings are rejected", () => {
-  assert.throws(() => mergeOutline([outline[1]], [{ ...outline[1], targetPage: 21 }], 24), /Conflicting/);
-  assert.throws(() => mergeOutline([], [{ ...outline[1], targetPage: 25 }], 24), /Invalid contents page/);
-  assert.throws(() => mergeOutline([], [{ ...outline[1], pageCount: 6 }], 24), /Invalid contents range/);
+test("conflicting and out-of-range mappings are reported; malformed ones are rejected", () => {
+  const warnings = [];
+  const merged = mergeOutline([outline[1]], [
+    { ...outline[1], targetPage: 21 }, { ...outline[2], targetPage: 25 }, { ...outline[3], pageCount: 6 },
+  ], 24, { warnings });
+  assert.deepEqual(merged, [outline[1]]);
+  assert.deepEqual(warnings.map((warning) => warning.type), ["conflict", "invalid_page", "invalid_range"]);
   assert.throws(() => mergeOutline([], "invalid", 24), /must be an array/);
   assert.throws(() => mergeOutline([], [null], 24), /title and sectionCode/);
   assert.deepEqual(mergeOutline([], [{ ...outline[1], targetPage: null }], 24), []);
@@ -115,8 +125,17 @@ test("appendix ranges retain page 21, switch on 22, and ignore internal subsecti
   assert.equal(appendixAtPage(outline, 18, 24), null);
   const withSubsection = [...outline, { sectionCode: "B.1", title: "Agenda", targetPage: 21, pageCount: null }];
   assert.equal(appendixAtPage(withSubsection, 21, 24).title, bTitle);
-  assert.throws(() => appendixAtPage([{ ...outline[1], pageCount: 3 }, outline[2]], 20, 24), /Overlapping appendix/);
-  assert.throws(() => appendixAtPage([outline[1], { ...outline[1], sectionCode: "Appendix X", title: "Other minutes" }], 20, 24), /Ambiguous appendix/);
+  // A printed page count that runs into the next entry stops where that entry starts.
+  assert.deepEqual(appendixAtPage([{ ...outline[1], pageCount: 3 }, outline[2]], 21, 24), { title: bTitle, start: 20, end: 21 });
+  assert.equal(appendixAtPage([{ ...outline[1], pageCount: 3 }, outline[2]], 22, 24).title, "Appendix C - CFO restatement letter");
+  // Two appendices starting on one page: the first listed covers only that page and is
+  // returned there; the second covers the pages after it.
+  const shared = [
+    { sectionCode: "", title: "Annexure E – Valve Schedule (Preliminary)", targetPage: 30, pageCount: null },
+    { sectionCode: "", title: "Annexure F – Data Required from Customer", targetPage: 30, pageCount: null },
+  ];
+  assert.deepEqual(appendixAtPage(shared, 30, 31), { title: shared[0].title, start: 30, end: 30 });
+  assert.deepEqual(appendixAtPage(shared, 31, 31), { title: shared[1].title, start: 30, end: 31 });
 });
 
 function sourcePage(number, text, boundaryTitle) {

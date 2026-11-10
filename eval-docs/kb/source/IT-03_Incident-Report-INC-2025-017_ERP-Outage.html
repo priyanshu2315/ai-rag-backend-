@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Incident Report INC-2025-017: Ledgerline ERP Outage</title><link rel="stylesheet" href="kb.css"></head>
+<body>
+<p class="company">CALDERWICK PUMP SYSTEMS LTD</p>
+<h1>Incident Report INC-2025-017: Ledgerline ERP Outage</h1>
+<table class="control">
+<tr><td>Incident ID</td><td>INC-2025-017</td></tr>
+<tr><td>Date of incident</td><td>26 August 2025</td></tr>
+<tr><td>System</td><td>Ledgerline ERP (finance, purchasing and inventory)</td></tr>
+<tr><td>Priority</td><td>P1 (IT incident priorities, IT-SEC-02)</td></tr>
+<tr><td>Supplier involved</td><td>Quillon Software Ltd (VEN-077), support contract CON-2023-044</td></tr>
+<tr><td>Incident owner</td><td>IT Service Manager</td></tr>
+<tr><td>Status</td><td>Closed on 5 September 2025</td></tr>
+</table>
+
+<h2>1. Summary</h2>
+
+<p>On 26 August 2025 the Ledgerline ERP of Calderwick Pump Systems Ltd was unavailable to all users for just over six hours. Purchasing, goods receipts and invoice processing stopped at all sites. The cause was a database patch that the supplier, Quillon Software Ltd, applied the evening before without approval of the Change Advisory Board.</p>
+
+<h2>2. Timeline (26 August 2025)</h2>
+
+<p class="caption">Table 1 - Timeline</p>
+<table>
+<thead><tr><th>Time</th><th>Event</th></tr></thead>
+<tbody>
+<tr><td>08:05</td><td>Service desk logged INC-2025-017 as P1 after users at all sites reported that Ledgerline would not open.</td></tr>
+<tr><td>08:20</td><td>Quillon Software Ltd support engaged under contract CON-2023-044.</td></tr>
+<tr><td>09:40</td><td>Cause found: a database patch applied by Quillon at 21:30 on 25 August had failed part-way.</td></tr>
+<tr><td>11:15</td><td>Decision to roll back the patch from the backup taken at 21:00 on 25 August.</td></tr>
+<tr><td>14:10</td><td>Ledgerline restored and checked by Finance; users informed.</td></tr>
+</tbody>
+</table>
+
+<h2>3. Measured times and targets</h2>
+
+<p>Ledgerline was unavailable for 6 hours 5 minutes from the service desk log. The restore target in Quillon's support contract CON-2023-044 is 4 hours, so the supplier missed it. The recovery time objective for Ledgerline in the Disaster Recovery Plan is 8 hours; the outage stayed within it and disaster recovery was not invoked. No data was lost because no transactions had been entered after the 21:00 backup.</p>
+
+<h2>4. Impact</h2>
+
+<p>About 180 users could not work in Ledgerline during the outage. The August month-end close finished on working day 6 instead of working day 5.</p>
+
+<h2>5. Follow-up actions</h2>
+
+<p class="caption">Table 2 - Follow-up actions</p>
+<table>
+<thead><tr><th>No.</th><th>Action</th><th>Owner (role)</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Claim the service credit from Quillon Software Ltd for the missed restore time.</td><td>Head of IT</td><td>Done; USD 420 claimed 15 September 2025</td></tr>
+<tr><td>2</td><td>Buy emergency database support to review the rolled-back patch (purchase order PO-10241, USD 8,700).</td><td>Head of IT</td><td>Done</td></tr>
+<tr><td>3</td><td>Remind Quillon in writing that all patches need CAB approval under IT-SEC-02.</td><td>IT Service Manager</td><td>Done 27 August 2025</td></tr>
+<tr><td>4</td><td>Re-apply the patch in an approved change window after testing.</td><td>IT Service Manager</td><td>Done 4 September 2025</td></tr>
+</tbody>
+</table>
+
+<h2>Sign-off</h2>
+
+<p>Prepared by the IT Service Manager and reviewed by the Head of IT on 5 September 2025.</p>
+</body></html>

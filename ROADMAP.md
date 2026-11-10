@@ -40,6 +40,11 @@ Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
   - Remove the `keyword_debug` and `vector_debug` full-table counts from `searchSingleDocument` and `searchAllUserDocuments` (they run on every query only for the log line).
   - Order the identifier tier's `ROW_NUMBER()` by relevance instead of child ID.
   - Bigger search work (vector index, `documentId` indexes, identifier index, document-level routing) waits until RBAC is in and a large knowledge base is loaded, so it can be measured.
+- [ ] Links between documents: decide after the 31-question baseline (parked 10 Nov)
+  - Today a jump to another document happens only when the grader asks for the next code and the identifier tier finds it. Stored `references` are followed only inside the same document and only for override words (resolution, amendment, appendix, annex, addendum), a code named in the question, or a contents/guide line.
+  - Risks to measure in the baseline: the grader misses a code and the chain stops; a 4-hop chain runs out of rounds (`MAX_CRAG_LOOPS` 3); an old version is used because nothing points from the old document to its newer amendment.
+  - Middle path if needed (instead of a separate graph database): a links table in Postgres, `code -> chunk -> type (defines / mentions / amends)`, filled at upload from the codes the chunker already extracts. Uses: (1) newer-version check: when a chunk mentions `FIN-AAM-01`, add the chunk in another document that amends or replaces it (one database lookup, no AI call); (2) jump straight to the chunk that defines a code (e.g. the PO-log row for a PO number). Must respect role access and be cleaned on document delete.
+  - Not now: a graph database (Neo4j or similar). The AI would have to extract every relation correctly, many facts depend on dates and rules, it would need sync with re-uploads and roles, and 50 documents are too few to need it. Reconsider only if many questions ask for lists across documents or the links table is not enough.
 
 ### Extra work done in Step 1 (not in the original plan)
 - [x] Planner returns `{ text, keywords, identifiers, entities }` per query
@@ -131,6 +136,14 @@ Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order afte
 - [ ] Re-stitch `prevParentId` / `nextParentId` links
 
 ## Step 4: Enterprise Knowledge Base Corpus & Evals (6 hrs)
+
+### Before the knowledge base (9 Nov)
+- [~] Ingestion fixes ported from the ISGEC project (unit-tested, not yet verified on a real upload)
+  - 429 retry for every extraction call; table repair on every page; contents/appendix problems become warnings instead of failing the upload; second appendix on the same page gets its own section; "Row" label for a blank top-left cell; long text cut at a line or sentence end; long table rows split into groups of whole fields; whole codes (`INC-2025-014`, `PO-10234`) and plural references ("Appendices B to D") in `references`. Chunker version `ai-corrected-markdown-v4`.
+  - Next: pilot upload of 5 knowledge-base documents, compare stored chunks with the source, then the rest.
+- [~] Pilot of 5 knowledge-base documents written 9 Nov (`eval-docs/kb/`: `FACT-SHEET.md`, `ANSWER-KEY.md` with 7 questions, `source/*.html`, `pdf/*.pdf`); extraction switched to Qwen via AI Router. Uploaded 9 Nov (about 7 minutes for 5 documents) and compared with the source: 395 checks, every sentence and every table cell stored with the right column label, tables across pages linked, appendices in their own sections; only the company line "CALDERWICK PUMP SYSTEMS LTD" was dropped on 2 of 5 documents. Next: run Q1-Q7.
+- [x] Pilot fixes 9 Nov: prompt keeps the company line above the title; company named in body text; paragraphs kept on one page in the PDFs (a sentence split by a page break was stored in two chunks). Pilot re-uploaded and clean.
+- [~] Knowledge base of 50 connected synthetic documents (111 pages) for one made-up company in 6 categories (HR 7, Finance 10, Procurement 10, Operations 9, IT 7, Board & Legal 7), built 9 Nov by `eval-docs/kb/build/`; `ANSWER-KEY.md` has 31 questions with document, page and section per hop. Uploaded 9-10 Nov: 15 documents through OpenRouter Qwen until its free credit ran out (402), the rest through AI Router Qwen; all 50 COMPLETED (372 parents, 402 children; IDs in `eval-docs/kb/UPLOADED.md`). Compared with the sources: every sentence and table cell stored with the right labels except the plant name Ardmoor misread as "Ardmooor" in HR-07 (1 cell) and OPS-02 (5 cells), repeated on retry. Next: assign category roles, run the 31 questions as a baseline before search work. Later about 600 public news articles (MultiHop-RAG) for scale.
 
 ### Nov 12 (3 hrs)
 - [ ] Ingest the interconnected enterprise dataset (multi-quarter financial filings, v1/v2 policy amendments, SLA tables)

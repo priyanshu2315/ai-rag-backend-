@@ -33,7 +33,8 @@ export const PROVIDERS = {
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: process.env.OPENROUTER || process.env.OPENROUTER_API_KEY,
     models: {
-      extraction: "google/gemini-2.5-flash",
+      // Reads page images and supports json_schema output (checked 9 Nov 2026).
+      extraction: "qwen/qwen3.8-flash",
       summary: "openai/gpt-oss-20b",
       chat: "openai/gpt-oss-120b",
       agent: "openai/gpt-oss-120b",
@@ -55,7 +56,8 @@ export const PROVIDERS = {
     baseURL: process.env.AI_ROUTER_BASE_URL || "https://api.airouter.in/v1",
     apiKey: process.env.AI_ROUTER_API_KEY,
     models: {
-      extraction: "google/gemini-2.5-flash-image",
+      // Qwen 3.8 Flash family; reads page images and supports json_schema (smoke-tested 9 Nov 2026).
+      extraction: "alibaba/qwen3.8-omni-flash",
       summary: "deepseek/deepseek-v4-flash",
       chat: "deepseek/deepseek-v4-flash",
       agent: "deepseek/deepseek-v4-flash",
@@ -70,7 +72,7 @@ export const PROVIDERS = {
  * Single source of truth: configure which provider handles each task right here.
  */
 export const DEFAULT_TASK_PROVIDERS = {
-  extraction: "gemini", // Free Gemini for chunking / document extraction
+  extraction: "airouter", // Qwen 3.8 omni-flash via AI Router. OpenRouter qwen/qwen3.8-flash also works but its free-tier credit ran out (402) on 9 Nov after 18 documents; Gemini flash-lite until 9 Nov
   summary: "airouter",  // AI Router (large context, avoids Groq's 8k TPM limits)
   chat: "airouter",     // AI Router for high-quality generation
   agent: "airouter",    // AI Router for CRAG deep reasoning & generation

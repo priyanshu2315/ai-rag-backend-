@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>IT Security Policy, Version 2</title><link rel="stylesheet" href="kb.css"></head>
+<body>
+<p class="company">CALDERWICK PUMP SYSTEMS LTD</p>
+<h1>IT Security Policy, Version 2</h1>
+<table class="control">
+<tr><td>Document code</td><td>IT-SEC-02</td></tr>
+<tr><td>Version</td><td>2.0</td></tr>
+<tr><td>Effective date</td><td>1 March 2025</td></tr>
+<tr><td>Owner</td><td>Information Security Officer</td></tr>
+<tr><td>Approved by</td><td>Head of IT</td></tr>
+<tr><td>Replaces</td><td>IT-SEC-01 (2022)</td></tr>
+<tr><td>Classification</td><td>Internal</td></tr>
+</table>
+
+<h2>1. Purpose and scope</h2>
+
+<p>This policy protects the information and systems of Calderwick Pump Systems Ltd. It covers office IT systems, the Ledgerline ERP, email and file shares, and the operational technology (OT) that runs our plants, including the control systems of the Ardmoor test rigs and the Fenwick Bay furnace. It applies to employees, contractors and suppliers who use or connect to Calderwick systems.</p>
+
+<h2>2. Roles</h2>
+
+<p class="caption">Table 1 - Roles</p>
+<table>
+<thead><tr><th>Role</th><th>Responsibility</th></tr></thead>
+<tbody>
+<tr><td>Head of IT</td><td>Accountable for information security; approves this policy and any exceptions</td></tr>
+<tr><td>Information Security Officer</td><td>Owns this policy; runs access reviews; leads the response to security incidents</td></tr>
+<tr><td>IT Service Manager</td><td>Runs the service desk, incident management and the Change Advisory Board</td></tr>
+<tr><td>OT Systems Engineer</td><td>Manages plant control systems and approves supplier remote sessions to them</td></tr>
+<tr><td>Line managers</td><td>Request and remove access for their teams; confirm access in reviews</td></tr>
+<tr><td>All users</td><td>Follow this policy and report incidents at once</td></tr>
+</tbody>
+</table>
+
+<h2>3. Information classification</h2>
+
+<p class="caption">Table 2 - Classification</p>
+<table>
+<thead><tr><th>Class</th><th>Examples</th><th>Handling</th></tr></thead>
+<tbody>
+<tr><td>Public</td><td>Published product data sheets</td><td>No restrictions</td></tr>
+<tr><td>Internal</td><td>Policies, staff directory, plant reports</td><td>Calderwick staff and contractors only</td></tr>
+<tr><td>Confidential</td><td>Contracts, financial reports, customer test results</td><td>Need-to-know; encrypted when sent outside Calderwick</td></tr>
+<tr><td>Restricted</td><td>Payroll data, board papers before release, security configurations</td><td>Named people only; never on personal devices</td></tr>
+</tbody>
+</table>
+
+<h2>4. Access control</h2>
+
+<p>Access is given on the principle of least privilege: only the access a person needs for their role. Line managers request access for new starters and changes through the service desk. When a person leaves, their accounts are disabled at the end of their last working day; line managers raise the leaver request at least five working days before.</p>
+<p>Administrator (privileged) access uses separate accounts that are not used for email or browsing. The Information Security Officer reviews all user, privileged and supplier accounts every quarter and reports the results to the Head of IT. Access that is no longer needed is removed within five working days of the review.</p>
+
+<h2>5. Passwords and authentication</h2>
+
+<ul><li>Passwords have at least 14 characters and are not reused from the last 10 passwords.</li><li>Accounts lock after 10 failed sign-in attempts.</li><li>Multi-factor authentication is required for all remote access, all administrator access and the Ledgerline ERP.</li><li>Passwords are never shared, written down near a device or sent by email.</li></ul>
+
+<h2>6. Remote access and suppliers</h2>
+
+<p>Employees connect remotely through the Calderwick VPN with multi-factor authentication. Suppliers never connect directly to Calderwick networks: they use the Calderwick jump host, which records every session.</p>
+<p>A supplier session to a plant control system must be approved for that session by the OT Systems Engineer, who records the supplier, the system, the reason and the times. Supplier accounts expire after 90 days and are renewed only on the request of the contract owner.</p>
+
+<h2>7. Plant control (OT) systems</h2>
+
+<ul><li>OT networks are separated from the office network by firewalls; traffic between them is limited to named services.</li><li>OT systems have no direct internet access.</li><li>USB ports on rig and furnace controllers are disabled.</li><li>Changes to controller firmware or configuration go through change management and are tested on one rig or unit before others.</li><li>Controller configurations are backed up after every change.</li></ul>
+
+<h2>8. Change management and patching</h2>
+
+<p>Changes to production systems, including patches and updates applied by suppliers, need approval of the Change Advisory Board (CAB) before they are made, except for emergency changes approved by the IT Service Manager. The CAB meets weekly and is chaired by the IT Service Manager.</p>
+
+<p class="caption">Table 3 - Patching deadlines</p>
+<table>
+<thead><tr><th>System type</th><th>Critical security patches</th><th>Other patches</th></tr></thead>
+<tbody>
+<tr><td>Office IT and business systems</td><td>Within 14 days of release</td><td>Within 60 days</td></tr>
+<tr><td>OT systems</td><td>Within 30 days or at the next planned maintenance window, whichever is first</td><td>At the next planned maintenance window</td></tr>
+</tbody>
+</table>
+
+<h2>9. Backups</h2>
+
+<p>Business systems are backed up daily and daily backups are kept for 35 days; monthly backups are kept for 12 months. A restore test of at least one business system is done every quarter. Recovery targets for each system are set in the Disaster Recovery Plan (IT-DRP-01).</p>
+
+<h2>10. Incidents</h2>
+
+<p>Report every IT incident to the service desk. Suspected security incidents, such as phishing, malware or lost devices, are reported at once and passed to the Information Security Officer within one hour. Any incident that may involve personal data is reported to the General Counsel within 24 hours.</p>
+<p>Internal IT incidents are prioritised as follows. Incidents on the Ardmoor test rigs use the priorities and times of the maintenance contract with the rig supplier, not this table.</p>
+
+<p class="caption">Table 4 - IT incident priorities</p>
+<table>
+<thead><tr><th>Priority</th><th>Meaning</th><th>Response</th><th>Restore target</th></tr></thead>
+<tbody>
+<tr><td>P1</td><td>Business-critical system unavailable for all users</td><td>30 minutes</td><td>4 hours</td></tr>
+<tr><td>P2</td><td>Business-critical system degraded, or unavailable for some users</td><td>2 hours</td><td>8 hours</td></tr>
+<tr><td>P3</td><td>Non-critical system affected</td><td>1 business day</td><td>3 business days</td></tr>
+<tr><td>P4</td><td>Request or minor fault</td><td>3 business days</td><td>10 business days</td></tr>
+</tbody>
+</table>
+
+<h2>11. Acceptable use</h2>
+
+<p>Calderwick devices and accounts are for business use. Limited personal use is allowed as described in the Employee Handbook. Users must not install unapproved software, disable security tools, or store Calderwick data in personal cloud services.</p>
+
+<h2>12. Exceptions</h2>
+
+<p>An exception to this policy must be requested in writing, explain the risk and the compensating controls, and be approved by the Head of IT. Exceptions last at most six months and are recorded by the Information Security Officer.</p>
+
+<h2>13. Training</h2>
+
+<p>All users complete security awareness training every year. Everyone with access to plant control systems also completes OT security awareness every year.</p>
+
+<h2>14. Compliance and review</h2>
+
+<p>Breaches of this policy may lead to disciplinary action or, for suppliers, to the end of their access and contract. The Information Security Officer reviews this policy every year.</p>
+</body></html>

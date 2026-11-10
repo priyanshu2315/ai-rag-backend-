@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Incident Report INC-2025-014</title><link rel="stylesheet" href="kb.css"></head>
+<body>
+<p class="company">CALDERWICK PUMP SYSTEMS LTD</p>
+<h1>Major Incident Report INC-2025-014: Test Rig TR-3 Outage</h1>
+<table class="control">
+<tr><td>Incident ID</td><td>INC-2025-014</td></tr>
+<tr><td>Date of incident</td><td>14 August 2025</td></tr>
+<tr><td>Site and asset</td><td>Plant P2, Ardmoor; hydraulic test rig TR-3</td></tr>
+<tr><td>Priority</td><td>P1</td></tr>
+<tr><td>Supplier involved</td><td>Brennock Valve Services Ltd (VEN-014), contract CON-2024-031</td></tr>
+<tr><td>Incident owner</td><td>IT Service Manager</td></tr>
+<tr><td>Status</td><td>Closed on 29 August 2025</td></tr>
+</table>
+
+<h2>1. Summary</h2>
+<p>On 14 August 2025 test rig TR-3 at the Ardmoor plant of Calderwick Pump Systems Ltd stopped during a customer endurance test. The service desk logged the incident as P1 and called the maintenance supplier. The fault was a failed PLC controller on the rig's hydraulic power unit. No spare controller was held on site, so the rig stayed out of service until a controller was taken from rig TR-1, which was idle that day. TR-3 was back in service the same evening. The customer test was repeated on 16 August 2025.</p>
+
+<h2>2. Timeline (14 August 2025)</h2>
+<table>
+<thead><tr><th>Time</th><th>Event</th></tr></thead>
+<tbody>
+<tr><td>06:40</td><td>TR-3 stopped during the endurance test; the operator alerted the Test Rig Supervisor.</td></tr>
+<tr><td>06:55</td><td>The service desk logged INC-2025-014 as P1 and called Brennock Valve Services Ltd.</td></tr>
+<tr><td>08:30</td><td>Supplier engineer on site at TR-3.</td></tr>
+<tr><td>11:10</td><td>Fault traced to a failed PLC controller on the hydraulic power unit; no bypass possible.</td></tr>
+<tr><td>13:00</td><td>Plant Manager, Ardmoor approved taking the controller from idle rig TR-1.</td></tr>
+<tr><td>18:15</td><td>Controller from TR-1 fitted and tested; TR-3 back in service.</td></tr>
+</tbody>
+</table>
+
+<h2>3. Measured times</h2>
+<p>Measured from the service desk log at 06:55: the supplier engineer arrived after 1 hour 35 minutes, and the rig was back in service after 11 hours 20 minutes.</p>
+
+<h2>4. Root cause</h2>
+<p>The controller failed after a firmware fault corrupted its configuration memory. The same firmware version runs on the controllers of TR-1, TR-2 and TR-4. The firmware was updated on all four rigs on 21 August 2025 by the OT Systems Engineer. A contributing cause was that Ardmoor held no spare controller.</p>
+
+<h2>5. Follow-up actions</h2>
+<table>
+<thead><tr><th>No.</th><th>Action</th><th>Owner (role)</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Buy two PLC controllers (one to replace the unit taken from TR-1, one spare to hold at Ardmoor). Purchase order PO-10234 was raised on 18 August 2025 to Ardent Controls Ltd (VEN-052) for USD 64,800 excluding tax, category OT hardware.</td><td>Procurement Manager, Plant Services</td><td>PO raised</td></tr>
+<tr><td>2</td><td>Claim the service credit due from Brennock Valve Services Ltd for this incident under contract CON-2024-031.</td><td>Procurement Manager, Plant Services</td><td>Open</td></tr>
+<tr><td>3</td><td>Update controller firmware on all four rigs.</td><td>OT Systems Engineer</td><td>Done 21 August 2025</td></tr>
+<tr><td>4</td><td>Add PLC controllers to the Ardmoor critical spares list.</td><td>Maintenance Lead, Ardmoor</td><td>Done 25 August 2025</td></tr>
+</tbody>
+</table>
+
+<h2>6. Sign-off</h2>
+<p>Prepared by the IT Service Manager and reviewed by the Head of IT on 29 August 2025.</p>
+</body></html>

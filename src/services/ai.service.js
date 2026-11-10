@@ -11,6 +11,8 @@ import { RAG_CONFIG } from "../config/rag.config.js";
 import { DOCUMENT_EXTRACTION_INSTRUCTIONS } from "../instructions/document-extraction.js";
 import { buildDocumentChunks as splitIntoChunks } from "./simple-chunking.service.js";
 import { resolveContentsOutline } from "./document-outline.service.js";
+import { withRateLimitRetry } from "../utils/rate-limit.js";
+import { repairMarkdownTables } from "../utils/table-repair.js";
 
 const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
 let embeddingPipeline;
@@ -315,6 +317,20 @@ export async function extractDocumentWithAI(
   let documentTitle = "";
   let continuationContext = "";
   let hasDocumentHeading = false;
+  const outlineWarnings = [];
+  const send = request ?? ((options) => ai.client.chat.completions.create(options));
+  // Every extraction call goes through here. A per-minute rate limit (HTTP 429) waits as
+  // long as the provider asks and retries; a daily quota fails at once.
+  const complete = (options) =>
+    withRateLimitRetry(() => send(options), ({ attempt, waitMs }) =>
+      onEvent({
+        type: eventPrefix + "_rate_limited",
+        stage: "preparing",
+        provider: providerName,
+        attempt,
+        waitMs,
+      }),
+    );
   await onEvent({
     type: eventPrefix + "_start",
     stage: "preparing",
@@ -421,9 +437,7 @@ export async function extractDocumentWithAI(
         },
       };
 
-      const response = request
-        ? await request(completionOptions)
-        : await ai.client.chat.completions.create(completionOptions);
+      const response = await complete(completionOptions);
 
       const choice = response.choices?.[0];
 
@@ -475,18 +489,29 @@ export async function extractDocumentWithAI(
       }
       let outlineRecovery = null;
       if (isPDF) {
-        documentOutline = await resolveContentsOutline({
+        const resolved = await resolveContentsOutline({
           result,
           previous: documentOutline,
           totalPages: sources.length,
           retry: async (contentsPages) => {
             outlineRecovery = await retryContentsOutline(contentsPages, {
               model,
-              complete: request ?? ((options) => ai.client.chat.completions.create(options)),
+              complete,
             });
             return outlineRecovery.result;
           },
         });
+        documentOutline = resolved.outline;
+        // A contents problem no longer fails the document; it is reported instead.
+        if (resolved.warnings.length) {
+          outlineWarnings.push(...resolved.warnings.map((warning) => ({ ...warning, batch })));
+          await onEvent({
+            type: "contents_outline_warnings",
+            stage: "preparing",
+            batch,
+            warnings: resolved.warnings,
+          });
+        }
       }
       console.log(
         "[Document extraction JSON START]\n" +
@@ -508,14 +533,24 @@ export async function extractDocumentWithAI(
       for (const item of primary) {
         const pageData = byId.get(item.id) || {};
         const rawMarkdown = pageData.markdown || "";
+        const titled = rawMarkdown.replace(/^# (?!#)(.+)$/gm, (line, heading) => {
+          if (heading.trim() !== documentTitle) return "## " + heading;
+          if (hasDocumentHeading) return "";
+          hasDocumentHeading = true;
+          return line;
+        });
+        // Put tables back into a shape Markdown can read before the chunker parses them:
+        // cells split over lines, two heading rows, a stray delimiter cell, a title row,
+        // and two tables (or a table and the next line) written without a blank line.
+        const tables = repairMarkdownTables(titled);
         const page = {
           ...item,
-          text: rawMarkdown.replace(/^# (?!#)(.+)$/gm, (line, heading) => {
-            if (heading.trim() !== documentTitle) return "## " + heading;
-            if (hasDocumentHeading) return "";
-            hasDocumentHeading = true;
-            return line;
-          }),
+          text: tables.text,
+          cleanup: {
+            tablesRepaired: tables.repaired.length,
+            tableRowsJoined: tables.joinedRows,
+            tablesSeparated: tables.separated,
+          },
           isDocumentBoundary: pageData.isDocumentBoundary || false,
           boundaryTitle: pageData.boundaryTitle || null,
           isTableOfContents: pageData.isTableOfContents || false,
@@ -531,6 +566,7 @@ export async function extractDocumentWithAI(
           page: item.sourcePageNumber,
           originalText: null,
           text: page.text,
+          cleanup: page.cleanup,
         });
       }
       const outlineSummary = documentOutline.length
@@ -575,6 +611,7 @@ export async function extractDocumentWithAI(
       pages,
       documentTitle: documentTitle || null,
       documentOutline: documentOutline.length ? documentOutline : null,
+      outlineWarnings,
 
       correction: {
         operation: "extraction",

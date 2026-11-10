@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import { appendixAtPage } from "./document-outline.service.js";
+import { appendixAtPage, normalizeWords, outlineTitle } from "./document-outline.service.js";
 
 const markdownParser = unified().use(remarkParse).use(remarkGfm);
-const VERSION = "ai-corrected-markdown-v3";
+const VERSION = "ai-corrected-markdown-v4";
 const unique = (values) => [...new Set(values)];
 
 function inlineText(node) {
@@ -99,8 +99,35 @@ function detectDocumentBoundary(page, documentOutline = []) {
 }
 
 
+const PLURAL_REFERENCE = { appendices: "Appendix", figures: "Figure", tables: "Table", sections: "§", clauses: "§" };
+const REFERENCE_ID = String.raw`(?:\d+(?:\.\d+)*[a-z]?|[A-Z])`;
+const REFERENCE_LIST = new RegExp(
+  String.raw`\b(Appendices|Figures|Tables|Sections|Clauses)\s+(${REFERENCE_ID}(?:\s*(?:,|\band\b|&|\bto\b|\bthrough\b|–|-)\s*${REFERENCE_ID})+)\b`,
+  "g",
+);
+const RANGE_WORD = /^(?:to|through|–|-)$/;
+
+// "3.1" to "3.4" → 3.1, 3.2, 3.3, 3.4; "B" to "D" → B, C, D. Anything else, or a range of
+// more than 50, gives just its two ends.
+function expandRange(from, to) {
+  if (/^[A-Z]$/.test(from) && /^[A-Z]$/.test(to) && from < to) {
+    const start = from.charCodeAt(0);
+    return Array.from({ length: to.charCodeAt(0) - start + 1 }, (_, i) => String.fromCharCode(start + i));
+  }
+  const prefix = (value) => value.split(".").slice(0, -1).join(".");
+  if (/^\d+(?:\.\d+)*$/.test(from) && /^\d+(?:\.\d+)*$/.test(to) && prefix(from) === prefix(to)) {
+    const start = Number(from.split(".").at(-1));
+    const end = Number(to.split(".").at(-1));
+    if (end > start && end - start <= 50) {
+      const base = prefix(from) ? prefix(from) + "." : "";
+      return Array.from({ length: end - start + 1 }, (_, i) => base + (start + i));
+    }
+  }
+  return [from, to];
+}
+
 // Generic cross-reference extractor: detects standard citations across all documents
-function extractCrossReferences(text) {
+export function extractCrossReferences(text) {
   if (!text) return [];
   const refs = new Set();
 
@@ -108,21 +135,43 @@ function extractCrossReferences(text) {
   for (const match of text.matchAll(/(?:§|Section|Clause)\s*(\d+(?:\.\d+)*)/gi)) {
     refs.add(`§${match[1]}`);
   }
-  // 2. Appendix references: Appendix B, Appendix C
-  for (const match of text.matchAll(/Appendix\s+([A-Z0-9]+)/gi)) {
-    refs.add(`Appendix ${match[1].toUpperCase()}`);
+  // 2. Appendix references: Appendix B, Appendix C. The letter is a capital on its own,
+  // so "the appendix prevails" or "APPENDIX AND NOTES" is not a reference.
+  for (const match of text.matchAll(/\bAppendix\s+([A-Z]|\d+)\b(?![.-]?\d)/g)) {
+    refs.add(`Appendix ${match[1]}`);
   }
-  // 3. Table and Figure references: Table 7.1, Figure 4.3
-  for (const match of text.matchAll(/(?:Table|Figure)\s+(\d+(?:\.\d+)*)/gi)) {
-    refs.add(match[0]);
+  // 3. Table and Figure references: Table 7.1, Figure 4.3, Figure 4.4b
+  for (const match of text.matchAll(/\b(Table|Figure)\s+(\d+(?:\.\d+)*[a-z]?)\b/g)) {
+    refs.add(`${match[1]} ${match[2]}`);
   }
-  // 4. Resolutions: Resolution 2025-14, Resolution YYYY-NN
-  for (const match of text.matchAll(/Resolution\s+([A-Z0-9\-]+)/gi)) {
+  // 3a. Lists and ranges: "Appendices B, C and D", "Figures 3.1 to 3.4", "Sections 1 and 3",
+  // "Tables 5.1–5.3". A range is expanded only within one numbered level.
+  for (const match of text.matchAll(REFERENCE_LIST)) {
+    const kind = PLURAL_REFERENCE[match[1].toLowerCase()];
+    const name = (value) => (kind === "§" ? "§" + value : kind + " " + value);
+    const parts = match[2].split(/\s*(,|\band\b|&|\bto\b|\bthrough\b|–|-)\s*/)
+      .filter((part) => part && !/^(?:,|and|&)$/.test(part));
+    for (let index = 0; index < parts.length; index++) {
+      if (RANGE_WORD.test(parts[index])) continue;
+      if (RANGE_WORD.test(parts[index + 1] ?? "") && parts[index + 2]) {
+        for (const value of expandRange(parts[index], parts[index + 2])) refs.add(name(value));
+        index += 2;
+      } else {
+        refs.add(name(parts[index]));
+      }
+    }
+  }
+  // 4. Resolutions: "Resolution 2025-14", "Resolution No. 7", "Resolution BR-12".
+  // The id must start with a digit or be a code, so "resolution within" or
+  // "Resolution SLA" is not a reference.
+  for (const match of text.matchAll(/\b(?:Resolution|RESOLUTION)\s+(?:No\.?\s*)?(\d[\w\-\/]*|[A-Z]+-\d[\w\-\/]*)/g)) {
     refs.add(`Resolution ${match[1]}`);
   }
-  // 5. Standard codes: R-01 to R-99 (Risks), TN-1 to TN-99 (Tech Notes)
-  for (const match of text.matchAll(/\b([A-Z]{1,3}-\d{1,3})\b/g)) {
-    refs.add(match[1]);
+  // 5. Codes: R-01 (risks), TN-6 (tech notes), PO-10234, INC-2025-014, PP-FT-01.
+  // The whole code is kept, so "PP-FT-01" does not become "FT-01", and "ST-PL-02" and
+  // "PKG-PL-02" stay apart. A code has upper-case parts joined by hyphens and a digit.
+  for (const match of text.matchAll(/(?<![\p{L}\p{N}-])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+(?![\p{L}\p{N}])/gu)) {
+    if (/\d/.test(match[0]) && match[0].length <= 40) refs.add(match[0]);
   }
 
   return [...refs];
@@ -137,6 +186,66 @@ function isTableOfContentsChunk(headingPath, text) {
   // Matches repeated dot-leader lines ending in page numbers (. . . 4, .... 12)
   const dotLines = (text || "").split("\n").filter((l) => /\.{3,}|\. \. \./.test(l) && /\d+\s*$/.test(l.trim()));
   return dotLines.length >= 3;
+}
+
+const SUB_DOCUMENT_WORD = /\b(?:appendix|annexure|annex|exhibit|attachment)\b/i;
+const SUB_DOCUMENT_HEADING = /^(?:[A-Z]\s+)?((?:Appendix|Annexure|Annex|Exhibit|Attachment)\s+[A-Z0-9]+\b.*)$/i;
+
+// "annex|F" for "Annexure F – Data Required", "A Appendix A - Glossary" → "appendix|A".
+// Annex and Annexure are the same kind.
+function subDocumentCode(text) {
+  const match = String(text ?? "")
+    .replace(/^\s*[A-Z]\s+(?=(?:Appendix|Annexure|Annex|Exhibit|Attachment)\b)/i, "")
+    .match(/^(Appendix|Annexure|Annex|Exhibit|Attachment)[\s-]+([A-Z0-9]+)\b/i);
+  if (!match) return null;
+  return match[1].toLowerCase().replace(/^annexure$/, "annex") + "|" + match[2].toUpperCase();
+}
+
+// The section title for a heading that opens a different appendix from the current one,
+// taken from the contents when it lists that appendix; otherwise null.
+function subDocumentStart(title, boundary, outline) {
+  const match = title.match(SUB_DOCUMENT_HEADING);
+  const code = match ? subDocumentCode(match[1]) : null;
+  if (!code || (boundary && subDocumentCode(boundary.title) === code)) return null;
+  const entry = (outline ?? []).find((item) => subDocumentCode(outlineTitle(item)) === code);
+  return entry ? outlineTitle(entry) : match[1].trim();
+}
+
+// "A Appendix A - Glossary", "Appendix A" or "Appendix A - Glossary" under the boundary
+// "Appendix A - Glossary".
+function repeatsBoundaryTitle(title, boundaryTitle) {
+  const heading = normalizeWords(title.replace(SUB_DOCUMENT_HEADING, "$1"));
+  const boundary = normalizeWords(boundaryTitle);
+  return Boolean(heading) && (heading === boundary || boundary.startsWith(heading + " ") ||
+    (SUB_DOCUMENT_WORD.test(title) && heading.startsWith(boundary)));
+}
+
+// Where text too long for one snippet is cut: at the line break nearest the middle (so a
+// list item, table line or "label: value" stays whole), else after the sentence end nearest
+// the middle, else at the nearest space. Returns the cut position and the removed separator.
+export function cutPoint(chars) {
+  const middle = Math.floor(chars.length / 2);
+  const nearest = (test, from, to) => {
+    for (let distance = 0; distance <= chars.length; distance++) {
+      for (const index of [middle - distance, middle + distance]) {
+        if (index >= from && index <= to && test(index)) return index;
+      }
+      if (middle - distance < from && middle + distance > to) break;
+    }
+    return -1;
+  };
+  const last = chars.length - 2;
+  const line = nearest((index) => chars[index] === "\n", 1, last);
+  if (line !== -1) return { index: line, separator: "\n" };
+  const quarter = Math.floor(chars.length / 4);
+  const sentence = nearest(
+    (index) => /\s/u.test(chars[index]) && /[.;:!?]/.test(chars[index - 1] ?? ""),
+    quarter, chars.length - quarter,
+  );
+  if (sentence !== -1) return { index: sentence, separator: chars[sentence] };
+  const space = nearest((index) => /\s/u.test(chars[index]), 1, last);
+  if (space !== -1) return { index: space, separator: chars[space] };
+  return { index: middle, separator: "" };
 }
 
 function getHeadingLevel(title, rawDepth, hasActiveBoundary = false) {
@@ -278,24 +387,40 @@ export function splitMarkdownSections(extraction) {
           node.depth === 1 && title === extraction.documentTitle;
         if (!isDocumentTitle) {
           const hasActiveBoundary = headingStack.some((h) => h.isBoundary);
-
-          // A repeated appendix heading must not pop its resolved container.
-          const effectiveLevel = appendix
-            ? Math.max(3, getHeadingLevel(title, node.depth, hasActiveBoundary))
-            : getHeadingLevel(title, node.depth, hasActiveBoundary);
-
-          // Pop any headings of equal or deeper level
-          headingStack = headingStack.filter((h) => h.level < effectiveLevel);
-          headingStack.push({ level: effectiveLevel, title });
-          const nextPath = headingStack.map((h) => h.title);
-          const repeatedHeading = beforeFirstHeading &&
-            current && JSON.stringify(nextPath) === JSON.stringify(current.headingPath);
-          if (!repeatedHeading) {
+          const boundary = headingStack.find((h) => h.isBoundary);
+          // A heading for another appendix ("Annexure F – …" on the page where Annexure E
+          // ends) starts that appendix's own section tree instead of nesting under E.
+          const nextAppendix = subDocumentStart(title, boundary, documentOutline);
+          if (nextAppendix) {
+            headingStack = [{ level: 2, title: nextAppendix, isBoundary: true }];
             const resumed = sections.find(
-              (section) => JSON.stringify(section.headingPath) === JSON.stringify(nextPath),
+              (section) => JSON.stringify(section.headingPath) === JSON.stringify([nextAppendix]),
             );
-            startSection(nextPath, resumed?.id);
+            startSection([nextAppendix], resumed?.id);
             beforeFirstHeading = false;
+          } else if (boundary && repeatsBoundaryTitle(title, boundary.title)) {
+            // The appendix title printed again as a heading ("A Appendix A - Glossary" under
+            // "Appendix A - Glossary") stays as text and does not add a level.
+            beforeFirstHeading = false;
+          } else {
+            // A repeated appendix heading must not pop its resolved container.
+            const effectiveLevel = appendix
+              ? Math.max(3, getHeadingLevel(title, node.depth, hasActiveBoundary))
+              : getHeadingLevel(title, node.depth, hasActiveBoundary);
+
+            // Pop any headings of equal or deeper level
+            headingStack = headingStack.filter((h) => h.level < effectiveLevel);
+            headingStack.push({ level: effectiveLevel, title });
+            const nextPath = headingStack.map((h) => h.title);
+            const repeatedHeading = beforeFirstHeading &&
+              current && JSON.stringify(nextPath) === JSON.stringify(current.headingPath);
+            if (!repeatedHeading) {
+              const resumed = sections.find(
+                (section) => JSON.stringify(section.headingPath) === JSON.stringify(nextPath),
+              );
+              startSection(nextPath, resumed?.id);
+              beforeFirstHeading = false;
+            }
           }
         }
       }
@@ -337,7 +462,8 @@ function blockPassages(block) {
   const [header, ...rows] = block.node.children;
   if (!rows.length) return [{ text: block.text, block }];
   const labels = (block.tableLabels ?? header.children.map((cell) => inlineText(cell).trim()))
-    .map((label, index) => label || "Column " + (index + 1));
+    // A blank top-left heading cell names the rows ("Row: Revenue"), not "Column 1".
+    .map((label, index) => label || (index === 0 ? "Row" : "Column " + (index + 1)));
   return rows.map((row, index) => {
     const fields = row.children.map((cell, column) => ({
       label: labels[column] ?? "Column " + (column + 1),
@@ -389,21 +515,28 @@ export async function buildDocumentChunks(
   // Use the embedding model's tokenizer, not a characters-to-tokens estimate.
   const childLimit = Math.min(childTokenLimit, (await measure("")).tokenLimit);
   const count = async (text) => (await measure(text)).tokenCount;
+  // Pieces cut from one block are joined with the character the cut removed, so a split
+  // never adds a paragraph break inside a sentence or a list item.
+  const joinPieces = (pieces) => pieces
+    .map((piece, index) => (index ? piece.joinWith ?? "\n\n" : "") + piece.text)
+    .join("");
   const searchText = (pieces) => {
     let lastPath = null;
-    const parts = ["Document: " + title];
+    let text = "Document: " + title;
     for (const piece of pieces) {
       const path = piece.block.headingPath;
       const pathStr = path.length ? "Section: " + path.join(" > ") : "";
+      const context = [];
       if (pathStr && pathStr !== lastPath) {
-        parts.push(pathStr);
+        context.push(pathStr);
         lastPath = pathStr;
       }
-      parts.push(piece.text);
+      const separator = context.length || piece.joinWith == null ? "\n\n" : piece.joinWith;
+      text += (context.length ? "\n\n" + context.join("\n\n") : "") + separator + piece.text;
     }
-    return parts.join("\n\n");
+    return text;
   };
-  const bodyText = (pieces) => pieces.map((piece) => piece.text).join("\n\n");
+  const bodyText = joinPieces;
 
   await onEvent({
     type: "chunking_start",
@@ -421,24 +554,30 @@ export async function buildDocumentChunks(
       text: (passage.context ?? "") + passage.text,
     };
     if ((await count(searchText([rendered]))) <= childLimit) return [rendered];
-    if (passage.fields) {
+    // A one-column row has no other fields to group, so it is cut as text below.
+    if (passage.fields?.length > 1) {
+      // A table row too long for one snippet is split into groups of whole fields; each
+      // group names the row once ("Row identity: Vendor ID: VEN-014").
+      const group = (fields, joinWith) => ({
+        ...passage,
+        fields: null,
+        fragment: true,
+        joinWith,
+        context: "Row identity: " + passage.rowIdentity + "\n",
+        text: fields.map((field) => field.label + ": " + field.value).join("\n"),
+      });
       const pieces = [];
-      for (const field of passage.fields) {
-        pieces.push(
-          ...(await splitPassage({
-            ...passage,
-            fields: null,
-            fragment: true,
-            context:
-              "Row identity: " +
-              passage.rowIdentity +
-              "\n" +
-              field.label +
-              ": ",
-            text: field.value,
-          })),
-        );
+      let fields = [];
+      for (const field of passage.fields.slice(1)) {
+        const candidate = group([...fields, field]);
+        if (fields.length && (await count(searchText([{ ...candidate, text: candidate.context + candidate.text }]))) > childLimit) {
+          pieces.push(...(await splitPassage(group(fields, pieces.length ? "\n" : undefined))));
+          fields = [field];
+        } else {
+          fields.push(field);
+        }
       }
+      if (fields.length) pieces.push(...(await splitPassage(group(fields, pieces.length ? "\n" : undefined))));
       return pieces;
     }
     // Keep an explicit repeated prefix separate from the value being split.
@@ -447,23 +586,16 @@ export async function buildDocumentChunks(
       throw new Error(
         "Document or section context exceeds the embedding budget",
       );
-    let cut = Math.floor(chars.length / 2);
-    for (let index = cut; index > cut / 2; index--) {
-      if (index + 1 < chars.length && /\s/u.test(chars[index])) {
-        cut = index + 1;
-        break;
-      }
-    }
-    const pieces = [];
-    for (const value of [
-      chars.slice(0, cut).join(""),
-      chars.slice(cut).join(""),
-    ]) {
-      pieces.push(
-        ...(await splitPassage({ ...passage, text: value, fragment: true })),
-      );
-    }
-    return pieces;
+    const { index, separator } = cutPoint(chars);
+    return [
+      ...(await splitPassage({ ...passage, text: chars.slice(0, index).join(""), fragment: true })),
+      ...(await splitPassage({
+        ...passage,
+        text: chars.slice(index + separator.length).join(""),
+        fragment: true,
+        joinWith: separator,
+      })),
+    ];
   }
 
   function metadata(pieces, section, chunkIndex) {
