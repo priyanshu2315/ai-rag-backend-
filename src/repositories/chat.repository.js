@@ -455,7 +455,11 @@ export const getChatHistory = async (conversationId, limit = 6) => {
   return messages
     .map((m, index) => {
       const maxChars = index < 4 ? 3000 : 200;
-      let content = m.content.trim();
+      // Drop citations: their document titles carry codes the planner would copy.
+      // The answer model does not always write the "Source ID:" prefix, so also match "Page N".
+      let content = m.content
+        .replace(/\s*\[[^\]]*(?:Source ID|Page \d)[^\]]*\]/g, "")
+        .trim();
       if (content.length > maxChars) {
         content = content.slice(0, maxChars).replace(/\n+/g, " ") + "...";
       }

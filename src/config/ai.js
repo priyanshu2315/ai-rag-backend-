@@ -5,7 +5,6 @@ import "dotenv/config";
 // Re-export cost calculator helper for CRAG and metrics
 export { calculateCostINR } from "../utils/cost.calculator.js";
 
-
 export const PROVIDERS = {
   gemini: {
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
@@ -66,17 +65,16 @@ export const PROVIDERS = {
   },
 };
 
-
 /**
  * 2. Task Provider Mapping
  * Single source of truth: configure which provider handles each task right here.
  */
 export const DEFAULT_TASK_PROVIDERS = {
   extraction: "airouter", // Qwen 3.8 omni-flash via AI Router. OpenRouter qwen/qwen3.8-flash also works but its free-tier credit ran out (402) on 9 Nov after 18 documents; Gemini flash-lite until 9 Nov
-  summary: "airouter",  // AI Router (large context, avoids Groq's 8k TPM limits)
-  chat: "airouter",     // AI Router for high-quality generation
-  agent: "airouter",    // AI Router for CRAG deep reasoning & generation
-  fast: "groq",         // Groq for fast grading, rewrite, intent
+  summary: "airouter", // AI Router (large context, avoids Groq's 8k TPM limits)
+  chat: "airouter", // AI Router for high-quality generation
+  agent: "airouter", // AI Router for CRAG deep reasoning & generation
+  fast: "groq", // Groq for fast grading, rewrite, intent
 };
 
 export const AI_PROVIDER = "mixed";
@@ -90,7 +88,7 @@ export function getAI(task) {
   const providerName = DEFAULT_TASK_PROVIDERS[task];
   if (!providerName) {
     throw new Error(
-      `Unknown AI task: "${task}". Valid tasks: ${Object.keys(DEFAULT_TASK_PROVIDERS).join(", ")}`
+      `Unknown AI task: "${task}". Valid tasks: ${Object.keys(DEFAULT_TASK_PROVIDERS).join(", ")}`,
     );
   }
 
@@ -104,7 +102,9 @@ export function getAI(task) {
 
   const model = provider.models[task];
   if (!model) {
-    throw new Error(`No "${task}" model configured for provider "${providerName}"`);
+    throw new Error(
+      `No "${task}" model configured for provider "${providerName}"`,
+    );
   }
 
   // Lazy initialize OpenAI client per provider
@@ -124,9 +124,10 @@ export function getAI(task) {
 /**
  * Execute chat completion for a specific task using its resolved provider and model.
  */
-export function chatCompletion(task, options) {
+// requestOptions are OpenAI SDK request settings such as { timeout, maxRetries }.
+export function chatCompletion(task, options, requestOptions) {
   const { client, model } = getAI(task);
-  return client.chat.completions.create({ ...options, model });
+  return client.chat.completions.create({ ...options, model }, requestOptions);
 }
 
 export const RERANK_MODEL = "rerank-english-v3.0";
