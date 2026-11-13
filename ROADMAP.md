@@ -4,6 +4,8 @@
 
 Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
 
+Current order (decided 13 Nov): Step 5 (AI agents and human in the loop) next, then Step 3 (delta versioning, design agreed below), then Step 6. Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
+
 ## Step 1: Search Optimization & structured-context-v4 Part 2 (16 hrs)
 
 ### Nov 4 (4 hrs)
@@ -127,6 +129,27 @@ Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order afte
 
 ## Step 3: Delta Versioning & Pointer Splicing (10 hrs)
 
+Postponed 13 Nov until after Step 5.
+
+### Design agreed 13 Nov
+- Why: hashes are made after AI extraction, so this saves almost no cost or time (extraction is about 80% of the work; embedding is local). Built for learning and for two real gains: old chat traces keep valid chunk IDs, and the detail page can show what changed between versions.
+- Replace endpoint (e.g. `PUT /api/documents/:id`): a re-upload keeps the same document ID, roles and chats. Today a re-upload creates a new document.
+- Same hash = same chunk. Hash the normalized `text` plus its section heading path, not `searchText` (it starts with the filename, so a renamed file would change every hash).
+- Removed chunks are kept, not deleted: excluded from search and neighbor expansion, shown on the detail page.
+- Versions instead of a plain flag: `Document.version` (+1 on each replace); `addedInVersion` and `removedInVersion` on parent and child chunks (search reads `ChildChunk` directly, so children need it too). Search uses only chunks with no `removedInVersion`.
+- Duplicates: the same text twice gives the same hash; match by count (two before, one now = one removed).
+- Links: recompute `prevParentId`/`nextParentId` for every active chunk (kept chunks can get new neighbours); removed chunks keep their old links for display.
+- Later, for a real saving: hash each PDF page before extraction and reuse the earlier extracted text of unchanged pages (skips the AI call for those pages).
+
+### Build order
+1. Migration plan in words (exact new columns), approved before writing
+2. Migration + Prisma Client generate (only after explicit approval)
+3. Replace endpoint
+4. Diff service: old vs new chunks by hash -> keep / add / remove
+5. Save only the changes in one transaction and re-stitch prev/next links
+6. Search and neighbor expansion skip removed chunks; detail page shows versions
+7. Test: re-upload the same file (expect 0 changes; AI extraction can vary, so check normalization), then a file with one edited page (only its chunks change)
+
 ### Nov 10 (5 hrs)
 - [ ] Add SHA-256 `contentHash` to `ParentChunk`
 - [ ] In-memory chunk diffing service for updated document uploads
@@ -156,15 +179,45 @@ Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order afte
 
 ## Step 5: Web Research Agent & Human-in-the-Loop Interrupts (12 hrs)
 
-### Nov 14 (4 hrs)
-- [ ] LangGraph checkpointer and `interrupt()` node when retrieval yields zero graded chunks
+Next step (moved ahead of Step 3 on 13 Nov). Starts 14 Nov. Plan agreed 13 Nov.
 
-### Nov 15 (4 hrs)
-- [ ] `POST /api/chat/resume` endpoint
-- [ ] `approval_required` SSE event
+### Design agreed 13 Nov
+- Goal: learn and build a real AI agent: a web research agent where the model chooses tools (`web_search`, `read_page`) in a loop until it says it is done or hits a step limit (4). CRAG stays a code-driven agentic workflow; the web agent is the AI agent.
+- Where it fits: inside CRAG, not in parallel. It runs after the document loop finishes, only for what the documents could not answer, and only after the user approves. It is its own small LangGraph graph (own files, testable alone), added to CRAG as one node.
+- When to ask for web search (at most one approval per question):
+  - A. The planner marks a hop `source: "web"` (live or outside data: exchange rates, today's prices, news, public facts about other companies, laws). Example: "cost of project P11 in INR" -> h1 documents (P11 cost in USD), h2 web (live USD->INR rate).
+  - B. A document hop is still unresolved after the document loop.
+  - Never ask for greetings, summaries, page requests, or company-private facts (who approved a PO, internal budgets): the planner marks those `"documents"` only.
+- No calculator tool: the generate node does conversions and shows the working (value x rate, rate source and date, result).
+- Web search: Tavily, called with plain `fetch` (no new package). Key in `.env` as `TAVILY_API_KEY`.
+- Checkpointer: LangGraph Postgres checkpointer (`@langchain/langgraph-checkpoint-postgres`), tables in a separate Postgres schema `langgraph` so Prisma does not see them as drift. Creating the tables needs approval.
+- Not now: supervisor / multi-agent (possible later; Step 6 MCP client is the natural place for a general tool-choosing agent). What can be said after this step: "I built a tool-calling web research agent, gated by human approval, inside an agentic RAG workflow." Do not call it multi-agent.
 
-### Nov 16 (4 hrs)
-- [ ] Web Search Agent node (Tavily/SearXNG): fetch, grade, and cite web data after user approval
+### Phase 1: Web agent alone (Nov 14, about half a day)
+- [ ] 1. Tavily account and `TAVILY_API_KEY` in `.env` (user)
+- [ ] 2. Tools in `src/agents/web/web.tools.js`: `web_search(query)` (Tavily search, top 5: title, URL, text) and `read_page(url)` (Tavily extract), each with a JSON tool definition like `searchToolDefinition` in `ai.service.js`
+- [ ] 3. Plain agent loop in `src/agents/web/web.agent.js` (no LangGraph): call the model with tools; run requested tools and add results; stop when the model answers or after 4 steps; return `{ answer, sources }`
+- [ ] 4. Test alone with a script piped into `node` (no file in the project): "USD to INR rate today" (one search, answer with source), "latest RBI repo rate" (may read a page), a vague task (stops at 4 steps). Also checks that the `agent` model supports tool calling; if not, pick another model for this agent only
+- [ ] 5. Rebuild as a small LangGraph graph: nodes `agent` and `tools`, edge "tool calls -> tools, else end"
+
+### Phase 2: Pause and resume, human in the loop (Nov 15, about a day)
+- [ ] 6. Install `@langchain/langgraph-checkpoint-postgres`; `src/config/checkpointer.js`; tables in schema `langgraph` (approval before creating them)
+- [ ] 7. Compile CRAG with the checkpointer; each question gets a new `threadId` passed as `{ configurable: { thread_id } }`
+- [ ] 8. Tiny `ask_approval` node that only calls `interrupt({ question, missingHops })` (on resume LangGraph re-runs the node from its first line)
+- [ ] 9. `chat.service.js`: on interrupt, send `approval_required` SSE (`threadId`, question), save a "waiting for approval" assistant message, close the stream
+- [ ] 10. `POST /api/chat/resume` with `{ conversationId, threadId, approved }`: check the user owns the conversation and the waiting message, continue with `new Command({ resume: { approved } })`, stream and save the answer as usual
+  - Test with a temporary "always ask" rule: pause -> Allow/Skip -> resume; restart the server while paused and resume (proves the checkpointer)
+
+### Phase 3: Connect to CRAG (Nov 16, about a day)
+- [ ] 11. Planner: `source: "documents" | "web"` per hop, prompt rule with a generic example; the document loop skips `"web"` hops
+- [ ] 12. Routing after the document loop: missing hops or `"web"` hops -> `ask_approval`, else `generate`
+- [ ] 13. `web_agent` node: on Allow, runs the Phase 1 agent with the missing hop texts; results and URLs stored as `webFacts` in state
+- [ ] 14. `generate`: WEB FACTS section with URL and date; each fact labelled document or web; conversions show the working
+
+### Phase 4: UI, tests and docs (Nov 17, about half a day)
+- [ ] 15. Events `agent_start`, `agent_step` (each tool call), `agent_finish`, `approval_required`; update `docs/frontend-rbac-prompt.md` for agent cards and Allow/Skip buttons
+- [ ] 16. End-to-end tests: P11-in-INR style question (one approval, Allow, correct converted answer with both sources); a question the documents cannot answer (asks); Skip (answers from documents and says what is missing); a private fact (never asks); guards Q1 and Q13 unchanged
+- [ ] 17. Update `AGENTS.md`, `ROADMAP.md`, and add a `docs/pipeline.js` entry
 
 ## Step 6: Model Context Protocol (MCP) Server & Client (8 hrs)
 
