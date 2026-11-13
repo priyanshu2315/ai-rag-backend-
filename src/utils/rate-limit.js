@@ -25,7 +25,7 @@ export function rateLimitWaitMs(error) {
 
 // Sends a model request; a per-minute rate limit waits as long as the provider asks
 // and retries, at most MAX_RATE_LIMIT_RETRIES times. A daily quota fails at once.
-export async function withRateLimitRetry(send, onRateLimited = () => {}) {
+export async function withRateLimitRetry(send, onRateLimited = () => { }) {
   for (let attempt = 1; ; attempt++) {
     try {
       return await send();

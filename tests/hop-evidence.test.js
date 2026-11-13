@@ -4,7 +4,7 @@ import {
   validateHopPlan, validateGradeResponse, updateHopProgress, isPlanComplete,
   nextPendingHop, chooseFollowUp, progressDecision, selectEvidenceContext,
   mergeSearchRounds, buildHopReasoningChain,
-  readModelContent, modelFailureDetails,
+  readModelContent, modelFailureDetails, isQuoteInDocText,
 } from "../src/services/hop-evidence.service.js";
 
 const plan = [
@@ -160,4 +160,12 @@ test("reasoning reports only searches actually executed, including their stoppin
   assert.equal(trace.steps.filter((step) => step.type === "multi_hop_search").length, 0);
   assert.equal(trace.stopReason, "round_limit");
   assert.deepEqual(trace.searchRounds[0].retrievedParentIds, ["owner"]);
+});
+
+test("a quote that skips a table line or joins lines still matches; changed words do not", () => {
+  const text = "**Item: Head of Procurement limit**\nFIN-AAM-01 (until 30 June 2025): USD 10,001 to 50,000\nFIN-AAM-02 (from 1 July 2025): USD 10,001 to 75,000\n\nItem: CA-1 threshold (Head of IT)\nFIN-AAM-01 (until 30 June 2025): above USD 25,000\nFIN-AAM-02 (from 1 July 2025): above USD 20,000";
+  assert.equal(isQuoteInDocText("Item: Head of Procurement limit FIN-AAM-02 (from 1 July 2025): USD 10,001 to 75,000 ... Item: CA-1 threshold (Head of IT) FIN-AAM-02 (from 1 July 2025): above USD 20,000", text), true);
+  assert.equal(isQuoteInDocText("Item: Head of Procurement limit FIN-AAM-02 (from 1 July 2025): USD 10,001 to 90,000", text), false);
+  assert.equal(isQuoteInDocText("CA-1 threshold (Head of Finance) FIN-AAM-02 (from 1 July 2025): above USD 20,000", text), false);
+  assert.equal(isQuoteInDocText("Head of Procurement approved above USD 20,000 by the Board", text), false);
 });

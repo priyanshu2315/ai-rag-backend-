@@ -123,31 +123,34 @@ Rules:
 3. Each hop has a unique id, a task, and dependsOn: an array of prerequisite hop IDs.
 4. Order hops so all prerequisites occur before their dependents. Use at most twelve hops.
 5. A simple fact question still needs one hop. Independent facts have independent hops and can use parallel queries.
-6. For a dependent chain, return starting queries ONLY for its entry-point tasks. Do not guess the intermediate entities.
+6. Return at least one starting query for EVERY entry-point task (a task with dependsOn []), and none for dependent tasks. Do not guess the intermediate entities.
 7. One hop = one lookup. Split the question at every relationship ("linked to", "owned by", "of the", "reports to", "responsible for", "approved by") into its own hop, because documents usually store each link in a different table or section. When the question asks for a person's name, write the hop that finds the person as "find the owner (the person's name, not only the role)". Do not add a separate hop for the name, except when the answer comes from a rule, policy or limit table, which names roles, not people: then add a final hop "find the person who held the role from hN on the case's date", because roles change hands and acting or interim holders count. Every hop must be required: never write optional tasks such as "if needed" or "if applicable".
    Example: "What is the email of the manager of the team that owns ticket T-88?"
    hops: h1 "find the team that owns ticket T-88" dependsOn []; h2 "find the manager of the team found in h1" dependsOn ["h1"]; h3 "find the email of the manager found in h2" dependsOn ["h2"]
-   starting queries: only for h1, e.g. {"text":"team that owns ticket T-88","keywords":["team","owns","ticket"],"identifiers":["T-88"],"entities":[]}
+   starting queries: only for h1, e.g. {"hopId":"h1","text":"team that owns ticket T-88","keywords":["team","owns","ticket"],"identifiers":["T-88"],"entities":[]}
 8. For dated changes, include both the baseline and applicable amendments as required tasks.
 9. For questions asking for a calculated total, payment, or entitlement (e.g. "How much dividend does [Investor] receive?", "What is the total cost/revenue of [X]?"):
    Plan tasks to find BOTH the unit rate/price AND the relevant quantity/holdings/shares (e.g. "find shares held by [Investor]" and "find final dividend per share"). Do not frame user-stated premises as mere confirmation tasks; extract the actual quantities needed for the calculation.
 10. "Who had to / must / is required / is allowed / is authorised to approve, sign, review" asks for what a rule requires or permits, not for what happened. Plan separate entry-point hops for (a) the case's deciding value (amount, term, category, rating) and its date, found in the event itself, and (b) the rule table that maps values to approvers, then a hop that applies (b) to (a). Do not answer from the event alone, because the event shows who did approve or sign.
    Example: "Who had to sign off purchase order PO-7731?" hops: h1 "find the value and date of PO-7731" []; h2 "find the sign-off limits by value" []; h3 "find the role that must sign off the value from h1 under the limits from h2" ["h1","h2"]; h4 "find the person who held the role from h3 on the date from h1" ["h3"]
+   starting query for h2: {"hopId":"h2","text":"sign-off limits by value","keywords":["sign-off","limits","value"],"identifiers":[],"entities":[]}
+   Word the rule task and its query the way the rule document is written ("purchase approval limits by value", "co-approval rules"), without the case's category, amount or date; those belong in the hop that applies the rule.
 11. Questions about a rule check (was it on time, by when, how many, did it breach a limit, is it required, can it be done) need a hop for the rule itself (the deadline, notice period, threshold, required count or condition) and a hop for the case's facts, then a hop that compares them. Name the kind of value in each task: "find the deadline for ...", "count the ... between ... and ...", "find the term length of ...", "find the condition for ...". Never write a vague task such as "find the value of ..." or "find details of ...". A date when something happened is not a deadline.
    Example: "Can we cancel order SO-12 for repeated late deliveries?" hops: h1 "find the number of late deliveries that allows cancellation, and the period" []; h2 "count the late deliveries on order SO-12 within that period" []; h3 "compare the count from h2 with the rule from h1" ["h1","h2"]
 12. A value the user states as a premise ("an order of USD 5,000 raised on 3 May", "a trip starting next week", "if a supplier is late twice") is a given, not a fact to find. Do not plan a hop to find or confirm it; use the stated value directly inside the dependent tasks.
-   Example: "Who approves a USD 5,000 order raised on 3 May 2025?" hops: h1 "find the approval limits in force on 3 May 2025" []; h2 "find the role that approves USD 5,000 under the limits from h1" ["h1"]; h3 "find the person who held the role from h2 on 3 May 2025" ["h2"]
+   Example: "Who approves a USD 5,000 order raised on 3 May 2025?" hops: h1 "find the purchase approval limits by value" []; h2 "find the role that approves USD 5,000 on 3 May 2025 under the limits from h1" ["h1"]; h3 "find the person who held the role from h2 on 3 May 2025" ["h2"]
 
 13. For each starting query return an object:
+   - "hopId": the ID of the entry-point task this query searches for.
    - "text": one short standalone search sentence for that task. Resolve pronouns from history, keep names, codes, and dates, and drop filler such as greetings, "please tell me", or "according to the document". Do not paste the whole user question when it asks several things.
    - "keywords": 2-6 important single words for exact keyword search (e.g. vessel, carrier, dividend). Skip vague words such as new, that, details, information, document. Do not repeat identifiers or entities here.
    - "identifiers": codes that name one record, such as order, invoice, contract, incident, serial or container numbers (e.g. PBLU-4471902, INV-102, D08). Copy them exactly as written. Not identifiers: priority or severity labels (P1, Tier 2), clause, section, table, amendment or version labels (Clause 8, Amendment No. 2, v3); put those in keywords or entities.
    - "entities": multi-word names of places, organizations, people, or roles (e.g. New Zealand, Audit Committee). Leave out the asker's own organization when it only says who is asking ("Can Acme end its contract with Delta Freight?" -> Delta Freight only).
    Use [] when a list has nothing. Never invent values that are not in the question or history.
 Example query object for "hey, can you tell me what the late fee is on invoice INV-102 from Acme Logistics?":
-{"text":"late fee for invoice INV-102 from Acme Logistics","keywords":["late","fee","invoice"],"identifiers":["INV-102"],"entities":["Acme Logistics"]}
+{"hopId":"h1","text":"late fee for invoice INV-102 from Acme Logistics","keywords":["late","fee","invoice"],"identifiers":["INV-102"],"entities":["Acme Logistics"]}
 Return ONLY JSON:
-{"queries":[{"text":"short search sentence","keywords":[],"identifiers":[],"entities":[]}],"hops":[{"id":"h1","task":"first required fact","dependsOn":[]},{"id":"h2","task":"dependent relationship","dependsOn":["h1"]}]}`;
+{"queries":[{"hopId":"h1","text":"short search sentence","keywords":[],"identifiers":[],"entities":[]}],"hops":[{"id":"h1","task":"first required fact","dependsOn":[]},{"id":"h2","task":"dependent relationship","dependsOn":["h1"]}]}`;
 
     const costs = [];
     for (let planningAttempt = 1; planningAttempt <= 2; planningAttempt++) {
@@ -204,6 +207,7 @@ Return ONLY JSON:
                   entities: [],
                 }
               : {
+                  hopId: String(query?.hopId ?? "").trim(),
                   text: String(query?.text ?? "").trim(),
                   keywords: toList(query?.keywords),
                   identifiers: toList(query?.identifiers),
@@ -216,9 +220,40 @@ Return ONLY JSON:
           throw new Error("Question planner returned invalid starting queries");
         }
 
+        // Every entry-point task (no dependencies) must be searched in round 1. The planner
+        // sometimes returned a query for only one of two entry tasks, and the other was never
+        // searched. Only possible when the planner tags queries with hopId.
+        const entryHops = hopPlan.filter((hop) => !hop.dependsOn.length);
+        const coveredHopIds = new Set(
+          normalizedQueries.map((query) => query.hopId).filter(Boolean),
+        );
+        const addedQueries = coveredHopIds.size
+          ? entryHops
+              .filter((hop) => !coveredHopIds.has(hop.id))
+              .map((hop) => {
+                const query = toSearchQuery(
+                  hop.task
+                    .replace(/^find\s+/i, "")
+                    .split(/\s+/)
+                    .slice(0, 20)
+                    .join(" "),
+                );
+                return query && { ...query, hopId: hop.id };
+              })
+              .filter(Boolean)
+          : [];
+        const allStartQueries = [...normalizedQueries, ...addedQueries];
+
+        // One query per entry task first, so the MAX_SUB_QUERIES cut cannot drop a task.
+        const firstPerEntryHop = entryHops
+          .map((hop) => allStartQueries.find((query) => query.hopId === hop.id))
+          .filter(Boolean);
         const queries = [
           ...new Map(
-            normalizedQueries.map((query) => [queryKey(query.text), query]),
+            [...firstPerEntryHop, ...allStartQueries].map((query) => [
+              queryKey(query.text),
+              query,
+            ]),
           ).values(),
         ].slice(0, RAG_CONFIG.MAX_SUB_QUERIES);
 
@@ -644,7 +679,7 @@ Return ONLY valid JSON:
   const gradeDocumentsNode = async (state, config) => {
     const priorEvidenceIds = evidenceIds(state.hopProgress);
     const gradingDocs = uniqueDocuments([
-      ...state.accumulatedDocs.filter((doc) => priorEvidenceIds.has(doc.id)),
+      ...state.accumulatedDocs,
       ...state.documents,
     ]);
     emit(config, {
@@ -675,6 +710,7 @@ Select useful chunks and assess EVERY required task in the plan.
 A resolved task must explicitly answer its ENTIRE task, including every relationship, applicable date, or comparison.
 Seeing a name or keyword is not evidence of a relationship. Do not infer a reporting line from a risk oversight committee.
 Keep previous supported facts unless new evidence contradicts them. Every resolved result needs exact supporting quotes and chunk IDs.
+A quote must be copied exactly from the chunk: whole lines, in their original order, without added brackets, labels or reformatting. For tables, copy the rows as written; put "..." between lines that are not next to each other.
 value must be the concise entity name or fact established, suitable for use by the next task. Do not guess names.
 VALUE KIND: value must be the kind of thing the task asks for. A deadline is the last allowed date, not the date something happened. A person's name is not a role or title; when the task asks for a person and the passage gives only a role, keep the task pending. A count is a number of matching items, counted from the case's own records. If the passages give only a different kind of value, keep the task pending.
 CURRENT SOURCE: when passages disagree about the same fact, use the one in force for the case's date (later version, amendment or effective date). A report, review or summary dated before an event cannot include that event; count from the event records themselves.
@@ -710,7 +746,6 @@ Return ONLY JSON:
                 executedQueries: state.allQueries,
                 chunks: gradingDocs.map((doc) => ({
                   id: doc.id,
-                  documentId: doc.documentId,
                   page: getChunkPageDisplay(doc),
                   headingPath: doc.metadata?.heading_path || [],
                   text: doc.searchText || doc.text,
@@ -764,7 +799,10 @@ Return ONLY JSON:
         decisionSource = "grader_error_fallback";
         // A failed call (e.g. cut off at the length limit) is still billed; record it.
         if (response?.usage && !costInfo) {
-          costInfo = calculateCostINR(response.model || "agent", response.usage);
+          costInfo = calculateCostINR(
+            response.model || "agent",
+            response.usage,
+          );
           emit(config, {
             type: "step_cost",
             step: "Relevance Grader",
@@ -1063,10 +1101,12 @@ Return ONLY JSON: {"text":"search sentence","keywords":[],"identifiers":[],"enti
           : chunk.searchText || chunk.text;
       return `<${docTag} source_id="${sourceId}">\n${text}\n</${docTag}>`;
     };
+
     let sortedDocs;
     let contextProgress = state.hopProgress;
     let contextComplete = state.isComplete;
     let stopReason = state.stopReason;
+
     if (state.intent === "search") {
       sortedDocs = selectEvidenceContext(state.documents, state.hopProgress, {
         maxChunks: RAG_CONFIG.MAX_CONTEXT_CHUNKS,
@@ -1091,7 +1131,9 @@ Return ONLY JSON: {"text":"search sentence","keywords":[],"identifiers":[],"enti
             (a.metadata?.chunk_index ?? 0) - (b.metadata?.chunk_index ?? 0),
         )
         .slice(0, RAG_CONFIG.MAX_CONTEXT_CHUNKS);
+
       let currentChars = 0;
+
       sortedDocs = sortedDocs.filter((chunk) => {
         const len = (chunk.searchText || chunk.text || "").length;
         if (
@@ -1103,15 +1145,18 @@ Return ONLY JSON: {"text":"search sentence","keywords":[],"identifiers":[],"enti
         return true;
       });
     }
+
     const contextText = sortedDocs.length
       ? sortedDocs.map(renderDocument).join("\n\n---\n\n")
       : "SEARCH_RESULT: No evidence available in this answer context.";
+
     const contextLimited = state.hopProgress.some(
       (hop) =>
         hop.status === "resolved" &&
         contextProgress.find((item) => item.hopId === hop.hopId)?.status !==
           "resolved",
     );
+
     emit(config, {
       type: "generation_context",
       intent: state.intent,
@@ -1123,6 +1168,7 @@ Return ONLY JSON: {"text":"search sentence","keywords":[],"identifiers":[],"enti
       stopReason,
       contextLimited,
     });
+
     if (state.intent === "search") {
       emit(config, {
         type: "search_stop",
@@ -1219,6 +1265,7 @@ ${contextText}`;
     }
 
     const messages = [{ role: "system", content: systemPromptContent }];
+
     if (state.historyText) {
       messages.push({
         role: "user",
@@ -1258,6 +1305,7 @@ ${contextText}`;
         snippet: chunk.text.slice(0, 200) + "...",
       };
     });
+
     // Emit citations to FE so clicking any citation opens the exact document URL & page
     emit(config, {
       type: "citations",
@@ -1286,14 +1334,17 @@ ${contextText}`;
         ...genCost,
       },
     ];
+
     const totalTokens = allSteps.reduce(
       (sum, item) => sum + (item.totalTokens || 0),
       0,
     );
+
     const totalCostINR = allSteps.reduce(
       (sum, item) => sum + (item.costINR || 0),
       0,
     );
+
     emit(config, {
       type: "total_usage_summary",
       totalTokens,
@@ -1319,6 +1370,7 @@ ${contextText}`;
               : state.subQueries,
             missingQuery: state.missingQuery,
           });
+
     emit(config, {
       type: "reasoning_chain",
       reasoningChain,

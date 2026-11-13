@@ -191,6 +191,35 @@ export function modelFailureDetails(error, response) {
   };
 }
 
+// Words for the in-order check: lowercase, Markdown marks dropped; codes and numbers such as
+// "FIN-AAM-02" and "10,001" stay one word.
+const quoteWords = (value) =>
+  String(value ?? "")
+    .toLowerCase()
+    .replace(/[*#|_`>]/g, " ")
+    .match(/[a-z0-9]+(?:[.,'-][a-z0-9]+)*/g) || [];
+
+// All words of a quote piece appear in the chunk in the same order, within a short span
+// (twice the piece length plus 20 words). Skipping a table line or Markdown passes;
+// words picked from all over the chunk, or a changed number or name, do not.
+const wordsInOrder = (piece, textWords) => {
+  const q = quoteWords(piece);
+  for (let start = 0; start < textWords.length; start++) {
+    if (textWords[start] !== q[0]) continue;
+    const maxEnd = start + q.length * 2 + 20;
+    let qi = 1;
+    for (
+      let ti = start + 1;
+      qi < q.length && ti < textWords.length && ti < maxEnd;
+      ti++
+    ) {
+      if (textWords[ti] === q[qi]) qi++;
+    }
+    if (qi === q.length) return true;
+  }
+  return false;
+};
+
 export const isQuoteInDocText = (quote, text) => {
   const normText = normalizeText(text).toLowerCase();
   const normQuote = normalizeText(quote).toLowerCase();
@@ -201,17 +230,29 @@ export const isQuoteInDocText = (quote, text) => {
     .split(/\.{3,}|\u2026|\n/)
     .map((p) => normalizeText(p).toLowerCase())
     .filter((p) => p.length >= 4);
-  if (parts.length < 2) return false;
-  // Accept when at least 80% of the pieces appear in the chunk in order
-  let lastIndex = 0;
-  let found = 0;
-  for (const part of parts) {
-    const idx = normText.indexOf(part, lastIndex);
-    if (idx === -1) continue;
-    found++;
-    lastIndex = idx + part.length;
+  if (parts.length >= 2) {
+    // Accept when at least 80% of the pieces appear in the chunk in order
+    let lastIndex = 0;
+    let found = 0;
+    for (const part of parts) {
+      const idx = normText.indexOf(part, lastIndex);
+      if (idx === -1) continue;
+      found++;
+      lastIndex = idx + part.length;
+    }
+    if (found / parts.length >= 0.8) return true;
   }
-  return found / parts.length >= 0.8;
+  // Graders also join table lines into one line or skip a line inside a quote (e.g. an
+  // older-version row). Accept when every "..."-separated piece of 3+ words appears in order.
+  const textWords = quoteWords(text);
+  const pieces = String(quote ?? "")
+    .split(/\.{3,}|\u2026/)
+    .filter(
+      (piece) => quoteWords(piece).length >= (quote.includes("...") ? 3 : 4),
+    );
+  return (
+    pieces.length > 0 && pieces.every((piece) => wordsInOrder(piece, textWords))
+  );
 };
 
 export function updateHopProgress(plan, previous, updates, documents) {
@@ -223,6 +264,8 @@ export function updateHopProgress(plan, previous, updates, documents) {
   for (const hop of plan) {
     const candidate = candidates.get(hop.id);
     let reason = candidate?.reason || "not_resolved";
+    let validEvidence = [];
+
     if (candidate?.status === "resolved") {
       reason = "";
       if (typeof candidate.value !== "string" || !candidate.value.trim())
@@ -234,7 +277,9 @@ export function updateHopProgress(plan, previous, updates, documents) {
           const bindingVal = normalizeText(
             candidate.inputBindings?.[dependency],
           ).toLowerCase();
+
           const priorVal = normalizeText(prior.value).toLowerCase();
+
           const bindingMatches = Boolean(
             bindingVal &&
             priorVal &&
@@ -249,18 +294,24 @@ export function updateHopProgress(plan, previous, updates, documents) {
       }
       if (!Array.isArray(candidate.evidence) || !candidate.evidence.length)
         reason ||= "missing_evidence";
-      else
-        for (const item of candidate.evidence) {
-          const doc = docs.get(item?.chunkId);
+      else {
+        // A quote naming an unknown chunk ID (e.g. a document ID) is dropped, not fatal,
+        // as long as at least one quote points to a chunk the grader was shown.
+        validEvidence = candidate.evidence.filter((item) =>
+          docs.has(item?.chunkId),
+        );
+        if (!validEvidence.length) reason ||= "missing_chunk";
+        for (const item of validEvidence) {
+          const doc = docs.get(item.chunkId);
           const quote = normalizeText(item?.quote);
-          if (!doc) reason ||= "missing_chunk";
-          else if (
+          if (
             typeof item?.quote !== "string" ||
             quote.length < 8 ||
             !isQuoteInDocText(item.quote, doc.searchText || doc.text)
           )
             reason ||= "quote_not_found";
         }
+      }
     }
     checked.set(
       hop.id,
@@ -280,7 +331,7 @@ export function updateHopProgress(plan, previous, updates, documents) {
             inputBindings: Object.fromEntries(
               hop.dependsOn.map((id) => [id, checked.get(id).value]),
             ),
-            evidence: candidate.evidence.map((item) => ({
+            evidence: validEvidence.map((item) => ({
               chunkId: item.chunkId,
               quote: item.quote,
             })),

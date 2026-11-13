@@ -141,7 +141,7 @@ Handle the new live `reasoning_chain` event alongside existing events:
 | `reasoning_chain` | `reasoningChain` (`{ summary, steps }`) | Emitted immediately after answer synthesis. Contains the structured human-readable audit chain. |
 | `citations` | `citations` (`Array<Citation>`) | Emitted before token stream with resolved file URLs, page numbers, and offsets. |
 | `retrieved_chunks` | `count`, `chunks` (`Array<ParentChunk>`) | Emitted with candidate chunks and their `retrievalOrigin`. |
-| `step_cost` | `step`, `model`, `tokens...`, `costINR`, `formattedINR` | Per-step billing calculation in INR. |
+| `step_cost` | `step`, `model`, `tokens...`, `costINR`, `formattedINR`, optional `failed: true` | Per-step billing calculation in INR. `failed: true` (since 13 Nov 2026) marks a Relevance Grader call that was billed but returned no usable answer; show it as a failed attempt, not as a normal grading step. |
 | `total_usage_summary` | `totalTokens`, `totalCostINR`, `formattedTotalCost`, `breakdown` | Full query billing summary. |
 | `token` | `text` | Streamed answer text. |
 | `done` | – | Stream complete. |

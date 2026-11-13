@@ -867,6 +867,51 @@ export const PIPELINE = [
     ],
     date: "November 9, 2026",
   },
+  {
+    id: 68,
+    title: "Rule Questions Answered from Past Events",
+    problem:
+      "On a 50-document knowledge base for one company, questions such as 'Who must approve a USD 30,000 hardware order raised on 5 November?' or 'Who must claim the service credit, and by when?' were answered from what happened, not from the rule. The planner searched for the stated order as if it existed, wrote the rule search in the case's words (hardware, the date) so it found the purchase log instead of the approval table, stopped at a role where a name was asked, returned the date a claim was made where the deadline was asked, and gave one of two starting tasks no search at all. When the grader did find names, the answer step sometimes left them out.",
+    solution:
+      "Planner rules and, above all, examples: a value the user states is a given; a rule check needs a rule task, a facts task and a compare task, each naming the kind of value; a rule found in a table is followed by a task for the person who held the role on the case's date; rule tasks use the rule document's words ('purchase approval limits by value'). A sentence alone was ignored; changing the examples worked. Each starting query names its task, and code adds a search for any starting task without one. The grader checks the kind of value (a deadline is not an event date, a role is not a person), and the answer step receives a code-built list of verified facts with the end of each chain marked final. The approval question went from wrong to correct with every fact found on purpose.",
+    terms: [
+      "Query Decomposition",
+      "Few-Shot Prompting",
+      "Rule vs Event Retrieval",
+      "Answer Grounding",
+    ],
+    date: "November 13, 2026",
+  },
+  {
+    id: 69,
+    title: "Correct Evidence Thrown Away by Strict Checks",
+    problem:
+      "The grader often found the right passage, and code rejected it. One cited ID was a document ID instead of a chunk ID, which rejected the whole task; honest quotes from tables failed the exact-match check because the grader joined table lines or skipped an older-version line; and a task needing two people could never resolve when they were found in different rounds, because the grader saw only the new round's chunks plus evidence of tasks already resolved. The search then stopped for lack of progress and the answer guessed.",
+    solution:
+      "A quote naming an unknown chunk is dropped while the task keeps its valid quotes; the grader no longer sees document IDs. The quote check also accepts a quote whose words all appear in the passage in the same order within a short span, ignoring Markdown, while a changed number, a changed name or scattered words still fail; the grader prompt asks for whole lines copied in order. The grader now sees every chunk kept in earlier rounds, so facts found in different rounds resolve together.",
+    terms: [
+      "Evidence Verification",
+      "Fuzzy Quote Matching",
+      "Hallucinated References",
+      "Cross-Round Evidence",
+    ],
+    date: "November 13, 2026",
+  },
+  {
+    id: 70,
+    title: "Runaway Model Reasoning in Planning and Grading",
+    problem:
+      "The same planning or grading request took 15 seconds one time and 90 seconds to over 3 minutes another, because the model sometimes reasoned for 8,000 hidden tokens. Some calls hit the provider's output limit and returned nothing, losing a whole search round, and those failed calls were billed but never shown in the cost.",
+    solution:
+      "Planner and grader calls now ask for low reasoning effort and set their own output limit; the planner call also has a 90-second timeout with no silent client retries, so a stuck attempt fails fast and the second attempt runs. Planning dropped to 6-29 seconds. Failed calls now record their cost. Low effort reduces reasoning on average but is not a hard cap, so a retry on a cut-off grader reply is the next step.",
+    terms: [
+      "Reasoning Effort",
+      "Output Token Budget",
+      "Request Timeouts",
+      "Cost Observability",
+    ],
+    date: "November 13, 2026",
+  },
 ];
 
 export default PIPELINE;
