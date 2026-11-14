@@ -1,8 +1,8 @@
 /**
- * The engineering timeline behind DocuMind, reviewed 9 November 2026.
+ * The engineering timeline behind DocuMind, reviewed 14 November 2026.
  * Earlier entries describe historical stages, not guarantees about the current
  * implementation. The November entries record the latest search, history,
- * grading, planning, access-control and email behavior.
+ * grading, planning, access-control, email, web agent and approval behavior.
  *
  * Content only: the About page renders it and holds no copy of its own, so a
  * new phase is one entry here rather than an edit to the markup.
@@ -911,6 +911,36 @@ export const PIPELINE = [
       "Cost Observability",
     ],
     date: "November 13, 2026",
+  },
+  {
+    id: 71,
+    title: "Questions the Documents Cannot Answer Alone",
+    problem:
+      "Some questions mix company records with live outside facts, such as an order's value in another currency at today's rate or a current central-bank rate. The search pipeline could only read the uploaded documents, so it either said the rate was missing or quietly used an old planning rate from a budget document.",
+    solution:
+      "I built a tool-calling web research agent as its own small LangGraph graph: the model chooses between a web search tool and a page-reading tool in a loop until it answers or reaches a 4-step limit. The planner now marks each task as documents or web; the document search answers its tasks first, then one web agent per web task runs in parallel and receives the document values it needs. The answer labels each fact with its document citation or its URL and date, and shows the working for conversions.",
+    terms: [
+      "Tool-Calling Agent",
+      "Agent Loop with Step Limit",
+      "Parallel Agents",
+      "Source Routing",
+    ],
+    date: "November 14, 2026",
+  },
+  {
+    id: 72,
+    title: "Asking Before Searching the Web",
+    problem:
+      "A web search sends text outside the company and can include values found in private documents, so it should not happen without the user's consent. A normal request cannot wait for a click: the answer stream would hang, and a server restart would lose the half-finished run.",
+    solution:
+      "Before any web search the pipeline pauses with a LangGraph interrupt, saves the run in a Postgres checkpointer, and shows the user the exact web tasks with Allow and Skip buttons. A second request resumes the same run with the user's decision, even after a reload or a restart; a database claim makes a double click answer once. Skip produces a document-only answer that names the missing outside facts, and the saved checkpoints are deleted once the answer is stored.",
+    terms: [
+      "Human-in-the-Loop",
+      "Graph Interrupts",
+      "Durable Checkpoints",
+      "Consent Before External Calls",
+    ],
+    date: "November 14, 2026",
   },
 ];
 

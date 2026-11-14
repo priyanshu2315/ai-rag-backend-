@@ -290,7 +290,7 @@ Errors (`{ "error": "..." }`): `400 Title is required`, `400 Title is too long` 
 
 Existing global chats from before this change appear in `GET /api/chat/conversations`.
 
-## Web search approval: human in the loop (Implemented 14 November, not yet tested end to end)
+## Web search approval: human in the loop (Implemented 14 November; Allow tested end to end, Skip not yet)
 
 Before the assistant searches the public web, it asks the user. The answer run **pauses**, the UI shows Allow / Skip, and a second request continues the same run. This works in both global chats and document chats.
 
@@ -422,3 +422,10 @@ Saved on the finished answer (`metadata.webFacts`, only after Allow), one result
 
 - Under the answer, show a small "Web sources" block: the `sources` links of all results (without duplicates) and "Searched on <date of searchedAt>". A result with `stopReason: "failed"` and an empty `answer` failed; show "Web search failed for: <task>".
 - Web facts are cited in the answer text as a URL with a date, not as `[Source ID: ...]`. Document citations work as before. Do not turn web URLs into document citation chips; render them as normal links.
+
+## Architecture diagram (Implemented 14 November)
+
+`GET /api/architecture` (public, no token) returns an HTML page (`text/html`) with one dark-themed SVG diagram of the current system: chat API, CRAG pipeline (including web agents and the approval pause), pause and resume, upload pipeline, AI models and data stores. Names only; no text sections.
+
+- Show it on the About page (or a new "Architecture" page) with an iframe: `<iframe src="${API_BASE_URL}/api/architecture" title="Architecture" style="width:100%; border:0; aspect-ratio: 1600 / 1240;">`. The page has its own styles and a dark background; the diagram scrolls sideways on narrow screens.
+- Do not copy the SVG into the frontend; the backend file is the only copy and changes when the pipeline changes.

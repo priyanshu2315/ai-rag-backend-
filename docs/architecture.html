@@ -3,475 +3,341 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DocuMind Architecture Map</title>
+<title>DocuMind Architecture</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap">
 <style>
-  :root {
-    color-scheme: dark;
-    --bg: #0a0c11;
-    --panel: #0f1218;
-    --line: #1d222c;
-    --text: #e9edf4;
-    --muted: #8b95a6;
-    --mono: #a9b8cc;
-    --green: #5fd38d;
-    --amber: #f0b64a;
-    --teal: #43dcc4;
-  }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    padding-inline: 16px;
-    padding-block: 28px 44px;
-  }
-  .wrap { max-width: 1640px; margin: 0 auto; display: grid; gap: 18px; }
-  header { display: grid; gap: 8px; }
-  h1 { font-size: clamp(22px, 2.4vw, 30px); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
-  .sub { color: var(--muted); margin: 0; max-width: 72ch; line-height: 1.55; }
-  .counts { display: flex; flex-wrap: wrap; gap: 8px; }
-  .count {
-    display: inline-flex; align-items: center; gap: 8px;
-    border: 1px solid var(--line); border-radius: 999px;
-    padding: 5px 12px; font-size: 13px; background: var(--panel);
-    font-variant-numeric: tabular-nums;
-  }
-  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-  .dot.built { background: var(--green); }
-  .dot.part { background: linear-gradient(90deg, var(--amber) 50%, transparent 50%); border: 1.5px solid var(--amber); width: 8px; height: 8px; }
-  .dot.miss { border: 1.5px dashed #7d8696; width: 8px; height: 8px; }
-  figure { margin: 0; display: grid; gap: 10px; }
-  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+  :root { color-scheme: dark; --bg: #0a0c11; --line: #1d222c; }
+  html, body { margin: 0; background: var(--bg); }
+  body { padding: 16px; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); max-width: 1640px; margin: 0 auto; }
   .scroll svg { display: block; width: 100%; min-width: 1100px; height: auto; }
-  figcaption { color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 95ch; }
 
   .lbl { font-family: "IBM Plex Sans", system-ui, sans-serif; font-weight: 600; font-size: 13.5px; fill: #e9edf4; }
-  .lbl.off { fill: #7d8696; }
   .fn { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 11.5px; fill: #a9b8cc; }
-  .fn.off { fill: #6b7382; }
+  .fn.sm { font-size: 10.5px; }
   .chip { font-family: "IBM Plex Sans", system-ui, sans-serif; font-weight: 600; font-size: 11px; letter-spacing: 0.12em; fill: #e9edf4; }
-  .star { fill: #43dcc4; font-size: 12px; }
-  .alb { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 11.5px; fill: #c3cad6; }
-  .alb.red { fill: #ff8a8a; }
+  .alb { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 11px; fill: #c3cad6; }
   .alb.amber { fill: #f5c66e; }
 
-  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-  .note { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; background: var(--panel); }
-  .note h2 { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 12px; font-weight: 600; }
-  .note.plus h2 { color: var(--teal); }
-  .note.next h2 { color: var(--amber); }
-  .note ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; line-height: 1.5; font-size: 14px; }
-  code { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--mono); }
-  .flow { border: 1px solid var(--line); border-radius: 12px; padding: 20px; background: var(--panel); }
-  .flow h2 { margin: 0 0 8px; font-size: 20px; }
-  .flow p { line-height: 1.6; }
-  .steps { padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; counter-reset: step; }
-  .steps li { padding: 14px; border: 1px solid var(--line); border-radius: 8px; line-height: 1.55; counter-increment: step; }
-  .steps li::before { content: counter(step) " → "; color: var(--teal); font-weight: 600; }
-  .steps strong { display: inline; }
-  .steps p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
-  .table-scroll { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; line-height: 1.5; font-size: 14px; }
-  th, td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
-  th { color: var(--teal); }
-  pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; line-height: 1.6; }
-  .warning { border-left: 3px solid var(--amber); padding-left: 14px; }
+  .node { fill: #141924; stroke: #2c3442; stroke-width: 1.2; }
+  .sub { fill: #0f1218; stroke: #2c3442; stroke-width: 1; }
+  .ar { fill: none; stroke: #c3cad6; stroke-width: 1.5; marker-end: url(#ah); }
+  .ar.amber { stroke: #f0b64a; stroke-dasharray: 6 5; marker-end: url(#aha); }
+  .ar.green { stroke: #5fd38d; marker-end: url(#ahg); }
+  .ar.teal { stroke: #43dcc4; marker-end: url(#aht); }
 </style>
 </head>
 <body>
+<div class="scroll">
+<svg viewBox="0 0 1600 1240" role="img" aria-label="DocuMind architecture: chat API, CRAG LangGraph pipeline with web agents and approval, pause and resume, upload pipeline, AI models and data stores.">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#141820" stroke-width="1"/>
+    </pattern>
+    <filter id="glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="5"/></filter>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c3cad6"/></marker>
+    <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#f0b64a"/></marker>
+    <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5fd38d"/></marker>
+    <marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#43dcc4"/></marker>
+  </defs>
 
-<div class="wrap">
-  <header>
-    <h1>DocuMind RAG architecture, mapped to the code</h1>
-    <p class="sub">Reviewed 5 October 2026 against the backend. The map shows the current upload and question paths; the detailed flows below record the recent changes and confirmed gaps. This repository contains the backend and documentation, not the application frontend.</p>
-    <div class="counts">
-      <span class="count"><span class="dot built"></span>Implemented</span>
-      <span class="count"><span class="dot part"></span>Partial / known gaps</span>
-      <span class="count"><span class="dot miss"></span>Not implemented</span>
-      <span class="count"><span style="color:var(--teal)">★</span>Project additions</span>
-    </div>
-  </header>
+  <rect width="1600" height="1240" fill="#0a0c11"/>
+  <rect width="1600" height="1240" fill="url(#grid)"/>
 
-  <figure>
-    <div class="scroll">
-      <svg viewBox="0 0 1610 1030" role="img" aria-label="DocuMind architecture: uploads flow from data sources through LlamaParse, chunking and metadata into Postgres; questions flow through the security firewall, the LangGraph router, planner and search tools, then the grader, rewriter and generator; evaluation and red-team testing sit alongside.">
-        <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M40 0H0V40" fill="none" stroke="#141820" stroke-width="1"/>
-          </pattern>
-          <filter id="glow" x="-10%" y="-10%" width="120%" height="120%">
-            <feGaussianBlur stdDeviation="5"/>
-          </filter>
-          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0 0L10 5L0 10z" fill="#c3cad6"/>
-          </marker>
-          <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0 0L10 5L0 10z" fill="#ff6b6b"/>
-          </marker>
-          <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0 0L10 5L0 10z" fill="#f0b64a"/>
-          </marker>
-          <g id="s-built"><circle r="5" fill="#5fd38d"/></g>
-          <g id="s-part"><circle r="4.5" fill="none" stroke="#f0b64a" stroke-width="1.5"/><path d="M0 -4.5A4.5 4.5 0 0 0 0 4.5Z" fill="#f0b64a"/></g>
-          <g id="s-miss"><circle r="4.5" fill="none" stroke="#7d8696" stroke-width="1.5" stroke-dasharray="2 2"/></g>
-        </defs>
+  <!-- ================= PANELS ================= -->
+  <!-- CRAG -->
+  <rect x="300" y="36" width="830" height="730" rx="12" fill="none" stroke="#b98cff" stroke-width="3" opacity=".4" filter="url(#glow)"/>
+  <rect x="300" y="36" width="830" height="730" rx="12" fill="#11141b" fill-opacity=".94" stroke="#b98cff" stroke-width="1.4"/>
+  <rect x="314" y="48" width="150" height="24" rx="5" fill="#0a0c11" stroke="#b98cff" stroke-opacity=".7"/>
+  <text class="chip" x="326" y="64">CRAG · LANGGRAPH</text>
+  <text class="fn" x="476" y="64">cragPipeline</text>
 
-        <rect width="1610" height="1030" fill="#0a0c11"/>
-        <rect width="1610" height="1030" fill="url(#grid)"/>
+  <!-- Pause & resume -->
+  <rect x="300" y="776" width="830" height="100" rx="12" fill="#11141b" fill-opacity=".94" stroke="#f0b64a" stroke-width="1.4"/>
+  <rect x="314" y="786" width="132" height="24" rx="5" fill="#0a0c11" stroke="#f0b64a" stroke-opacity=".7"/>
+  <text class="chip" x="326" y="802">PAUSE &amp; RESUME</text>
 
-        <!-- ============ ARROWS (drawn first, under panels) ============ -->
-        <!-- user query to reasoning -->
-        <path d="M392 180H426" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
-        <!-- reasoning to validation (firewall first) -->
-        <path d="M700 108V70H956" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
-        <text class="alb" x="829" y="62" text-anchor="middle">screens every query first</text>
-        <!-- reasoning to database -->
-        <path d="M902 320H1285V470H1306" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-start="url(#ah)" marker-end="url(#ah)"/>
-        <text class="alb" x="1095" y="312" text-anchor="middle">hybrid search + rerank</text>
-        <!-- reasoning to specialist nodes -->
-        <path d="M660 342V490H956" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
-        <text class="alb" x="812" y="482" text-anchor="middle">chunks + question</text>
-        <!-- feedback loop -->
-        <path d="M1308 285H904" fill="none" stroke="#f0b64a" stroke-width="1.4" stroke-dasharray="6 5" marker-end="url(#aha)"/>
-        <text class="alb amber" x="1105" y="279" text-anchor="middle">feedback loop · manual</text>
-        <!-- evaluation to database -->
-        <path d="M1445 307V376" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
-        <text class="alb" x="1455" y="346">search + rerank</text>
-        <!-- red team -->
-        <path d="M302 330H426" fill="none" stroke="#ff6b6b" stroke-width="1.4" stroke-dasharray="6 5" marker-end="url(#ahr)"/>
-        <text class="alb red" x="365" y="322" text-anchor="middle">red-team attacks</text>
-        <!-- sources to processing -->
-        <path d="M702 800H776" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
-        <text class="alb" x="729" y="791" text-anchor="middle">BullMQ</text>
-        <!-- inside processing -->
-        <path d="M1012 845H1026" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
-        <path d="M1292 845H1306" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
-        <!-- processing to database -->
-        <path d="M1445 658V619" fill="none" stroke="#c3cad6" stroke-width="1.6" marker-end="url(#ah)"/>
-        <text class="alb" x="1435" y="643" text-anchor="end">INSERT chunks + vectors</text>
+  <!-- Upload -->
+  <rect x="30" y="900" width="1100" height="320" rx="12" fill="none" stroke="#5fd38d" stroke-width="3" opacity=".35" filter="url(#glow)"/>
+  <rect x="30" y="900" width="1100" height="320" rx="12" fill="#0e1614" fill-opacity=".92" stroke="#5fd38d" stroke-width="1.4"/>
+  <rect x="44" y="912" width="80" height="24" rx="5" fill="#0a0c11" stroke="#5fd38d" stroke-opacity=".7"/>
+  <text class="chip" x="56" y="928">UPLOAD</text>
 
-        <!-- ============ USER QUERY ============ -->
-        <circle cx="362" cy="158" r="9" fill="none" stroke="#e9edf4" stroke-width="1.6"/>
-        <path d="M345 186Q362 166 379 186" fill="none" stroke="#e9edf4" stroke-width="1.6"/>
-        <text class="lbl" x="362" y="206" text-anchor="middle">User Query</text>
-        <text class="fn" x="362" y="222" text-anchor="middle">askQuestion()</text>
+  <!-- AI models -->
+  <rect x="1160" y="36" width="420" height="704" rx="12" fill="#11141b" fill-opacity=".94" stroke="#f0b64a" stroke-width="1.4"/>
+  <rect x="1174" y="48" width="98" height="24" rx="5" fill="#0a0c11" stroke="#f0b64a" stroke-opacity=".7"/>
+  <text class="chip" x="1186" y="64">AI MODELS</text>
 
-        <!-- ============ STRESS TESTING ============ -->
-        <rect x="30" y="300" width="270" height="250" rx="12" fill="none" stroke="#ff6b6b" stroke-width="3" opacity=".45" filter="url(#glow)"/>
-        <rect x="30" y="300" width="270" height="250" rx="12" fill="#11141b" fill-opacity=".94" stroke="#ff6b6b" stroke-width="1.4"/>
-        <rect x="44" y="314" width="130" height="24" rx="5" fill="#0a0c11" stroke="#ff6b6b" stroke-opacity=".7"/>
-        <text class="chip" x="56" y="330">STRESS TESTING</text>
-        <use href="#s-built" x="57" y="357.5"/>
-        <text class="lbl" x="66" y="362">Prompt Injection</text>
-        <text class="fn" x="66" y="378">red-team test PDFs</text>
-        <text class="fn" x="66" y="393">checkMaliciousIntent()</text>
-        <use href="#s-part" x="57" y="425.5"/>
-        <text class="lbl" x="66" y="430">Information Evasion</text>
-        <text class="fn" x="66" y="446">unanswerable questions</text>
-        <text class="fn" x="66" y="461">goldenDataSet3.js</text>
-        <use href="#s-miss" x="57" y="493.5"/>
-        <text class="lbl off" x="66" y="498">Biased Opinion</text>
-        <text class="fn off" x="66" y="514">not built yet</text>
+  <!-- Data -->
+  <rect x="1160" y="760" width="420" height="460" rx="12" fill="none" stroke="#43dcc4" stroke-width="3" opacity=".35" filter="url(#glow)"/>
+  <rect x="1160" y="760" width="420" height="460" rx="12" fill="#11141b" fill-opacity=".94" stroke="#43dcc4" stroke-width="1.4"/>
+  <rect x="1174" y="772" width="62" height="24" rx="5" fill="#0a0c11" stroke="#43dcc4" stroke-opacity=".7"/>
+  <text class="chip" x="1186" y="788">DATA</text>
 
-        <!-- ============ REASONING ENGINE ============ -->
-        <rect x="430" y="110" width="470" height="230" rx="12" fill="none" stroke="#b98cff" stroke-width="3" opacity=".45" filter="url(#glow)"/>
-        <rect x="430" y="110" width="470" height="230" rx="12" fill="#11141b" fill-opacity=".94" stroke="#b98cff" stroke-width="1.4"/>
-        <rect x="444" y="124" width="146" height="24" rx="5" fill="#0a0c11" stroke="#b98cff" stroke-opacity=".7"/>
-        <text class="chip" x="456" y="140">REASONING ENGINE</text>
-        <text class="fn" x="600" y="140">crag.service.js · cragPipeline</text>
-        <use href="#s-built" x="457" y="177.5"/>
-        <text class="lbl" x="466" y="182">Conditional Router</text>
-        <text class="fn" x="466" y="198">analyzeIntentNode()</text>
-        <text class="fn" x="466" y="213">routeBasedOnIntent()</text>
-        <use href="#s-built" x="705" y="177.5"/>
-        <text class="lbl" x="714" y="182">Planner</text>
-        <text class="fn" x="714" y="198">decomposeNode()</text>
-        <text class="fn" x="714" y="213">≤ 4 independent queries</text>
-        <use href="#s-built" x="457" y="245.5"/>
-        <text class="lbl" x="466" y="250">Tool Execution</text>
-        <text class="fn" x="466" y="266">retrieveNode() → rerankChunks()</text>
-        <text class="fn" x="466" y="281">fetchPageNode()</text>
-        <text class="fn" x="466" y="296">fetchSummaryNode()</text>
-        <use href="#s-built" x="705" y="245.5"/>
-        <text class="lbl" x="714" y="250">Step Streaming<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="714" y="266">emit() → SSE events</text>
-        <text class="fn" x="714" y="281">candidates → final context</text>
-        <text class="fn" x="714" y="296">same-section neighbors</text>
+  <!-- ================= ARROWS (under nodes) ================= -->
+  <!-- chat API column -->
+  <path class="ar" d="M150 80V108"/>
+  <path class="ar" d="M150 164V188"/>
+  <path class="ar" d="M150 274V298"/>
+  <path class="ar" d="M150 354V378"/>
+  <path class="ar" d="M260 407H288V110H323"/>
+  <path class="ar" d="M325 640H262"/>
+  <path class="ar" d="M40 642H20V46H138"/>
 
-        <!-- ============ VALIDATION ============ -->
-        <rect x="960" y="40" width="300" height="220" rx="12" fill="none" stroke="#f0b64a" stroke-width="3" opacity=".45" filter="url(#glow)"/>
-        <rect x="960" y="40" width="300" height="220" rx="12" fill="#11141b" fill-opacity=".94" stroke="#f0b64a" stroke-width="1.4"/>
-        <rect x="974" y="54" width="100" height="24" rx="5" fill="#0a0c11" stroke="#f0b64a" stroke-opacity=".7"/>
-        <text class="chip" x="986" y="70">VALIDATION</text>
-        <use href="#s-part" x="987" y="95.5"/>
-        <text class="lbl" x="996" y="100">Gatekeeper</text>
-        <text class="fn" x="996" y="116">checkMaliciousIntent()</text>
-        <text class="fn" x="996" y="131">requireAuth() · automatic</text>
-        <use href="#s-miss" x="987" y="163.5"/>
-        <text class="lbl off" x="996" y="168">Auditor</text>
-        <text class="fn off" x="996" y="184">no answer review yet</text>
-        <use href="#s-miss" x="987" y="217.5"/>
-        <text class="lbl off" x="996" y="222">Strategist</text>
-        <text class="fn off" x="996" y="238">improvements chosen by hand</text>
+  <!-- intent routing -->
+  <path class="ar" d="M475 122H523"/>
+  <text class="alb" x="499" y="114" text-anchor="middle">search</text>
+  <path class="ar" d="M360 149V248"/>
+  <text class="alb" x="368" y="196">summary</text>
+  <path class="ar" d="M440 149V200H515V248"/>
+  <text class="alb" x="478" y="193" text-anchor="middle">page</text>
+  <path class="ar" d="M325 140H312V615H323"/>
+  <text class="alb" x="304" y="380" text-anchor="middle" transform="rotate(-90 304 380)">greeting</text>
+  <path class="ar" d="M380 304V598"/>
+  <path class="ar" d="M515 304V570H450V598"/>
 
-        <!-- ============ EVALUATION ============ -->
-        <rect x="1310" y="40" width="270" height="265" rx="12" fill="none" stroke="#f0b64a" stroke-width="3" opacity=".45" filter="url(#glow)"/>
-        <rect x="1310" y="40" width="270" height="265" rx="12" fill="#11141b" fill-opacity=".94" stroke="#f0b64a" stroke-width="1.4"/>
-        <rect x="1324" y="54" width="100" height="24" rx="5" fill="#0a0c11" stroke="#f0b64a" stroke-opacity=".7"/>
-        <text class="chip" x="1336" y="70">EVALUATION</text>
-        <text class="fn" x="1434" y="70">src/scripts</text>
-        <use href="#s-built" x="1337" y="95.5"/>
-        <text class="lbl" x="1346" y="100">LLM Judges</text>
-        <text class="fn" x="1346" y="116">runEvals() · runEvals2()</text>
-        <use href="#s-built" x="1337" y="145.5"/>
-        <text class="lbl" x="1346" y="150">Golden Datasets<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="1346" y="166">goldenDataSet 1–3</text>
-        <use href="#s-part" x="1337" y="195.5"/>
-        <text class="lbl" x="1346" y="200">Recall@3 &amp; MRR</text>
-        <text class="fn" x="1346" y="216">no precision metric</text>
-        <use href="#s-part" x="1337" y="245.5"/>
-        <text class="lbl" x="1346" y="250">Latency &amp; Cost</text>
-        <text class="fn" x="1346" y="266">LangSmith traceable() only</text>
+  <!-- search loop -->
+  <path class="ar" d="M675 122H718"/>
+  <path class="ar" d="M910 300V348"/>
+  <path class="ar" d="M835 377H802"/>
+  <path class="ar" d="M730 350V302"/>
+  <path class="ar" d="M850 404V418H730V428"/>
+  <path class="ar" d="M660 457H640V262H718"/>
+  <path class="ar" d="M910 404V425"/>
+  <text class="alb" x="922" y="420">stop</text>
+  <path class="ar" d="M800 457H838"/>
+  <text class="alb" x="819" y="450" text-anchor="middle">stop</text>
 
-        <!-- ============ SPECIALIST NODES ============ -->
-        <rect x="960" y="380" width="300" height="235" rx="12" fill="none" stroke="#43dcc4" stroke-width="3" opacity=".45" filter="url(#glow)"/>
-        <rect x="960" y="380" width="300" height="235" rx="12" fill="#11141b" fill-opacity=".94" stroke="#43dcc4" stroke-width="1.4"/>
-        <rect x="974" y="394" width="146" height="24" rx="5" fill="#0a0c11" stroke="#43dcc4" stroke-opacity=".7"/>
-        <text class="chip" x="986" y="410">SPECIALIST NODES</text>
-        <use href="#s-built" x="987" y="433.5"/>
-        <text class="lbl" x="996" y="438">Grader<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="996" y="454">gradeDocumentsNode()</text>
-        <text class="fn" x="996" y="469">routeAfterGrading()</text>
-        <use href="#s-built" x="987" y="500.5"/>
-        <text class="lbl" x="996" y="505">Rewriter<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="996" y="521">rewriteQueryNode()</text>
-        <text class="fn" x="996" y="536">no evidence · 3 rounds max</text>
-        <use href="#s-built" x="987" y="548.5"/>
-        <text class="lbl" x="996" y="553">Generator</text>
-        <text class="fn" x="996" y="569">generateNode() · agent role</text>
-        <text class="fn" x="982" y="600">getAI(task) selects provider/model</text>
+  <!-- to approval, web agents, answer -->
+  <path class="ar" d="M910 487V568"/>
+  <text class="alb" x="918" y="534">web task</text>
+  <path class="ar" d="M600 149V530H880V568"/>
+  <text class="alb" x="592" y="340" text-anchor="middle" transform="rotate(-90 592 340)">web only</text>
+  <path class="ar" d="M835 597H798"/>
+  <text class="alb" x="816" y="589" text-anchor="middle">Allow</text>
+  <path class="ar" d="M540 627H477"/>
+  <text class="alb" x="508" y="619" text-anchor="middle">web facts</text>
+  <path class="ar" d="M910 624V737H400V656"/>
+  <text class="alb" x="700" y="731" text-anchor="middle">Skip</text>
+  <path class="ar" d="M980 457H1100V752H360V656"/>
+  <text class="alb" x="1092" y="600" text-anchor="middle" transform="rotate(-90 1092 600)">no web task</text>
+  <path class="ar amber" d="M975 624V816"/>
+  <text class="alb amber" x="983" y="798">pause</text>
 
-        <!-- ============ DATABASE ============ -->
-        <rect x="1310" y="380" width="270" height="235" rx="12" fill="none" stroke="#b98cff" stroke-width="3" opacity=".45" filter="url(#glow)"/>
-        <rect x="1310" y="380" width="270" height="235" rx="12" fill="#11141b" fill-opacity=".94" stroke="#b98cff" stroke-width="1.4"/>
-        <rect x="1324" y="394" width="168" height="24" rx="5" fill="#0a0c11" stroke="#b98cff" stroke-opacity=".7"/>
-        <text class="chip" x="1336" y="410">DATABASE · POSTGRES</text>
-        <use href="#s-built" x="1337" y="433.5"/>
-        <text class="lbl" x="1346" y="438">Vector Store</text>
-        <text class="fn" x="1346" y="454">pgvector · ChildChunk</text>
-        <text class="fn" x="1346" y="469">searchSingleDocument()</text>
-        <use href="#s-built" x="1337" y="500.5"/>
-        <text class="lbl" x="1346" y="505">Relational DB</text>
-        <text class="fn" x="1346" y="521">Prisma · saveMessage()</text>
-        <text class="fn" x="1346" y="536">getChatHistory()</text>
-        <use href="#s-built" x="1337" y="567.5"/>
-        <text class="lbl" x="1346" y="572">File Storage<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="1346" y="588">Supabase Storage</text>
+  <!-- pause & resume strip -->
+  <path class="ar amber" d="M958 842H939"/>
+  <path class="ar amber" d="M797 842H778"/>
+  <path class="ar amber" d="M636 842H617"/>
+  <path class="ar amber" d="M475 842H456"/>
 
-        <!-- ============ LEGEND ============ -->
-        <rect x="30" y="610" width="370" height="118" rx="10" fill="#0f1218" stroke="#1d222c"/>
-        <use href="#s-built" x="52" y="640.5"/>
-        <text class="fn" x="64" y="645">built</text>
-        <use href="#s-part" x="52" y="667.5"/>
-        <text class="fn" x="64" y="672">partly built</text>
-        <use href="#s-miss" x="52" y="694.5"/>
-        <text class="fn" x="64" y="699">not built yet</text>
-        <text class="star" x="198" y="645">★</text>
-        <text class="fn" x="214" y="645">not in the reference</text>
-        <path d="M198 668H232" stroke="#ff6b6b" stroke-width="1.4" stroke-dasharray="6 5"/>
-        <text class="fn" x="242" y="672">red-team testing</text>
-        <path d="M198 695H232" stroke="#f0b64a" stroke-width="1.4" stroke-dasharray="6 5"/>
-        <text class="fn" x="242" y="699">manual loop</text>
+  <!-- to data -->
+  <path class="ar teal" d="M1105 190H1145V815H1178"/>
+  <path class="ar teal" d="M1100 975H1152V840H1178"/>
+  <path class="ar teal" d="M130 1014V1195H1370V1130"/>
 
-        <!-- ============ DATA SOURCES ============ -->
-        <rect x="440" y="700" width="260" height="200" rx="12" fill="none" stroke="#a3acbb" stroke-width="3" opacity=".35" filter="url(#glow)"/>
-        <rect x="440" y="700" width="260" height="200" rx="12" fill="#11141b" fill-opacity=".94" stroke="#a3acbb" stroke-width="1.4"/>
-        <rect x="454" y="714" width="115" height="24" rx="5" fill="#0a0c11" stroke="#a3acbb" stroke-opacity=".7"/>
-        <text class="chip" x="466" y="730">DATA SOURCES</text>
-        <text class="fn" x="578" y="730">uploadDocument()</text>
-        <use href="#s-built" x="467" y="765.5"/>
-        <text class="lbl" x="476" y="770">Documents</text>
-        <text class="fn" x="476" y="786">PDF · DOCX · TXT</text>
-        <use href="#s-built" x="595" y="765.5"/>
-        <text class="lbl" x="604" y="770">Images</text>
-        <text class="fn" x="604" y="786">PNG · JPG</text>
-        <use href="#s-miss" x="467" y="833.5"/>
-        <text class="lbl off" x="476" y="838">Spreadsheets</text>
-        <text class="fn off" x="476" y="854">not yet</text>
-        <use href="#s-miss" x="595" y="833.5"/>
-        <text class="lbl off" x="604" y="838">Code</text>
-        <text class="fn off" x="604" y="854">not yet</text>
+  <!-- upload row -->
+  <path class="ar green" d="M210 982H226"/>
+  <path class="ar green" d="M388 982H404"/>
+  <path class="ar green" d="M566 982H582"/>
+  <path class="ar green" d="M744 982H760"/>
+  <path class="ar green" d="M922 982H938"/>
+  <path class="ar green" d="M1020 1014V1078"/>
+  <path class="ar amber" d="M486 1014V1048H308V1078"/>
 
-        <!-- ============ DATA PROCESSING ============ -->
-        <rect x="760" y="660" width="830" height="345" rx="14" fill="none" stroke="#5fd38d" stroke-width="3" opacity=".4" filter="url(#glow)"/>
-        <rect x="760" y="660" width="830" height="345" rx="14" fill="#0e1614" fill-opacity=".9" stroke="#5fd38d" stroke-width="1.4"/>
-        <rect x="774" y="672" width="138" height="24" rx="5" fill="#0a0c11" stroke="#5fd38d" stroke-opacity=".7"/>
-        <text class="chip" x="786" y="688">DATA PROCESSING</text>
-        <text class="fn" x="922" y="688">document.worker.js · startWorker()</text>
+  <!-- ================= CHAT API COLUMN ================= -->
+  <circle cx="150" cy="46" r="9" fill="none" stroke="#e9edf4" stroke-width="1.6"/>
+  <path d="M133 74Q150 54 167 74" fill="none" stroke="#e9edf4" stroke-width="1.6"/>
+  <text class="lbl" x="176" y="66">User</text>
 
-        <!-- re-structuring -->
-        <rect x="780" y="705" width="230" height="280" rx="10" fill="#11141b" stroke="#6fa8ff" stroke-width="1.3"/>
-        <rect x="792" y="717" width="130" height="24" rx="5" fill="#0a0c11" stroke="#6fa8ff" stroke-opacity=".7"/>
-        <text class="chip" x="804" y="733">RE-STRUCTURING</text>
-        <use href="#s-built" x="807" y="760.5"/>
-        <text class="lbl" x="816" y="765">Document Parser</text>
-        <text class="fn" x="816" y="781">extractDocPages()</text>
-        <text class="fn" x="816" y="796">LlamaParse Premium</text>
-        <use href="#s-part" x="807" y="830.5"/>
-        <text class="lbl" x="816" y="835">Structure Analyzer</text>
-        <text class="fn" x="816" y="851">layout → Markdown</text>
-        <text class="fn" x="816" y="866">(inside LlamaParse)</text>
+  <rect class="node" x="40" y="110" width="220" height="54" rx="8"/>
+  <text class="lbl" x="52" y="132">POST /api/chat</text>
+  <text class="fn" x="52" y="150">requireAuth · JWT</text>
 
-        <!-- chunking -->
-        <rect x="1030" y="705" width="260" height="280" rx="10" fill="#11141b" stroke="#6fa8ff" stroke-width="1.3"/>
-        <rect x="1042" y="717" width="85" height="24" rx="5" fill="#0a0c11" stroke="#6fa8ff" stroke-opacity=".7"/>
-        <text class="chip" x="1054" y="733">CHUNKING</text>
-        <use href="#s-built" x="1057" y="760.5"/>
-        <text class="lbl" x="1066" y="765">Parent/Child Split<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="1066" y="781">buildDocumentChunks()</text>
-        <text class="fn" x="1066" y="796">1200/200 · 400/50 chars</text>
-        <use href="#s-miss" x="1057" y="830.5"/>
-        <text class="lbl" x="1066" y="835">Table Preserver</text>
-        <text class="fn" x="1066" y="851">no repeated column headers</text>
-        <use href="#s-part" x="1057" y="888.5"/>
-        <text class="lbl" x="1066" y="893">Sections &amp; Heading Paths</text>
-        <text class="fn" x="1066" y="909">formatting can misassign scope</text>
-        <use href="#s-built" x="1057" y="946.5"/>
-        <text class="lbl" x="1066" y="951">Embeddings</text>
-        <text class="fn" x="1066" y="967">MiniLM · ≤256 tokens · 384D</text>
+  <rect class="node" x="40" y="190" width="220" height="84" rx="8" style="stroke:#6fa8ff; stroke-width:1.4"/>
+  <text class="lbl" x="52" y="212">Access · RBAC</text>
+  <text class="fn" x="52" y="230">user → roles → documents</text>
+  <text class="fn" x="52" y="247">ADMIN: all · USER: by role</text>
+  <text class="fn" x="52" y="264">allowedDocumentIds</text>
 
-        <!-- metadata -->
-        <rect x="1310" y="705" width="260" height="280" rx="10" fill="#11141b" stroke="#6fa8ff" stroke-width="1.3"/>
-        <rect x="1322" y="717" width="85" height="24" rx="5" fill="#0a0c11" stroke="#6fa8ff" stroke-opacity=".7"/>
-        <text class="chip" x="1334" y="733">METADATA</text>
-        <use href="#s-built" x="1337" y="760.5"/>
-        <text class="lbl" x="1346" y="765">Summary Generator</text>
-        <text class="fn" x="1346" y="781">batch → master summary</text>
-        <text class="fn" x="1346" y="796">summaryStatus ≠ status</text>
-        <use href="#s-part" x="1337" y="830.5"/>
-        <text class="lbl" x="1346" y="835">Contextual Search Text</text>
-        <text class="fn" x="1346" y="851">filename + breadcrumb + text</text>
-        <use href="#s-miss" x="1337" y="888.5"/>
-        <text class="lbl off" x="1346" y="893">Question Generator</text>
-        <text class="fn off" x="1346" y="909">not built yet</text>
-        <use href="#s-built" x="1337" y="946.5"/>
-        <text class="lbl" x="1346" y="951">Progress Events<tspan class="star" dx="6">★</tspan></text>
-        <text class="fn" x="1346" y="967">live SSE · REST saved chunks</text>
-      </svg>
-    </div>
-    <figcaption>Solid arrows show where data moves. The dashed red line is red-team testing, and the dashed amber line is the feedback loop, which is done by hand today. On a phone, scroll the diagram sideways.</figcaption>
-  </figure>
+  <rect class="node" x="40" y="300" width="220" height="54" rx="8"/>
+  <text class="lbl" x="52" y="322">Security check</text>
+  <text class="fn" x="52" y="340">checkMaliciousIntent()</text>
 
-  <section class="flow" aria-labelledby="upload-flow">
-    <h2 id="upload-flow">Upload → searchable document → summary</h2>
-    <p>The work completed on 3–4 October separates search readiness from summary readiness and carries section context into stored chunks. Example: a school handbook's “Late pickup” section continues on another page.</p>
-    <ol class="steps">
-      <li><strong>Store and queue</strong><p>The authenticated upload stores the file in Supabase and enqueues BullMQ work. The API returns 202 with the document ID. Ingestion starts at <code>PROCESSING</code>; summary starts at <code>PENDING</code>.</p></li>
-      <li><strong>Read pages</strong><p><code>extractDocPages()</code> returns page objects containing Markdown for PDF, DOCX, and images. TXT/Markdown uploads return one text object. The worker emits <code>page_extracted</code> with the complete extracted text.</p></li>
-      <li><strong>Track sections</strong><p>The heading stack persists across pages. “Late pickup” stays in the breadcrumb of ordinary continuation text. Section groups exist in memory; their IDs and paths are saved in chunk metadata. Heading formatting still needs validation.</p></li>
-      <li><strong>Create parents and children</strong><p>Each page part becomes parents of up to 1,200 characters with 200 overlap, then children of up to 400 with 50 overlap. Source <code>text</code> is separate from <code>searchText</code>: filename + section path + passage. Size settings count characters before the context prefix.</p></li>
-      <li><strong>Link and embed</strong><p>Parents link to previous/next parents in the same section. Children embed their full <code>searchText</code> into 384 numbers. A tokenizer checks at most 256 tokens; oversized input fails ingestion rather than silently losing text.</p></li>
-      <li><strong>Save and enable questions</strong><p><code>saveDocumentChunks()</code> saves parents and children in a transaction. The worker sets <code>status=COMPLETED</code>, <code>summaryStatus=PROCESSING</code>, then emits <code>chunks_ready</code>. Questions can start now.</p></li>
-      <li><strong>Generate the summary</strong><p>The worker batches full extracted text, summarizes the batches, and saves a master summary. It sets <code>summaryStatus=COMPLETED</code> or <code>FAILED</code>. Summary failure leaves the searchable chunks available.</p></li>
-    </ol>
-  </section>
+  <rect class="node" x="40" y="380" width="220" height="54" rx="8"/>
+  <text class="lbl" x="52" y="402">Chat history</text>
+  <text class="fn" x="52" y="420">getChatHistory()</text>
 
-  <section class="flow" aria-labelledby="search-flow">
-    <h2 id="search-flow">Question → evidence → answer</h2>
-    <ol class="steps">
-      <li><strong>Check access and input</strong><p>JWT and ownership checks protect document access. <code>checkMaliciousIntent()</code> screens input before the CRAG graph; accepted questions load conversation history.</p></li>
-      <li><strong>Choose the path</strong><p>Intent routes greetings to generation, summary requests to the saved summary with readiness checks, page requests to page chunks, and factual questions to decomposition.</p></li>
-      <li><strong>Split the question</strong><p><code>decomposeNode()</code> creates up to four independent queries, then searches them sequentially. It does not insert facts found by one query into the next query.</p></li>
-      <li><strong>Search contextual children</strong><p>Vector and Postgres full-text search each collect up to 20 child hits. RRF returns up to 15 parent candidates per query. Single-document RRF uses 10; user-wide search uses 60 and filters owned completed documents. Full-text ranking uses <code>ts_rank_cd</code>, not BM25.</p></li>
-      <li><strong>Rerank and expand</strong><p>Cohere chooses up to three parent <code>searchText</code> passages per query. Parent IDs are deduplicated. Immediate same-section previous/next parents are added, capped at 24 total parents; expansion is not recursive.</p></li>
-      <li><strong>Grade or retry</strong><p>One grading call evaluates the combined evidence against the original question. Any retained evidence proceeds to generation. With none, rewrite the original question into one alternative query. Three retrieval rounds maximum, not three retries for each subquery. Grader errors currently retain the evidence.</p></li>
-      <li><strong>Generate and deliver</strong><p>Generation receives contextual passages, history, and page citations, with untrusted input wrapped in random tags. The completed answer is sent as word events and saved as a message. A relevance decision does not guarantee a correct or complete answer.</p></li>
-    </ol>
-  </section>
+  <rect class="node" x="40" y="615" width="220" height="54" rx="8"/>
+  <text class="lbl" x="52" y="637">Answer stream</text>
+  <text class="fn" x="52" y="655">SSE · saveMessage()</text>
 
-  <section class="flow" aria-labelledby="routing-readiness">
-    <h2 id="routing-readiness">Provider routing and two readiness states</h2>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Setting or state</th><th>Current behavior</th></tr></thead>
-        <tbody>
-          <tr><td><code>AI_PROVIDER=mixed</code></td><td>Defaults: agent/chat/fast → Groq, summary → OpenRouter. Per-task provider and model environment overrides are allowed.</td></tr>
-          <tr><td><code>AI_PROVIDER=opencode</code> (or another named provider)</td><td>Every LLM task uses that provider's configured models; per-task provider and model overrides are ignored. Restart the process after environment changes. Embeddings and Cohere remain separate.</td></tr>
-          <tr><td><code>status=PROCESSING</code></td><td>Chunks are not ready. Wait before document questions.</td></tr>
-          <tr><td><code>status=COMPLETED</code>, summary pending/processing</td><td>Document questions are available; the summary is not ready.</td></tr>
-          <tr><td><code>summaryStatus=COMPLETED</code></td><td>Summary requests require the saved, nonempty summary as well as this state.</td></tr>
-          <tr><td><code>summaryStatus=FAILED</code></td><td>The summary is unavailable; completed ingestion still permits questions.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+  <!-- ================= CRAG NODES ================= -->
+  <rect class="node" x="325" y="95" width="150" height="54" rx="8"/>
+  <text class="lbl" x="400" y="127" text-anchor="middle">analyze_intent</text>
 
-  <section class="flow" aria-labelledby="inspection">
-    <h2 id="inspection">What can be inspected</h2>
-    <p><code>GET /api/documents/get-all-parent-chunk/:docId</code> returns owned parents with raw/contextual text, metadata, links, and child counts. <code>GET /api/documents/get-all-child-chunk/:parentId</code> returns their children, vectors, dimensions, and embedding diagnostics. Rebuild section groups from the saved metadata.</p>
-    <pre>Parent / child metadata:
-document_title (filename), heading_path, section_id, section_part_index,
-page_number, source_pages, chunk_index, chunker_version
-Child additions: child_index, embedding diagnostics
-Parent links: prevParentId, nextParentId (same-section reading order)</pre>
-    <p><code>GET /api/documents/progress/:docId</code> emits live extraction, heading, section, chunk, link, embedding, save, and readiness events. Chat emits candidates, reranked selections, neighbor additions, grading decisions, and final generation context. Event IDs and timestamps help correlate the events with console logs.</p>
-    <p class="warning"><strong>Current change: Redis history is disabled to save storage.</strong> <code>getProgressHistory()</code> returns an empty list. Refresh can reload saved chunks through REST but cannot recover the old upload timeline or original parsed page text. Detailed chat events are also not stored with message history. Missing live source-page data must not be shown as a measured “0”. The old 24-hour replay description in <a href="frontend-chunk-inspector.md">the frontend handoff</a> is stale.</p>
-    <p>Detailed logs: <code>[Document pipeline]</code>, <code>[CRAG details]</code>, and standalone <code>[Chunking]</code>. <code>RAG_DEBUG=false</code> disables these verbose JSON logs; other worker logs remain. Events marked <code>preparing</code> precede the database commit.</p>
-  </section>
+  <rect class="node" x="525" y="95" width="150" height="54" rx="8"/>
+  <text class="lbl" x="537" y="117">decompose</text>
+  <text class="fn" x="537" y="135">hopPlan · webHops</text>
 
-  <section class="flow" aria-labelledby="stress-gaps">
-    <h2 id="stress-gaps">Confirmed stress-test gaps — fixes still pending</h2>
-    <p>Compared both uploads of <code>Chunking_Stress_Test_Document.pdf</code>: after the parser prompt update <code>ec020eb3-9aff-44cf-ae63-2f361bfa32e2</code>, before <code>c57f4a08-8043-48b5-88f3-d01bad4aab85</code>. The newer prompt improved some headings but did not repair these stored relationships.</p>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Confirmed problem</th><th>Effect</th><th>Proposed next work, not implemented</th></tr></thead>
-        <tbody>
-          <tr><td>5A removes the handbook subtitle; 18 is nested under 17; 19 loses document headings.</td><td>Chunks inherit an incomplete or incorrect section path.</td><td>Preserve generic document identity separately and validate heading relationships instead of accepting parser formatting as truth.</td></tr>
-          <tr><td>Page 4 financial rows D08–D12 inherit section 6 (pallet standards).</td><td>A table continuation is labeled with an unrelated topic.</td><td>Recognize interrupted table continuations and associate them with section 5.</td></tr>
-          <tr><td>5A explains section 5, but no reference relationship exists.</td><td>The table's column explanation can be missed during retrieval.</td><td>Resolve explicit section/table references separately from previous/next reading order.</td></tr>
-          <tr><td>Kettleby's parent and child rows lack headers; headers are two parents earlier.</td><td>158,744 (2022 census) can be mistaken for 163,482 (2023 city proper).</td><td>Repeat column labels, dates, units, and row identity in every parent/child table piece.</td></tr>
-          <tr><td>Dependent questions are split into independent searches.</td><td>Later searches cannot reliably target an entity discovered by an earlier result.</td><td>Plan dependent retrieval after the chunking defects are addressed and evaluated.</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>Both uploads have identical stored page-11 parent text. Original cached extraction for the earlier upload preserved the correct headers and Kettleby numbers; splitting separated them. The complete context used for the reported wrong answer was not captured, so this confirms a chunking defect without proving the exact generation failure.</p>
-    <pre>Labels every Kettleby table piece should retain:
-City: Kettleby
-Census — 1 January 2022: 158,744
-Metropolitan area — 31 December 2023: 361,092
-City proper — 31 December 2023: 163,482</pre>
-  </section>
+  <rect class="node" x="318" y="250" width="125" height="54" rx="8"/>
+  <text class="lbl" x="380" y="282" text-anchor="middle">fetch_summary</text>
 
-  <section class="flow" aria-labelledby="migration-history">
-    <h2 id="migration-history">Database changes recorded on 3–4 October</h2>
-    <p><code>20261003120000_add_document_summary_status</code> adds summary readiness. <code>20261004112441_contextual_chunking</code> adds required parent/child <code>searchText</code>, parent link fields, and the child contextual full-text GIN index. The user approved a development database reset and migration application on 4 October, followed by client generation. This history does not authorize another reset.</p>
-    <p>The contextual migration assumes empty chunk tables; populated databases need an approved data plan. There is no compatibility path for older chunk formats because the user chose fresh uploads. Generate Prisma Client explicitly when required. Verify live index availability before making performance claims; earlier migration SQL drops vector indexes. Follow <a href="../PRISMA_WORKFLOW.md">the project migration workflow</a> with the installed Prisma version.</p>
-  </section>
+  <rect class="node" x="455" y="250" width="120" height="54" rx="8"/>
+  <text class="lbl" x="515" y="282" text-anchor="middle">fetch_page</text>
 
-  <section class="notes">
-    <div class="note plus">
-      <h2>Beyond the reference</h2>
-      <ul>
-        <li>Contextual children feed hybrid search; Cohere reranks parents, then immediate same-section neighbors expand the evidence.</li>
-        <li>The corrective loop grades the collection and rewrites only when no evidence remains, with at most three retrieval rounds.</li>
-        <li>Untrusted-text wrappers: retrieved text and questions sit inside random nonce tags in <code>generateNode()</code>.</li>
-        <li>Live progress and detailed inspection: saved parent/child REST responses, upload SSE, chat retrieval events, and verbose console logs.</li>
-        <li>Separate chunk and summary readiness lets questions start before summary generation finishes.</li>
-      </ul>
-    </div>
-    <div class="note next">
-      <h2>Next to build</h2>
-      <ul>
-        <li>Validate heading hierarchy, preserve document identity, and recognize interrupted table continuations.</li>
-        <li>Keep table column labels, dates, and units with every piece; connect explicit references such as 5A → section 5.</li>
-        <li>Evaluate section scope and table labels on stored parents and children before claiming the failures are fixed.</li>
-        <li>Question generator: store the questions each chunk answers and search them too.</li>
-        <li>Latency and cost per question in the eval scripts.</li>
-      </ul>
-    </div>
-  </section>
+  <!-- retrieve group -->
+  <rect x="720" y="70" width="385" height="230" rx="10" fill="#151a26" stroke="#b98cff" stroke-opacity=".6" stroke-width="1.2"/>
+  <text class="lbl" x="735" y="98">retrieve</text>
+  <text class="fn" x="805" y="98">allowedDocumentIds only</text>
+  <rect class="sub" x="735" y="120" width="82" height="30" rx="6"/>
+  <text class="fn" x="776" y="139" text-anchor="middle">vector</text>
+  <rect class="sub" x="824" y="120" width="82" height="30" rx="6"/>
+  <text class="fn" x="865" y="139" text-anchor="middle">identifier</text>
+  <rect class="sub" x="913" y="120" width="82" height="30" rx="6"/>
+  <text class="fn" x="954" y="139" text-anchor="middle">phrase</text>
+  <rect class="sub" x="1002" y="120" width="82" height="30" rx="6"/>
+  <text class="fn" x="1043" y="139" text-anchor="middle">keyword</text>
+  <path class="ar" d="M820 150V173"/>
+  <rect class="sub" x="735" y="175" width="170" height="30" rx="6"/>
+  <text class="fn" x="820" y="194" text-anchor="middle">weighted RRF</text>
+  <path class="ar" d="M905 190H918"/>
+  <rect class="sub" x="920" y="175" width="164" height="30" rx="6"/>
+  <text class="fn" x="1002" y="194" text-anchor="middle">Cohere rerank</text>
+  <path class="ar" d="M1002 205V228"/>
+  <rect class="sub" x="735" y="230" width="349" height="30" rx="6"/>
+  <text class="fn" x="910" y="249" text-anchor="middle">neighbor expansion</text>
+
+  <rect class="node" x="835" y="350" width="150" height="54" rx="8"/>
+  <text class="lbl" x="910" y="382" text-anchor="middle">grade</text>
+
+  <rect class="node" x="660" y="350" width="140" height="54" rx="8"/>
+  <text class="lbl" x="730" y="382" text-anchor="middle">next_hop</text>
+
+  <rect class="node" x="660" y="430" width="140" height="54" rx="8"/>
+  <text class="lbl" x="730" y="462" text-anchor="middle">rewrite</text>
+
+  <path d="M910 427L980 457L910 487L840 457Z" fill="#141924" stroke="#2c3442" stroke-width="1.2"/>
+  <text class="fn" x="910" y="461" text-anchor="middle">routeToAnswer</text>
+
+  <rect class="node" x="835" y="570" width="150" height="54" rx="8" style="stroke:#f0b64a"/>
+  <text class="lbl" x="847" y="592">ask_approval</text>
+  <text class="fn" x="847" y="610">interrupt()</text>
+
+  <!-- web agents (one per web task, parallel) -->
+  <rect x="556" y="540" width="240" height="164" rx="10" fill="#121722" stroke="#43dcc4" stroke-opacity=".35"/>
+  <rect x="548" y="548" width="240" height="164" rx="10" fill="#131925" stroke="#43dcc4" stroke-opacity=".5"/>
+  <rect x="540" y="556" width="240" height="164" rx="10" fill="#141b27" stroke="#43dcc4" stroke-width="1.3"/>
+  <text class="lbl" x="556" y="580">web_agent</text>
+  <text class="fn" x="556" y="598">runOneWebAgent() × N</text>
+  <rect class="sub" x="556" y="612" width="90" height="36" rx="6"/>
+  <text class="fn" x="601" y="634" text-anchor="middle">agent</text>
+  <rect class="sub" x="676" y="612" width="90" height="36" rx="6"/>
+  <text class="fn" x="721" y="634" text-anchor="middle">tools</text>
+  <path class="ar" d="M646 624H674"/>
+  <path class="ar" d="M676 638H648"/>
+  <text class="fn" x="556" y="672">web_search · read_page</text>
+  <text class="fn" x="556" y="690">Tavily · 4 steps</text>
+
+  <rect class="node" x="325" y="600" width="150" height="54" rx="8"/>
+  <text class="lbl" x="400" y="632" text-anchor="middle">generate</text>
+
+  <!-- ================= PAUSE & RESUME ================= -->
+  <rect class="node" x="958" y="818" width="140" height="48" rx="8"/>
+  <text class="lbl" x="968" y="838">Pause</text>
+  <text class="fn" x="968" y="855">approval_required</text>
+
+  <rect class="node" x="797" y="818" width="140" height="48" rx="8"/>
+  <text class="lbl" x="807" y="838">Waiting message</text>
+  <text class="fn" x="807" y="855">savePause()</text>
+
+  <rect class="node" x="636" y="818" width="140" height="48" rx="8"/>
+  <text class="lbl" x="646" y="838">Resume API</text>
+  <text class="fn" x="646" y="855">/api/chat/resume</text>
+
+  <rect class="node" x="475" y="818" width="140" height="48" rx="8"/>
+  <text class="lbl" x="485" y="838">Resume run</text>
+  <text class="fn" x="485" y="855">Command(resume)</text>
+
+  <rect class="node" x="314" y="818" width="140" height="48" rx="8"/>
+  <text class="lbl" x="324" y="838">Checkpointer</text>
+  <text class="fn" x="324" y="855">PostgresSaver</text>
+
+  <!-- ================= UPLOAD ================= -->
+  <rect class="node" x="50" y="950" width="160" height="64" rx="8"/>
+  <text class="lbl" x="60" y="972">Upload</text>
+  <text class="fn sm" x="60" y="989">/api/documents/upload</text>
+  <text class="fn sm" x="60" y="1004">requireAdmin</text>
+
+  <rect class="node" x="228" y="950" width="160" height="64" rx="8"/>
+  <text class="lbl" x="238" y="972">Queue</text>
+  <text class="fn sm" x="238" y="989">BullMQ · Redis</text>
+  <text class="fn sm" x="238" y="1004">document.worker</text>
+
+  <rect class="node" x="406" y="950" width="160" height="64" rx="8"/>
+  <text class="lbl" x="416" y="972">Extraction</text>
+  <text class="fn sm" x="416" y="989">extractDocument()</text>
+  <text class="fn sm" x="416" y="1004">outline · table repair</text>
+
+  <rect class="node" x="584" y="950" width="160" height="64" rx="8"/>
+  <text class="lbl" x="594" y="972">Chunking</text>
+  <text class="fn sm" x="594" y="989">buildDocumentChunks()</text>
+  <text class="fn sm" x="594" y="1004">parent 1024 · child 256</text>
+
+  <rect class="node" x="762" y="950" width="160" height="64" rx="8"/>
+  <text class="lbl" x="772" y="972">Embeddings</text>
+  <text class="fn sm" x="772" y="989">all-MiniLM-L6-v2</text>
+  <text class="fn sm" x="772" y="1004">384 dimensions</text>
+
+  <rect class="node" x="940" y="950" width="160" height="64" rx="8"/>
+  <text class="lbl" x="950" y="972">Save</text>
+  <text class="fn sm" x="950" y="989">saveDocumentChunks()</text>
+  <text class="fn sm" x="950" y="1004">status COMPLETED</text>
+
+  <rect class="node" x="940" y="1080" width="160" height="54" rx="8"/>
+  <text class="lbl" x="950" y="1102">Summary</text>
+  <text class="fn sm" x="950" y="1120">summaryStatus</text>
+
+  <rect class="node" x="228" y="1080" width="160" height="54" rx="8"/>
+  <text class="lbl" x="238" y="1102">Progress</text>
+  <text class="fn sm" x="238" y="1120">Pub/Sub → SSE</text>
+
+  <!-- ================= AI MODELS ================= -->
+  <text class="lbl" x="1182" y="120">airouter · deepseek-v4-flash</text>
+  <text class="fn" x="1182" y="137">planner · grader · answer · web agent · summary</text>
+  <text class="lbl" x="1182" y="230">airouter · qwen3.8-omni-flash</text>
+  <text class="fn" x="1182" y="247">extraction</text>
+  <text class="lbl" x="1182" y="340">groq · gpt-oss-20b</text>
+  <text class="fn" x="1182" y="357">intent · rewriter · security check</text>
+  <text class="lbl" x="1182" y="450">Cohere · rerank-english-v3.0</text>
+  <text class="fn" x="1182" y="467">rerank</text>
+  <text class="lbl" x="1182" y="560">Tavily</text>
+  <text class="fn" x="1182" y="577">web_search · read_page</text>
+  <text class="lbl" x="1182" y="670">Xenova · all-MiniLM-L6-v2</text>
+  <text class="fn" x="1182" y="687">embeddings (local)</text>
+
+  <!-- ================= DATA ================= -->
+  <rect class="node" x="1180" y="800" width="380" height="56" rx="8"/>
+  <text class="lbl" x="1194" y="823">PostgreSQL · pgvector</text>
+  <text class="fn" x="1194" y="841">ParentChunk · ChildChunk</text>
+
+  <rect class="node" x="1180" y="868" width="380" height="56" rx="8"/>
+  <text class="lbl" x="1194" y="891">PostgreSQL · Prisma</text>
+  <text class="fn" x="1194" y="909">User · Role · RoleDocument · Conversation · Message</text>
+
+  <rect class="node" x="1180" y="936" width="380" height="56" rx="8"/>
+  <text class="lbl" x="1194" y="959">PostgreSQL · langgraph</text>
+  <text class="fn" x="1194" y="977">checkpoints</text>
+
+  <rect class="node" x="1180" y="1004" width="380" height="56" rx="8"/>
+  <text class="lbl" x="1194" y="1027">Redis</text>
+  <text class="fn" x="1194" y="1045">BullMQ · Pub/Sub</text>
+
+  <rect class="node" x="1180" y="1072" width="380" height="56" rx="8"/>
+  <text class="lbl" x="1194" y="1095">Supabase Storage</text>
+  <text class="fn" x="1194" y="1113">files</text>
+</svg>
 </div>
 </body>
 </html>

@@ -4,7 +4,7 @@
 
 Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
 
-Current order (updated 14 Nov): Step 5 (web agent and human in the loop) next, then Step 5B (agents section for tasks, multi-agent), then Step 6 (MCP), then finish (README, demo video). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
+Current order (updated 14 Nov): Step 5 (web agent and human in the loop) built and verified 14 Nov (open: Skip, restart and guard re-tests); next Step 5B (agents section for tasks, multi-agent), then Step 6 (MCP), then finish (README, demo video). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
 
 ## Step 1: Search Optimization & structured-context-v4 Part 2 (16 hrs)
 
@@ -179,7 +179,7 @@ Postponed 13 Nov until after Step 5.
 
 ## Step 5: Web Research Agent & Human-in-the-Loop Interrupts (12 hrs)
 
-Next step (moved ahead of Step 3 on 13 Nov). Starts 14 Nov. Plan agreed 13 Nov.
+Built and verified 14 Nov (5 runs, all correct; see Phase 4). Open: Skip, restart-while-paused and guard re-tests (task 16).
 
 ### Design agreed 13 Nov
 - Goal: learn and build a real AI agent: a web research agent where the model chooses tools (`web_search`, `read_page`) in a loop until it says it is done or hits a step limit (4). CRAG stays a code-driven agentic workflow; the web agent is the AI agent.
@@ -205,26 +205,35 @@ Next step (moved ahead of Step 3 on 13 Nov). Starts 14 Nov. Plan agreed 13 Nov.
 ### Phase 2: Pause and resume, human in the loop (Nov 15, about a day)
 - [x] 6. Install `@langchain/langgraph-checkpoint-postgres`; `src/config/checkpointer.js`; tables in schema `langgraph` (approval before creating them)
   - 14 Nov: version 1.1.2 (1.1.3 was 2 days old). `setupCheckpointer()` created schema `langgraph` with `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations` (verified). A function in `config.configurable` (`onEvent`) works with it, and `deleteThread()` removes a run's rows.
-- [~] 7. Compile CRAG with the checkpointer; each question gets a new `threadId` passed as `{ configurable: { thread_id } }`
-  - Code applied 14 Nov, not yet tested: `createCragPipeline({ checkpointer })` (optional, so unit tests run without a database); `finishAnswer()` deletes the run's checkpoints after the answer.
-- [~] 8. Tiny `ask_approval` node that only calls `interrupt({ question, missingHops })` (on resume LangGraph re-runs the node from its first line)
-  - Code applied 14 Nov, not yet tested. Changed design: `interrupt({ question, webHops })` sends only hops marked `source: "web"` (unresolved document hops are not sent to the web; trigger B dropped). `routeToAnswer()` runs when the document loop stops (any `stopReason`) from `grade` and `rewrite`; `webApproval` state (null/true/false) allows one popup per question. Temporary `ALWAYS_ASK_FOR_TEST = true`: every searched question pauses; do not push it.
-- [~] 9. `chat.service.js`: on interrupt, send `approval_required` SSE (`threadId`, question), save a "waiting for approval" assistant message, close the stream
-  - Code applied 14 Nov, not yet tested: `getPause()`, `savePause()` (message metadata `status: "awaiting_approval"`, `threadId`, `webHops`, `steps`), `finishAnswer()`.
-- [~] 10. `POST /api/chat/resume` with `{ conversationId, threadId, approved }`: check the user owns the conversation and the waiting message, continue with `new Command({ resume: { approved } })`, stream and save the answer as usual
-  - Code applied 14 Nov, not yet tested: `claimApproval()` (owner, document access, waiting message; claim to `resuming` so a double click answers 409), `resumeAnswer()` replaces the waiting message with the answer and resets it to waiting on error. Frontend contract added to `docs/frontend-rbac-prompt.md`.
-  - Test with a temporary "always ask" rule: pause -> Allow/Skip -> resume; restart the server while paused and resume (proves the checkpointer)
+- [x] 7. Compile CRAG with the checkpointer; each question gets a new `threadId` passed as `{ configurable: { thread_id } }`
+  - 14 Nov: `createCragPipeline({ checkpointer })` (optional, so unit tests run without a database); `finishAnswer()` deletes the run's checkpoints after the answer.
+- [x] 8. Tiny `ask_approval` node that only calls `interrupt({ question, missingHops })` (on resume LangGraph re-runs the node from its first line)
+  - 14 Nov. Changed design: `interrupt({ question, webHops })` sends only hops marked `source: "web"` (unresolved document hops are not sent to the web; trigger B dropped). `routeToAnswer()` runs when the document loop stops (any `stopReason`) from `grade` and `rewrite`; `webApproval` state (null/true/false) allows one popup per question. The temporary `ALWAYS_ASK_FOR_TEST` switch was removed in Phase 3.
+- [x] 9. `chat.service.js`: on interrupt, send `approval_required` SSE (`threadId`, question), save a "waiting for approval" assistant message, close the stream
+  - 14 Nov: `getPause()`, `savePause()` (message metadata `status: "awaiting_approval"`, `threadId`, `webHops`, `steps`), `finishAnswer()`.
+- [x] 10. `POST /api/chat/resume` with `{ conversationId, threadId, approved }`: check the user owns the conversation and the waiting message, continue with `new Command({ resume: { approved } })`, stream and save the answer as usual
+  - 14 Nov: `claimApproval()` (owner, document access, waiting message; claim to `resuming` so a double click answers 409), `resumeAnswer()` replaces the waiting message with the answer and resets it to waiting on error. Frontend contract added to `docs/frontend-rbac-prompt.md`.
+  - Pause -> Allow -> resume verified 14 Nov. Not yet run: Skip, and restarting the server while paused (proves the checkpointer).
 
 ### Phase 3: Connect to CRAG (Nov 16, about a day)
-- [ ] 11. Planner: `source: "documents" | "web"` per hop, prompt rule with a generic example; the document loop skips `"web"` hops
-- [ ] 12. Routing after the document loop: missing hops or `"web"` hops -> `ask_approval`, else `generate`
-- [ ] 13. `web_agent` node: on Allow, runs the Phase 1 agent with the missing hop texts; results and URLs stored as `webFacts` in state
-- [ ] 14. `generate`: WEB FACTS section with URL and date; each fact labelled document or web; conversions show the working
+- [x] 11. Planner: `source: "documents" | "web"` per hop, prompt rule with a generic example; the document loop skips `"web"` hops
+  - 14 Nov: planner rule 13 (rules reordered; query-object rule is now 14). `validateHopPlan()` keeps `source` only for web hops. `decompose` splits the plan: `hopPlan` = document hops only (grader, `nextPendingHop`, `isPlanComplete` unchanged), `webHops` = web hops; no starting queries for web hops; a document hop may not depend on a web hop, and a web hop may not depend on another web hop (planning retries otherwise). A web-only plan skips document search.
+  - 14 Nov fix: the planner wrote "find the new monthly fee in euros stated in the amendment" (a value the documents do not have; 3 rounds wasted, then the answer used the FY2026 budget rate). Rule 13 now says documents state amounts in their own currency: plan "find the value and its currency" plus a rate hop, which is "web" unless the question names a company rate (budget, contract, internal). Re-test planned the web hop.
+- [x] 12. Routing after the document loop: `"web"` hops -> `ask_approval`, else `generate`
+  - `needsWebApproval()` = `webApproval === null && webHops.length > 0`; used from `grade`, `rewrite` and `decompose` (web-only plan). Unresolved document hops never go to the web.
+- [x] 13. `web_agent` node: on Allow, runs the Phase 1 agent; results and URLs stored as `webFacts` in state
+  - 14 Nov: one agent per web hop, all in parallel (`runOneWebAgent()`, `agentId` `web-<hopId>`); each task gets the resolved document values it depends on. One failed agent does not stop the others. `webFacts = { searchedAt, results: [{ hopId, task, answer, sources, stopReason }] }`. `webAgentGraph` compiles with `checkpointer: false` (otherwise it inherits CRAG's checkpointer and parallel agents share one checkpoint slot).
+- [x] 14. `generate`: WEB FACTS section with URL and date; each fact labelled document or web; conversions show the working
+  - Also: "not found on the web" tasks are named; after Skip the answer says which outside facts were not looked up. `webHops` is in ANSWER COVERAGE.
 
 ### Phase 4: UI, tests and docs (Nov 17, about half a day)
-- [ ] 15. Events `agent_start`, `agent_step` (each tool call), `agent_finish`, `approval_required`; update `docs/frontend-rbac-prompt.md` for agent cards and Allow/Skip buttons
-- [ ] 16. End-to-end tests: P11-in-INR style question (one approval, Allow, correct converted answer with both sources); a question the documents cannot answer (asks); Skip (answers from documents and says what is missing); a private fact (never asks); guards Q1 and Q13 unchanged
-- [ ] 17. Update `AGENTS.md`, `ROADMAP.md`, and add a `docs/pipeline.js` entry
+- [x] 15. Events `agent_start`, `agent_step` (each tool call), `agent_finish`, `approval_required`; update `docs/frontend-rbac-prompt.md` for agent cards and Allow/Skip buttons
+  - Every `agent_*` event carries `agentId` and `hopId`; the doc describes the "● N agents working" indicator, `webFacts`, and "Decide later" as UI-only (no backend action).
+- [~] 16. End-to-end tests: P11-in-INR style question (one approval, Allow, correct converted answer with both sources); a question the documents cannot answer (asks); Skip (answers from documents and says what is missing); a private fact (never asks); guards Q1 and Q13 unchanged
+  - Verified 14 Nov (all with Allow, answers correct): PO-10234 in INR (h1 documents USD 64,800, h2 web rate, 1 tool call); Fed policy rate (web-only plan, no document search, 3-4 tool calls); PO-10234 in INR, EUR and GBP (3 parallel agents: `web-h2` done, `web-h3` and `web-h4` hit the 4-step limit but still answered; 14 tool calls); Brennock fee in euros after the rule 13 fix (USD 19,800, web hop planned).
+  - Not yet run: Skip, restart while paused, a private-fact question (must not ask), guards Q1 and Q13.
+  - Seen: rate pages can show an older snapshot (an Xe page dated 28 Oct 2026); the answer lists several providers' rates.
+- [x] 17. Update `AGENTS.md`, `ROADMAP.md`, and add a `docs/pipeline.js` entry
 
 ## Step 5B: Agents section for tasks, multi-agent (about 3-4 days)
 

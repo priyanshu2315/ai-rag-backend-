@@ -5,6 +5,7 @@ import chatRoutes from "./src/routes/chat.routes.js";
 import authRoutes from "./src/routes/auth.routes.js";
 import healthRoutes from "./src/routes/health.routes.js";
 import pipelineRoutes from "./src/routes/pipeline.routes.js";
+import architectureRoutes from "./src/routes/architecture.routes.js";
 import roleRoutes from "./src/routes/role.routes.js";
 import userRoutes from "./src/routes/user.routes.js";
 import cors from "cors";
@@ -19,6 +20,7 @@ app.use(express.json());
 // Mount routes
 app.use("/api/health", healthRoutes);
 app.use("/api/pipeline", pipelineRoutes);
+app.use("/api/architecture", architectureRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", authRoutes);
