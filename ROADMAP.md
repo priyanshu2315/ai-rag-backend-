@@ -4,7 +4,7 @@
 
 Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
 
-Current order (decided 13 Nov): Step 5 (AI agents and human in the loop) next, then Step 3 (delta versioning, design agreed below), then Step 6. Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
+Current order (updated 14 Nov): Step 5 (web agent and human in the loop) next, then Step 5B (agents section for tasks, multi-agent), then Step 6 (MCP), then finish (README, demo video). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
 
 ## Step 1: Search Optimization & structured-context-v4 Part 2 (16 hrs)
 
@@ -194,18 +194,25 @@ Next step (moved ahead of Step 3 on 13 Nov). Starts 14 Nov. Plan agreed 13 Nov.
 - Not now: supervisor / multi-agent (possible later; Step 6 MCP client is the natural place for a general tool-choosing agent). What can be said after this step: "I built a tool-calling web research agent, gated by human approval, inside an agentic RAG workflow." Do not call it multi-agent.
 
 ### Phase 1: Web agent alone (Nov 14, about half a day)
-- [ ] 1. Tavily account and `TAVILY_API_KEY` in `.env` (user)
-- [ ] 2. Tools in `src/agents/web/web.tools.js`: `web_search(query)` (Tavily search, top 5: title, URL, text) and `read_page(url)` (Tavily extract), each with a JSON tool definition like `searchToolDefinition` in `ai.service.js`
-- [ ] 3. Plain agent loop in `src/agents/web/web.agent.js` (no LangGraph): call the model with tools; run requested tools and add results; stop when the model answers or after 4 steps; return `{ answer, sources }`
-- [ ] 4. Test alone with a script piped into `node` (no file in the project): "USD to INR rate today" (one search, answer with source), "latest RBI repo rate" (may read a page), a vague task (stops at 4 steps). Also checks that the `agent` model supports tool calling; if not, pick another model for this agent only
-- [ ] 5. Rebuild as a small LangGraph graph: nodes `agent` and `tools`, edge "tool calls -> tools, else end"
+- [x] 1. Tavily account and `TAVILY_API_KEY` in `.env` (user)
+- [x] 2. Tools in `src/agents/web/web.tools.js`: `web_search(query)` (Tavily search, top 5: title, URL, text) and `read_page(url)` (Tavily extract), each with a JSON tool definition like `searchToolDefinition` in `ai.service.js`
+- [x] 3. Plain agent loop in `src/agents/web/web.agent.js` (no LangGraph): call the model with tools; run requested tools and add results; stop when the model answers or after 4 steps; return `{ answer, sources }`
+- [x] 4. Test alone with a script piped into `node` (no file in the project): "USD to INR rate today" (one search, answer with source), "latest RBI repo rate" (may read a page), a vague task (stops at 4 steps). Also checks that the `agent` model supports tool calling; if not, pick another model for this agent only
+  - 14 Nov: the `agent` model (airouter `deepseek/deepseek-v4-flash`) supports tool calls, including parallel calls. USD->INR used 2 searches per step, then 2 `read_page` calls, and hit the 4-step limit with a sourced answer; the RBI repo rate finished in 3 steps without `read_page`. Only `{ role, content, tool_calls }` is sent back (the reply's `reasoning` fields are dropped).
+- [x] 5. Rebuild as a small LangGraph graph: nodes `agent` and `tools`, edge "tool calls -> tools, else end"
+  - `src/agents/web/web.graph.js` (`webAgentGraph`, `runWebAgentGraph`); reuses `MAX_STEPS`, `SYSTEM_PROMPT`, `runToolCall`, `collectSources` exported from `web.agent.js`. `onStep` is passed in `config.configurable`, not state, so state stays saveable for the checkpointer.
 
 ### Phase 2: Pause and resume, human in the loop (Nov 15, about a day)
-- [ ] 6. Install `@langchain/langgraph-checkpoint-postgres`; `src/config/checkpointer.js`; tables in schema `langgraph` (approval before creating them)
-- [ ] 7. Compile CRAG with the checkpointer; each question gets a new `threadId` passed as `{ configurable: { thread_id } }`
-- [ ] 8. Tiny `ask_approval` node that only calls `interrupt({ question, missingHops })` (on resume LangGraph re-runs the node from its first line)
-- [ ] 9. `chat.service.js`: on interrupt, send `approval_required` SSE (`threadId`, question), save a "waiting for approval" assistant message, close the stream
-- [ ] 10. `POST /api/chat/resume` with `{ conversationId, threadId, approved }`: check the user owns the conversation and the waiting message, continue with `new Command({ resume: { approved } })`, stream and save the answer as usual
+- [x] 6. Install `@langchain/langgraph-checkpoint-postgres`; `src/config/checkpointer.js`; tables in schema `langgraph` (approval before creating them)
+  - 14 Nov: version 1.1.2 (1.1.3 was 2 days old). `setupCheckpointer()` created schema `langgraph` with `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations` (verified). A function in `config.configurable` (`onEvent`) works with it, and `deleteThread()` removes a run's rows.
+- [~] 7. Compile CRAG with the checkpointer; each question gets a new `threadId` passed as `{ configurable: { thread_id } }`
+  - Code applied 14 Nov, not yet tested: `createCragPipeline({ checkpointer })` (optional, so unit tests run without a database); `finishAnswer()` deletes the run's checkpoints after the answer.
+- [~] 8. Tiny `ask_approval` node that only calls `interrupt({ question, missingHops })` (on resume LangGraph re-runs the node from its first line)
+  - Code applied 14 Nov, not yet tested. Changed design: `interrupt({ question, webHops })` sends only hops marked `source: "web"` (unresolved document hops are not sent to the web; trigger B dropped). `routeToAnswer()` runs when the document loop stops (any `stopReason`) from `grade` and `rewrite`; `webApproval` state (null/true/false) allows one popup per question. Temporary `ALWAYS_ASK_FOR_TEST = true`: every searched question pauses; do not push it.
+- [~] 9. `chat.service.js`: on interrupt, send `approval_required` SSE (`threadId`, question), save a "waiting for approval" assistant message, close the stream
+  - Code applied 14 Nov, not yet tested: `getPause()`, `savePause()` (message metadata `status: "awaiting_approval"`, `threadId`, `webHops`, `steps`), `finishAnswer()`.
+- [~] 10. `POST /api/chat/resume` with `{ conversationId, threadId, approved }`: check the user owns the conversation and the waiting message, continue with `new Command({ resume: { approved } })`, stream and save the answer as usual
+  - Code applied 14 Nov, not yet tested: `claimApproval()` (owner, document access, waiting message; claim to `resuming` so a double click answers 409), `resumeAnswer()` replaces the waiting message with the answer and resets it to waiting on error. Frontend contract added to `docs/frontend-rbac-prompt.md`.
   - Test with a temporary "always ask" rule: pause -> Allow/Skip -> resume; restart the server while paused and resume (proves the checkpointer)
 
 ### Phase 3: Connect to CRAG (Nov 16, about a day)
@@ -219,10 +226,44 @@ Next step (moved ahead of Step 3 on 13 Nov). Starts 14 Nov. Plan agreed 13 Nov.
 - [ ] 16. End-to-end tests: P11-in-INR style question (one approval, Allow, correct converted answer with both sources); a question the documents cannot answer (asks); Skip (answers from documents and says what is missing); a private fact (never asks); guards Q1 and Q13 unchanged
 - [ ] 17. Update `AGENTS.md`, `ROADMAP.md`, and add a `docs/pipeline.js` entry
 
+## Step 5B: Agents section for tasks, multi-agent (about 3-4 days)
+
+Added 14 Nov. Starts after Step 5. Lets a user give a task (question plus action), not only a question. Separate APIs and frontend page; the RAG chat stays as it is.
+
+### Design agreed 14 Nov
+- Supervisor agent (outer loop with a step limit) picks tools until the task is done. Sub-agents have their own inner loops ("agent as a tool"): the supervisor only sees their result.
+- CRAG stays a code-driven workflow and becomes the document tool `search_documents`; agents call it, they do not replace it.
+- Agents are roles (few: web researcher, writer). Tools are actions (many: `send_email`, `count_documents`). A new kind of task usually needs a new tool, not a new agent; Step 6 MCP adds tools without changing agent code. When no tool fits, the supervisor does what it can and says what it could not do.
+- Any tool that sends, changes or costs money waits for human approval (reuse the Step 5 interrupt).
+- Every tool takes the full user object and respects roles (`getAccessibleDocumentIds(user)`).
+- Example task: "Check if PO-xxx followed the approval policy, find today's steel price, and email a short report to the finance lead."
+
+### Tasks
+- [ ] 1. Tools: `search_documents` (wraps CRAG, keeps role access), `web_research` (Step 5 web agent), `count_documents`, `send_email` (`email.service.js`)
+- [ ] 2. Writer agent: turns facts into a report or email draft
+- [ ] 3. Supervisor agent: LangGraph loop with a step limit
+- [ ] 4. Approval before risky tools: Allow, Edit, Cancel
+- [ ] 5. APIs: create a task, stream its steps, resume; task storage (schema change needs approval)
+- [ ] 6. Frontend Tasks page (live agent steps, approval buttons); update `docs/frontend-rbac-prompt.md`
+- [ ] 7. Eval: about 10 tasks with expected results; measure how many finish correctly
+- [ ] 8. Update `AGENTS.md`, `ROADMAP.md`, and add a `docs/pipeline.js` entry
+
+## Step 5C: Document intake automation (later)
+
+Parked 14 Nov. Trigger + steps + action: when the document worker finishes an upload, queue a review task (BullMQ); agents compare the new document with existing policies and look up outside facts; the admin approves; the review is emailed to users whose roles can see that document.
+
 ## Step 6: Model Context Protocol (MCP) Server & Client (8 hrs)
+
+Runs after Step 5B. Every MCP tool must take the user's access, or counts and lists leak.
 
 ### Nov 17 (4 hrs)
 - [ ] MCP Server (`@modelcontextprotocol/sdk`) exposing document search, summary, and page tools with audit logging
 
 ### Nov 18 (4 hrs)
 - [ ] MCP Client in LangGraph so the agent discovers and runs external MCP tools
+- [ ] RAG chat: planner hop `source: "mcp"` (e.g. "how many documents were uploaded this month"), next to `"documents"` and `"web"`
+
+### Finish (after Step 6)
+- [ ] README with the architecture pictures and eval numbers
+- [ ] Short demo video: a question, a task with approval
+- [ ] Stop adding features; fix what the demo shows

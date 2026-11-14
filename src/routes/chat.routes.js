@@ -8,6 +8,7 @@ import {
   getConversation,
   renameConversation,
   deleteConversation,
+  resumeQuestion,
 } from "../controllers/chat.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
@@ -25,4 +26,6 @@ router.delete(
   requireAuth,
   deleteConversation,
 );
+router.post("/resume", requireAuth, resumeQuestion); // NEW
+
 export default router;

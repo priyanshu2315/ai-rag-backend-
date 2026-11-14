@@ -289,3 +289,136 @@ Errors (`{ "error": "..." }`): `400 Title is required`, `400 Title is too long` 
 - Ask with `POST /api/chat` and `{ question, conversationId, documentId }`.
 
 Existing global chats from before this change appear in `GET /api/chat/conversations`.
+
+## Web search approval: human in the loop (Implemented 14 November, not yet tested end to end)
+
+Before the assistant searches the public web, it asks the user. The answer run **pauses**, the UI shows Allow / Skip, and a second request continues the same run. This works in both global chats and document chats.
+
+When it asks: only when the question needs outside facts that company documents cannot contain (for example a live exchange rate, a market price, a law). The planner marks those tasks as web tasks. The document search runs first; the pause comes after it, just before the answer. A question that needs only documents never pauses (same as before). A question that needs only the web pauses right away, without a document search. `webHops` always lists at least one task.
+
+After **Allow**, a web research agent searches the web (and may read a page), then the answer combines document facts (cited as before) and web facts (with URL and date). After **Skip**, the answer uses only the documents and says which outside facts were not looked up.
+
+### 1. Pause: new SSE event on `POST /api/chat`
+
+The stream from `POST /api/chat` can now end with this event instead of answer tokens:
+
+```json
+{
+  "type": "approval_required",
+  "threadId": "uuid",
+  "question": "What is the cost of project P11 in INR?",
+  "webHops": [{ "id": "h2", "task": "find the live USD to INR exchange rate", "dependsOn": ["h1"], "source": "web" }],
+  "message": "I need your approval to search the web before I answer."
+}
+```
+
+followed by `{ "type": "done" }`. No `token` events are sent for a paused run.
+
+UI:
+
+- Stop the loading state and render an **approval card** in that assistant message: the `message` text, the list of `webHops[].task` as "What will be searched", a short note "Values found in your documents (for example an amount) may be included in the web search", and two buttons: **Allow web search** and **Skip**.
+- Keep `threadId` with that message; the buttons need it.
+- The user may also ignore the card and ask a new question; the paused run then stays paused.
+- There is no backend "decide later" action. A "Decide later" button must only collapse or hide the card, with no API call; the message keeps `status: "awaiting_approval"`, so after a reload the card is shown again and Allow / Skip still work (also after a backend restart). An answer given later replaces that same message, so it appears at the message's original position.
+
+### 2. Resume: `POST /api/chat/resume` (SSE)
+
+Body:
+
+```json
+{ "conversationId": "uuid", "threadId": "uuid", "approved": true }
+```
+
+`approved` must be a boolean: `true` for Allow, `false` for Skip.
+
+Errors are plain JSON, sent **before** any stream starts:
+
+| Status | `error`                                                               | UI                                                                                |
+| ------ | --------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 400    | `conversationId, threadId and approved (true or false) are required` | Bug in the request                                                                |
+| 404    | `Conversation not found`                                              | Not this user's chat, or the document is no longer accessible                     |
+| 404    | `No question is waiting for approval`                                 | Already answered or unknown `threadId`: reload the conversation                   |
+| 409    | `This approval was already answered`                                  | Double click or another tab answered it: disable the buttons, reload the conversation |
+
+On success the response is an SSE stream in the **same format as `POST /api/chat`**: first `{ "type": "approval_result", "threadId", "approved" }`, then the usual status/tool/trace events, `token` events with the answer, and `done`. An `error` event can arrive like on `POST /api/chat`.
+
+UI:
+
+- On click, disable both buttons and show the loading state in **the same assistant message**. Reuse the existing SSE reader from `POST /api/chat`.
+- Stream the answer into that same message, replacing the approval card. The backend also replaces the waiting message in the database with the answer, so after a reload there is one assistant message, not two.
+- If an `error` event arrives, show it in the message and re-enable the buttons: the backend puts the run back to waiting, so the user can try again.
+- Refresh the chat list after `done` (as after a normal answer).
+
+### 3. Saved messages after a reload
+
+`GET /api/chat/conversations/:conversationId` and `GET /api/chat/conversation?documentId=` return the waiting message like any other assistant message, with this metadata:
+
+```json
+{
+  "status": "awaiting_approval",
+  "threadId": "uuid",
+  "webHops": [],
+  "steps": []
+}
+```
+
+- `metadata.status === "awaiting_approval"`: render the approval card with Allow / Skip from `metadata.threadId` and `metadata.webHops`. A paused question can be resumed after a page reload or a backend restart.
+- `metadata.status === "resuming"`: an answer is being generated (for example in another tab). Show "Answering..." with a Reload button; do not show Allow / Skip.
+- A finished answer has no `status`. It keeps `citations`, `steps` and `reasoningChain`, and has `webApproval: true` (allowed) or `false` (skipped) when the user was asked.
+- After Allow, the finished answer also has `webFacts` (see section 5).
+
+### 4. "How this was answered" panel
+
+- After a resume, `metadata.steps` holds the whole run: the events before the pause, then `approval_required`, `approval_result`, then the rest.
+- Show `approval_required` as a step row "Asked to search the web" (list the `webHops` tasks), and `approval_result` as "User allowed web search" or "User skipped web search".
+- The Question Splitter `tool_finish` event now also carries `webHops` (same shape as in `approval_required`). In the plan view, show document tasks from `hopPlan` as before and web tasks from `webHops` with a "Web" badge. `hopPlan` contains document tasks only.
+- Web agent rows (section 5): one group per `agentId` ("Web research: <task>") with a row per `agent_step`, then that agent's result.
+
+### 5. Web research agent (after Allow)
+
+The resume stream sends these events between `approval_result` and the answer tokens. They are also saved in `metadata.steps`.
+
+**One web research agent runs per web task, all at the same time.** Every agent event carries `agentId` (for example `web-h2`) and `hopId`; events of different agents arrive interleaved, so group them by `agentId`.
+
+```json
+{ "type": "agent_start", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "task": "find the current exchange rate from the currency in h1 to euros" }
+```
+
+```json
+{ "type": "agent_step", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "step": 1, "tool": "web_search", "args": { "query": "USD to EUR exchange rate today" }, "ok": true }
+```
+
+```json
+{ "type": "agent_step", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "step": 2, "tool": "read_page", "args": { "url": "https://..." }, "ok": true }
+```
+
+```json
+{ "type": "agent_finish", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "stopReason": "done", "answer": "1 USD = 0.86 EUR (source URL, date)", "sources": ["https://...", "https://..."] }
+```
+
+- `agent_step`: one event per tool call; several can share the same `step` (an agent may run two searches at once). `tool` is `web_search` (show `args.query`) or `read_page` (show `args.url` as a link). `ok: false` means that call failed; show it greyed out.
+- `agent_finish.stopReason`: `done` (normal) or `step_limit` (the agent had to stop after 4 steps and answered with what it found). On failure the event is `{ "type": "agent_finish", "agentId": "...", "agent": "Web research", "hopId": "...", "failed": true, "reason": "..." }`; other agents continue and the answer still comes.
+- `sources` are all pages that agent searched or read (not only the ones it used). Show them as a collapsible "Pages looked at" list per agent.
+
+**Running agents indicator** (below the chat input, like "● 3 agents working"):
+
+- Keep a set of running agents for the current message: add `agentId` on `agent_start`, remove it on `agent_finish`. Show the indicator while the set is not empty, with a pulsing green dot and the count ("● 1 agent working", "● 3 agents working").
+- Clicking it expands a list: one line per agent with its `task` and its latest step ("Searching: <query>" / "Reading: <url>"); finished agents show a check mark (or a red mark when `failed`).
+- Hide it on `done`. Rebuilt views (after reload) do not show the live indicator; the steps panel shows the saved agent groups.
+
+Saved on the finished answer (`metadata.webFacts`, only after Allow), one result per agent:
+
+```json
+{
+  "webFacts": {
+    "searchedAt": "2026-11-14T09:30:00.000Z",
+    "results": [
+      { "hopId": "h2", "task": "find the current USD to EUR rate", "answer": "1 USD = 0.86 EUR according to https://... (14 Nov 2026)", "sources": ["https://..."], "stopReason": "done" },
+      { "hopId": "h3", "task": "find the current USD to INR rate", "answer": "", "sources": [], "stopReason": "failed" }
+    ]
+  }
+}
+```
+
+- Under the answer, show a small "Web sources" block: the `sources` links of all results (without duplicates) and "Searched on <date of searchedAt>". A result with `stopReason: "failed"` and an empty `answer` failed; show "Web search failed for: <task>".
+- Web facts are cited in the answer text as a URL with a date, not as `[Source ID: ...]`. Document citations work as before. Do not turn web URLs into document citation chips; render them as normal links.

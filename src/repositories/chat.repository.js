@@ -890,3 +890,33 @@ export const touchConversation = async (id, question) => {
       : { updatedAt: new Date() },
   });
 };
+// ---------- Human in the loop: messages waiting for web-search approval ----------
+
+// The assistant message saved when a run paused for approval.
+export const findWaitingMessage = (conversationId, threadId) =>
+  prisma.message.findFirst({
+    where: {
+      conversationId,
+      role: "assistant",
+      AND: [
+        { metadata: { path: ["threadId"], equals: threadId } },
+        { metadata: { path: ["status"], equals: "awaiting_approval" } },
+      ],
+    },
+  });
+
+// Marks it "resuming" only if it is still waiting, so a double click
+// cannot resume the same run twice. Returns true when this call claimed it.
+export const claimWaitingMessage = async (message) => {
+  const result = await prisma.message.updateMany({
+    where: {
+      id: message.id,
+      metadata: { path: ["status"], equals: "awaiting_approval" },
+    },
+    data: { metadata: { ...message.metadata, status: "resuming" } },
+  });
+  return result.count === 1;
+};
+
+export const updateMessage = (id, data) =>
+  prisma.message.update({ where: { id }, data });

@@ -72,7 +72,12 @@ export function validateHopPlan(plan) {
       throw new Error("Invalid or unordered question dependency plan");
     }
     seen.add(hop.id);
-    return { id: hop.id, task: hop.task.trim(), dependsOn: [...hop.dependsOn] };
+    return {
+      id: hop.id,
+      task: hop.task.trim(),
+      dependsOn: [...hop.dependsOn],
+      ...(hop.source === "web" && { source: "web" }),
+    };
   });
 }
 

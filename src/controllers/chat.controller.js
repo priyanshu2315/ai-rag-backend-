@@ -179,3 +179,43 @@ export const renameConversation = handle((req) =>
 export const deleteConversation = handle((req) =>
   chatService.deleteGlobalConversation(req.user.id, req.params.conversationId),
 );
+
+export const resumeQuestion = async (req, res) => {
+  try {
+    const { conversationId, threadId, approved } = req.body;
+    if (!conversationId || !threadId || typeof approved !== "boolean") {
+      return res.status(400).json({
+        error:
+          "conversationId, threadId and approved (true or false) are required",
+      });
+    }
+
+    // Checks first, so errors are normal JSON (404 / 409), not SSE.
+    const waiting = await chatService.claimApproval(
+      req.user,
+      conversationId,
+      threadId,
+    );
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    await chatService.resumeAnswer(
+      { conversationId, threadId, approved, waiting },
+      (event) => res.write(`data: ${JSON.stringify(event)}\n\n`),
+    );
+    res.end();
+  } catch (error) {
+    if (res.headersSent) {
+      res.write(
+        `data: ${JSON.stringify({ type: "error", message: error.message })}\n\n`,
+      );
+      res.end();
+    } else {
+      return res.status(error.status || 500).json({ error: error.message });
+    }
+  }
+};
