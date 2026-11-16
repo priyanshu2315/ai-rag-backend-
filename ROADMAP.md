@@ -4,7 +4,7 @@
 
 Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
 
-Current order (updated 14 Nov): Step 5 (web agent and human in the loop) built and verified 14 Nov (open: Skip, restart and guard re-tests); next Step 5B (agents section for tasks, multi-agent), then Step 6 (MCP), then finish (README, demo video). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
+Current order (updated 16 Nov): Step 5 (web agent and human in the loop) done 15 Nov, open tests included; next Step 6 (MCP: Part A server, Part B client inside CRAG), then finish (README, demo video). Dropped 16 Nov: Step 5B (tasks and multi-agent; it would not improve search). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
 
 ## Step 1: Search Optimization & structured-context-v4 Part 2 (16 hrs)
 
@@ -229,15 +229,15 @@ Built and verified 14 Nov (5 runs, all correct; see Phase 4). Open: Skip, restar
 ### Phase 4: UI, tests and docs (Nov 17, about half a day)
 - [x] 15. Events `agent_start`, `agent_step` (each tool call), `agent_finish`, `approval_required`; update `docs/frontend-rbac-prompt.md` for agent cards and Allow/Skip buttons
   - Every `agent_*` event carries `agentId` and `hopId`; the doc describes the "● N agents working" indicator, `webFacts`, and "Decide later" as UI-only (no backend action).
-- [~] 16. End-to-end tests: P11-in-INR style question (one approval, Allow, correct converted answer with both sources); a question the documents cannot answer (asks); Skip (answers from documents and says what is missing); a private fact (never asks); guards Q1 and Q13 unchanged
+- [x] 16. End-to-end tests (all run by the user, 15 Nov): P11-in-INR style question (one approval, Allow, correct converted answer with both sources); a question the documents cannot answer (asks); Skip (answers from documents and says what is missing); a private fact (never asks); guards Q1 and Q13 unchanged
   - Verified 14 Nov (all with Allow, answers correct): PO-10234 in INR (h1 documents USD 64,800, h2 web rate, 1 tool call); Fed policy rate (web-only plan, no document search, 3-4 tool calls); PO-10234 in INR, EUR and GBP (3 parallel agents: `web-h2` done, `web-h3` and `web-h4` hit the 4-step limit but still answered; 14 tool calls); Brennock fee in euros after the rule 13 fix (USD 19,800, web hop planned).
   - Not yet run: Skip, restart while paused, a private-fact question (must not ask), guards Q1 and Q13.
   - Seen: rate pages can show an older snapshot (an Xe page dated 28 Oct 2026); the answer lists several providers' rates.
 - [x] 17. Update `AGENTS.md`, `ROADMAP.md`, and add a `docs/pipeline.js` entry
 
-## Step 5B: Agents section for tasks, multi-agent (about 3-4 days)
+## Step 5B: Agents section for tasks, multi-agent (DROPPED 16 Nov)
 
-Added 14 Nov. Starts after Step 5. Lets a user give a task (question plus action), not only a question. Separate APIs and frontend page; the RAG chat stays as it is.
+Added 14 Nov. Dropped 16 Nov by the user's decision: the project is about search, and tasks or a multi-agent layer would add cost and latency without better answers (the planner already runs independent hops in parallel in round 1). Kept below for reference only. Lets a user give a task (question plus action), not only a question. Separate APIs and frontend page; the RAG chat stays as it is.
 
 ### Design agreed 14 Nov
 - Supervisor agent (outer loop with a step limit) picks tools until the task is done. Sub-agents have their own inner loops ("agent as a tool"): the supervisor only sees their result.
@@ -261,16 +261,39 @@ Added 14 Nov. Starts after Step 5. Lets a user give a task (question plus action
 
 Parked 14 Nov. Trigger + steps + action: when the document worker finishes an upload, queue a review task (BullMQ); agents compare the new document with existing policies and look up outside facts; the admin approves; the review is emailed to users whose roles can see that document.
 
-## Step 6: Model Context Protocol (MCP) Server & Client (8 hrs)
+## Step 6: Model Context Protocol (MCP) Server & Client (about 2-3 days)
 
-Runs after Step 5B. Every MCP tool must take the user's access, or counts and lists leak.
+Next after Step 5 (decided 16 Nov; Step 5B is dropped because chat is for search, not tasks). Goal: learn MCP beyond tool calling, on use cases about search where MCP is the right tool. MCP earns its place when an AI app picks tools it discovers at runtime; a fixed action (such as "import this Drive link") is plain API code and is not an MCP use case. Every MCP tool must take the full user object and respect roles, or counts and lists leak.
 
-### Nov 17 (4 hrs)
-- [ ] MCP Server (`@modelcontextprotocol/sdk`) exposing document search, summary, and page tools with audit logging
+### What MCP offers (who decides)
+- Tools: the model picks them (actions).
+- Resources: the app or user attaches them (read-only data).
+- Prompts: the user picks them (saved templates, like slash commands).
+- Server-to-client requests: elicitation (ask the user mid-call), sampling (borrow the client's model), progress and logging notifications.
+- Transport: Streamable HTTP mounted on Express (`/mcp`); stdio only for local testing.
 
-### Nov 18 (4 hrs)
-- [ ] MCP Client in LangGraph so the agent discovers and runs external MCP tools
-- [ ] RAG chat: planner hop `source: "mcp"` (e.g. "how many documents were uploaded this month"), next to `"documents"` and `"web"`
+### Part A: MCP server, your search inside other AI apps (learn the server side)
+A user in Claude Desktop, VS Code Copilot or Cursor asks about company documents; that app discovers this server, reads its tools and calls them. Same services as the REST API, a new door.
+- [ ] A1. Tools: `search_documents` (runs CRAG without streaming, returns answer and sources), `list_my_documents`, `get_summary`, `get_page`
+- [ ] A2. Auth: token -> user -> roles (a per-user token to start, OAuth 2.1 later), so RBAC holds; audit log of who called what and when
+- [ ] A3. Resources: `doc://{id}/summary` and `doc://{id}/page/{n}` (resource templates), only documents the user's roles allow, so a user can attach a document to the chat like a file; list-changed notification when the worker finishes an upload
+- [ ] A4. Prompts: saved templates such as `find-rule` and `compare-documents` (generic arguments, no test-document names)
+- [ ] A5. Progress and logging: CRAG steps ("round 1, grading, round 2") sent as progress notifications, the same events as the chat SSE
+- [ ] A6. Elicitation: when a question is unclear (for example "what is the limit?"), the server asks back which document or policy is meant, then searches
+- [ ] A7. Sampling and completions (optional): the server asks the client's model to write text; autocomplete document names in arguments
+- [ ] A8. Test with MCP Inspector, then Claude Desktop
+
+### Part B: MCP client, planner sources from MCP servers (learn the client side)
+Today the planner knows two sources, `documents` and `web` (hand-written Tavily code). With MCP the sources become a list read at runtime: CRAG connects to the configured MCP servers, reads their tools and descriptions, and the planner picks a source per hop. A new source is one line of config, no new code.
+- [ ] B1. MCP client in CRAG (`@modelcontextprotocol/sdk` or `@langchain/mcp-adapters`): connect to configured servers at start-up, list their tools
+- [ ] B2. Replace the hand-written web tools with the Tavily MCP server; keep the web approval and the parallel web agents as they are
+- [ ] B3. Planner hop `source: "mcp"` with the tool name, chosen from the tool descriptions; same approval rule as web hops for anything that leaves the company
+- [ ] B4. Add one more server (for example exchange rates or a read-only company database) and test a mixed question, e.g. "What is order X in euros, and is its supplier still active?" (documents hop -> amount, rates server -> today's rate, database server -> supplier status)
+- [ ] B5. Keep document hops on CRAG search; MCP sources never replace company documents (same rule as web facts)
+
+### Finish Step 6
+- [ ] Update `AGENTS.md`, `ROADMAP.md`, `docs/architecture.html`, `docs/frontend-rbac-prompt.md` (if any API changes), and add a `docs/pipeline.js` entry
+- Removed 16 Nov: Google Drive import (a fixed action, plain API code, not an MCP use case) and the 5B supervisor as the MCP client.
 
 ### Finish (after Step 6)
 - [ ] README with the architecture pictures and eval numbers

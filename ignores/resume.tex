@@ -1,0 +1,172 @@
+%-------------------------
+% Resume in Latex
+% Author : Jake Gutierrez
+% Based off of: https://github.com/sb2nov/resume
+% License : MIT
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.6in}
+\addtolength{\evensidemargin}{-0.6in}
+\addtolength{\textwidth}{1.1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.1in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure that generated pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+    \textbf{\Huge \scshape Priyanshu} \\ \vspace{3pt}
+    {\large Full-Stack AI Engineer} {\small $|$ MERN $\cdot$ Generative AI $\cdot$ Agentic AI $\cdot$ RAG} \\ \vspace{3pt}
+    \small 8595780810 $|$ \href{mailto:priyanshu8745singh@gmail.com}{\underline{priyanshu8745singh@gmail.com}} $|$
+    \href{https://www.linkedin.com/in/priyanshu2315/}{\underline{linkedin}} $|$
+    \href{https://github.com/priyanshu2315}{\underline{github}}
+\end{center}
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Babu Banarsi Das Institute of Technology}{Ghaziabad}
+      {B.Tech in Computer Science \& Engineering}{2020 -- 2024}
+  \resumeSubHeadingListEnd
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {VAYUZ Technologies}{Sep 2024 -- Present}
+      {Product Engineer (MERN Stack)}{Noida, UP}
+      \resumeItemListStart
+
+        \resumeItem{Delivered \textbf{various production-grade} web applications across fintech, real estate, staffing, and edtech domains using \textbf{micro-frontend architecture}, \textbf{Docker}, and optimized CI/CD pipelines; collaborated with clients on requirement analysis, sprint planning, and milestone reviews.}
+
+        \resumeItem{\textbf{Real Estate \& Housing Platform} -- Migrated \textbf{10+ legacy PHP modules} (Gate Entry, Events, Facilities, Bookings, Notice Board, Maintenance, etc) to React micro-frontends; built a \textbf{server-driven dashboard} with drag-and-drop widget customization and schema-driven rendering; shipped a complete lease management system with role-based access and automated tracking.}
+
+        \resumeItem{\textbf{Share \& Bond Management Platform} -- Built a dual-surface fintech platform (investor-facing discovery + admin panel) with \textbf{Next.js} and \textbf{Python FastAPI}; enabled real-time pricing updates, content management workflows, and regulatory-compliant bond/share listings.}
+
+        \resumeItem{\textbf{Staffing \& Hiring Management Platform} -- Architected end-to-end staffing workflows (client requirements, lead tracking, P\&L, commission management, onboarding, invoicing); built an \textbf{AI-powered resume parsing} pipeline indexing \textbf{1.5M+ candidate profiles} with skills and experience extraction; implemented \textbf{vector embedding-based JD-to-candidate matching} for intelligent shortlisting.}
+
+        \resumeItem{\textbf{Career Guidance \& Exploration Platform} -- Developed interactive multi-level career exploration experiences for school students with personalized recommendations via interest profiling and visualized career roadmaps.}
+
+        \resumeItem{\textbf{Health \& Wellness Creator Platform} \textit{(10M+ subscribers)} -- Delivered a high-performance marketing site with advanced animations (using \textbf{Framer Motion}), SEO optimization (in \textbf{Next.js}), and a scalable reusable component design system.}
+
+      \resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+  \resumeSubHeadingListStart
+
+    \resumeProjectHeading
+      {\textbf{Agentic RAG Platform -- Chat with Documents} $|$ \emph{Node.js, Express, LangGraph, PostgreSQL + pgvector, Prisma, Redis, BullMQ, Cohere, React} $|$ \href{https://github.com/priyanshu2315/ai-rag-backend-}{\underline{GitHub}}}{}
+      \resumeItemListStart
+
+        \resumeItem{Built an \textbf{agentic multi-hop Corrective RAG} workflow in \textbf{LangGraph} that \textbf{plans, acts, self-checks and re-searches}: an LLM planner splits a question into dependent hops, a grader resolves each hop with quoted evidence that code \textbf{verifies against the source text}, and the system writes its own follow-up searches until every hop is answered -- producing \textbf{cited answers} to chained questions (e.g. order $\rightarrow$ approval rule $\rightarrow$ person holding the role).}
+
+        \resumeItem{Designed \textbf{hybrid search} on PostgreSQL: vector (pgvector), identifier, phrase, and full-text tiers fused with \textbf{weighted Reciprocal Rank Fusion}, then \textbf{Cohere reranking} and context expansion (section neighbours, table continuations, cross-references).}
+
+        \resumeItem{Built an async \textbf{document ingestion pipeline} (BullMQ workers, Redis Pub/Sub, live SSE progress): LLM-based PDF extraction with a contents outline, table repair, token-budgeted \textbf{parent/child chunking}, and local \textbf{Transformers.js embeddings}.}
+
+        \resumeItem{Added a tool-calling \textbf{web research agent} (Tavily search + page reading) that runs \textbf{in parallel} per web task only after \textbf{human-in-the-loop approval}, using LangGraph \texttt{interrupt()} and a \textbf{Postgres checkpointer} to pause and resume runs.}
+
+        \resumeItem{Shipped \textbf{role-based document access} (JWT, admin user/role management, email onboarding and OTP reset), per-task \textbf{multi-provider LLM routing}, and a step-by-step trace of search, grading and evidence for every answer.}
+
+        \resumeItem{\textbf{Evaluated} on a \textbf{50-document, 31-question benchmark} with trace-level scoring: raised fully correct multi-hop answers from \textbf{68\% to 84\%} (13 $\rightarrow$ 16 of 19), \textbf{zero invented answers} on unanswerable questions, \textbf{100\%} of access-control checks passed; cut query-planning latency from \textbf{54 s+ to 6--29 s} at an average cost of \textbf{under \$0.01 per answer}.}
+
+      \resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+
+%-----------TECHNICAL SKILLS-----------
+\section{Technical Skills}
+  \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+      \textbf{Languages}{: Python, JavaScript, TypeScript, HTML/CSS} \\
+      \textbf{Frameworks \& Libraries}{: Next.js, React, Node.js/Express, FastAPI, Redux, Tailwind CSS, Three.js, Prisma} \\
+      \textbf{Generative AI}{: LLM APIs (OpenAI, Gemini, Claude, etc), Agentic AI (planning, tool calling, self-correction, human-in-the-loop), LangGraph, RAG Pipelines, Prompt Engineering, Hybrid Search \& Reranking, Vector Embeddings, Hugging Face Transformers, Ollama} \\
+      \textbf{Databases \& Infra}{: MongoDB, MySQL, PostgreSQL, pgvector, Redis, BullMQ, Docker} \\
+      \textbf{Dev \& Design Tools}{: Git, BitBucket, AWS, Google Cloud Platform, Firebase, Postman, Figma} \\
+    }}
+  \end{itemize}
+
+\end{document}
