@@ -764,6 +764,7 @@ CHANGES & EXHAUSTIVE LOGS:
   If the retrieved passages include an authoritative change log, amendment, or Board minutes for that date detailing changes for other entities/roles, but showing NO change for the target entity/role, mark the task "resolved" with value "No change" (or "Unchanged"), citing the relevant minutes/log passage as evidence.
 TOTAL ENTITLEMENTS & COMPUTATIONS:
 - When a task asks for the total dividend, payment, or calculated amount received by an investor/entity, a unit rate alone (e.g. "USD 0.42 per share") does NOT resolve the total amount received unless the entity's holding/share volume is also accounted for or the total payment is explicitly stated.
+Tasks in handledElsewhere are answered by another step after you (for example a web search). Judge each hopPlan task only against its own task text; never keep a task pending or write a next_query for a part of the question that belongs to handledElsewhere.
 Propose next_query for the FIRST pending task whose prerequisites are resolved, using discovered names or IDs.
 ${SEARCH_OBJECT_RULES}
 Do not repeat an executed query. Use null for next_query when all tasks are resolved.
@@ -783,6 +784,11 @@ Return ONLY JSON:
                 question: state.question,
                 hopPlan: state.hopPlan,
                 previousProgress: state.hopProgress,
+                handledElsewhere: state.webHops.map((hop) => ({
+                  id: hop.id,
+                  task: hop.task,
+                })),
+
                 executedQueries: state.allQueries,
                 chunks: gradingDocs.map((doc) => ({
                   id: doc.id,
@@ -1251,8 +1257,11 @@ ${webMissing.length ? `Not found on the web: ${webMissing.join("; ")}. Say so in
 WEB FACTS RULES:
 - Label each fact's origin: document facts with their [Source ID], web facts with their URL and date.
 - For conversions and totals, show the working, e.g. "USD 120,000 x 83.20 INR per USD (rate from <URL>, 13 Nov 2026) = INR 9,984,000".
+- If you also write an amount in lakh or crore, convert it exactly: 1 lakh = 100,000 and 1 crore = 10,000,000 (INR 9,984,000 = 99.84 lakh = 0.998 crore).
 - Web facts never replace company facts from the documents.
 - If the web facts answer the question, answer from them even when no document data is relevant.
+- If you also write an amount in lakh or crore, convert it exactly: 1 lakh = 100,000 and 1 crore = 10,000,000 (INR 9,984,000 = 99.84 lakh = 0.998 crore).
+
 `;
     } else if (state.webHops.length && state.webApproval === false) {
       webSection = `
@@ -1491,7 +1500,8 @@ ${contextText}`;
     emit(config, { type: "agent_start", ...base, task: hop.task });
     try {
       const result = await runWebAgentGraph(buildWebTask(state, hop), {
-        onStep: (step) => emit(config, { type: "agent_step", ...base, ...step }),
+        onStep: (step) =>
+          emit(config, { type: "agent_step", ...base, ...step }),
       });
       emit(config, {
         type: "agent_finish",

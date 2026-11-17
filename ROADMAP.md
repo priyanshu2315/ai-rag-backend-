@@ -2,9 +2,9 @@
 
 15 days, 6 stages, ~60 hours (~4 hours/day), starting Wednesday 4 November 2026.
 
-Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started
+Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started · `[-]` inactive (kept for later, not planned now)
 
-Current order (updated 16 Nov): Step 5 (web agent and human in the loop) done 15 Nov, open tests included; next Step 6 (MCP: Part A server, Part B client inside CRAG), then finish (README, demo video). Dropped 16 Nov: Step 5B (tasks and multi-agent; it would not improve search). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
+Current order (updated 17 Nov): Step 5 (web agent and human in the loop) done 15 Nov, open tests included; Step 6 (MCP) nearly done: Part A server built (A1, A5, A6, Inspector), B1 client built; last item B2 (Tavily MCP in the web agent), then "Finish Step 6" docs, then finish (README, demo video). Inactive in Step 6: A2, A3, A4, A7, B3, B4, B5. Dropped 16 Nov: Step 5B (tasks and multi-agent; it would not improve search). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
 
 ## Step 1: Search Optimization & structured-context-v4 Part 2 (16 hrs)
 
@@ -141,6 +141,17 @@ Postponed 13 Nov until after Step 5.
 - Links: recompute `prevParentId`/`nextParentId` for every active chunk (kept chunks can get new neighbours); removed chunks keep their old links for display.
 - Later, for a real saving: hash each PDF page before extraction and reuse the earlier extracted text of unchanged pages (skips the AI call for those pages).
 
+### Reflow problem and paragraph hashes (discussed 17 Nov, to deep-dive again)
+- Problem: one paragraph inserted on page 1 pushes the last paragraph of every page onto the next page, so every page hash changes and the whole document looks new. Pages are fixed containers; the same cascade happens with fixed-size chunks.
+- The current chunker has the same cascade: it starts a new parent at every page change (`simple-chunking.service.js`, `newPage` check) and packs pieces by token budget, so a moved paragraph changes every later parent's hash.
+- Fix: hash content, not containers.
+  - Paragraph hashes: hash each piece (paragraph, table row, list item). Diff the old and new ordered lists (like `git diff`) to get keep / add / remove. Example: old `[A B C][D E F][G H]`, new `[A X B][C D E][F G H]`: page hashes say 3 of 3 changed, paragraph hashes say only X is new.
+  - Cut parents at headings, not at page breaks (page number stays as metadata). An insert then changes only chunks in its own section; the next heading stops the cascade.
+- Paragraph -> chunk link: when the chunker builds a chunk from pieces, save its ordered `paragraphHashes` (in `metadata`, no migration; or a `ChunkParagraph { chunkId, order, hash }` table if it must be queried) and `contentHash = hash(paragraphHashes)`.
+- Re-upload flow: (1) paragraph diff finds the new or removed paragraphs; (2) find the old chunks that held them or their neighbours; (3) re-chunk only that section; (4) compare each new chunk's `contentHash` with the old chunks: match = keep (same ID, no new embedding), no match = add, old chunk without a match = removed (`removedInVersion`). Example: old section `#7 [A B C]`, `#8 [D E]`; new `[A X B]`, `[C D E]`: both replaced (C moved), every other section kept.
+- Extraction cost: page hashes cannot survive a reflow; they only save the AI call for edits that do not move text (a number, a typo). Simple option (preferred): re-extract everything and let the paragraph diff keep DB changes small. Advanced option: hash paragraphs from the free PDF text layer, send only pages with new paragraphs to the AI and rebuild the rest from old extracted paragraphs (hard part: matching text-layer paragraphs to the AI's Markdown).
+- Open questions for the deep-dive: does AI extraction give the same text on a re-run (normalization before hashing)? How to split a paragraph that the old version split across a page break? Does cutting at headings change search quality (bigger parents for long sections)?
+
 ### Build order
 1. Migration plan in words (exact new columns), approved before writing
 2. Migration + Prisma Client generate (only after explicit approval)
@@ -274,22 +285,34 @@ Next after Step 5 (decided 16 Nov; Step 5B is dropped because chat is for search
 
 ### Part A: MCP server, your search inside other AI apps (learn the server side)
 A user in Claude Desktop, VS Code Copilot or Cursor asks about company documents; that app discovers this server, reads its tools and calls them. Same services as the REST API, a new door.
-- [ ] A1. Tools: `search_documents` (runs CRAG without streaming, returns answer and sources), `list_my_documents`, `get_summary`, `get_page`
-- [ ] A2. Auth: token -> user -> roles (a per-user token to start, OAuth 2.1 later), so RBAC holds; audit log of who called what and when
-- [ ] A3. Resources: `doc://{id}/summary` and `doc://{id}/page/{n}` (resource templates), only documents the user's roles allow, so a user can attach a document to the chat like a file; list-changed notification when the worker finishes an upload
-- [ ] A4. Prompts: saved templates such as `find-rule` and `compare-documents` (generic arguments, no test-document names)
-- [ ] A5. Progress and logging: CRAG steps ("round 1, grading, round 2") sent as progress notifications, the same events as the chat SSE
-- [ ] A6. Elicitation: when a question is unclear (for example "what is the limit?"), the server asks back which document or policy is meant, then searches
-- [ ] A7. Sampling and completions (optional): the server asks the client's model to write text; autocomplete document names in arguments
-- [ ] A8. Test with MCP Inspector, then Claude Desktop
+- [x] A1. Tools: `search_documents` (runs CRAG without streaming, returns answer and sources), `list_my_documents`, `get_summary`, `get_page`
+  - Done 16-17 Nov in `src/mcp/mcp.server.js` (`buildMcpServer(user)`, one server per user) and `src/routes/mcp.routes.js` (`/mcp`). `get_page` reuses `chatRepository.getChunksByPage`; missing and forbidden documents both answer "Document not found."
+- [-] A2. Auth: token -> user -> roles (a per-user token to start, OAuth 2.1 later), so RBAC holds; audit log of who called what and when
+  - Inactive (17 Nov): `/mcp` uses the login JWT through `requireAuth` (7-day token), which already gives RBAC. Per-user MCP tokens, revoking and the audit table are not needed for learning.
+- [-] A3. Resources: `doc://{id}/summary` and `doc://{id}/page/{n}` (resource templates), only documents the user's roles allow, so a user can attach a document to the chat like a file; list-changed notification when the worker finishes an upload
+  - Inactive (17 Nov): little value for a search app; `get_summary` and `get_page` already exist as tools.
+- [-] A4. Prompts: saved templates such as `find-rule` and `compare-documents` (generic arguments, no test-document names)
+  - Inactive (17 Nov): user-picked like resources, little value here.
+- [x] A5. Progress and logging: CRAG steps ("round 1, grading, round 2") sent as progress notifications, the same events as the chat SSE
+  - Done 17 Nov: `createProgressSender(extra)` turns CRAG `tool_start`, `status` and `agent_start` events into `notifications/progress` when the client sends a `progressToken`. Logging notifications not added.
+- [~] A6. Elicitation: when a question is unclear (for example "what is the limit?"), the server asks back which document or policy is meant, then searches
+  - Done differently 17 Nov: elicitation asks the human to allow the web search (replaces the UI Allow/Skip card for MCP callers); `/mcp` now uses sessions (`Mcp-Session-Id`, in-memory map, session bound to the user who opened it). Clients without elicitation, a decline or a 5-minute timeout continue with Skip. Clarifying questions are not built.
+- [-] A7. Sampling and completions (optional): the server asks the client's model to write text; autocomplete document names in arguments
+- [~] A8. Test with MCP Inspector, then Claude Desktop
+  - Inspector verified 17 Nov (tools, RBAC, progress, approval form; request timeout raised to 300000 ms because CRAG takes 20 s-2 min). Claude Code setup given (`claude mcp add --transport http ...`); a real client choosing the tool by itself is not confirmed.
 
 ### Part B: MCP client, planner sources from MCP servers (learn the client side)
 Today the planner knows two sources, `documents` and `web` (hand-written Tavily code). With MCP the sources become a list read at runtime: CRAG connects to the configured MCP servers, reads their tools and descriptions, and the planner picks a source per hop. A new source is one line of config, no new code.
-- [ ] B1. MCP client in CRAG (`@modelcontextprotocol/sdk` or `@langchain/mcp-adapters`): connect to configured servers at start-up, list their tools
+- [x] B1. MCP client in CRAG (`@modelcontextprotocol/sdk` or `@langchain/mcp-adapters`): connect to configured servers at start-up, list their tools
+  - Done 17 Nov in `src/mcp/mcp.client.js` (SDK client): `MCP_SERVERS` config, one connection per server opened on first use, `getMcpTools(name)` returns the same `{ definition, run }` registry shape as `webTools`. Verified: Tavily MCP lists `tavily_search`, `tavily_extract`, `tavily_crawl`, `tavily_map`, `tavily_research`.
 - [ ] B2. Replace the hand-written web tools with the Tavily MCP server; keep the web approval and the parallel web agents as they are
-- [ ] B3. Planner hop `source: "mcp"` with the tool name, chosen from the tool descriptions; same approval rule as web hops for anything that leaves the company
-- [ ] B4. Add one more server (for example exchange rates or a read-only company database) and test a mixed question, e.g. "What is order X in euros, and is its supplier still active?" (documents hop -> amount, rates server -> today's rate, database server -> supplier status)
-- [ ] B5. Keep document hops on CRAG search; MCP sources never replace company documents (same rule as web facts)
+  - Last MCP item (decided 17 Nov); the user applies the code. Plan: allow only `tavily_search` and `tavily_extract`, cut results to 6,000 characters, tools passed to the web agent graph through `config`, built-in `web.tools.js` as the fallback when the MCP server is unreachable.
+- [-] B3. Planner hop `source: "mcp"` with the tool name, chosen from the tool descriptions; same approval rule as web hops for anything that leaves the company
+  - Inactive (17 Nov): needed only for B4.
+- [-] B4. Add one more server (for example exchange rates or a read-only company database) and test a mixed question, e.g. "What is order X in euros, and is its supplier still active?" (documents hop -> amount, rates server -> today's rate, database server -> supplier status)
+  - Inactive (17 Nov): for one app with one database a hand-written read-only SQL tool is simpler; B1/B2 already cover the client side. If picked up later, it needs a small B3 (planner source "database") and can reuse the web agent graph with database tools.
+- [-] B5. Keep document hops on CRAG search; MCP sources never replace company documents (same rule as web facts)
+  - Inactive with B3/B4.
 
 ### Finish Step 6
 - [ ] Update `AGENTS.md`, `ROADMAP.md`, `docs/architecture.html`, `docs/frontend-rbac-prompt.md` (if any API changes), and add a `docs/pipeline.js` entry

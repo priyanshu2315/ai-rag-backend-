@@ -9,7 +9,7 @@ import architectureRoutes from "./src/routes/architecture.routes.js";
 import roleRoutes from "./src/routes/role.routes.js";
 import userRoutes from "./src/routes/user.routes.js";
 import cors from "cors";
-
+import mcpRoutes from "./src/routes/mcp.routes.js"; 
 const app = express();
 
 // Middleware to parse JSON bodies
@@ -26,6 +26,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/roles", roleRoutes);
+app.use("/mcp", mcpRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

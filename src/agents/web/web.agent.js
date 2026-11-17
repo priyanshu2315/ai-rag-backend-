@@ -8,16 +8,19 @@ export const MAX_STEPS = 4;
 
 export const SYSTEM_PROMPT = `You are a web research agent. Find the facts the user asks for on the public web.
 Rules:
-- Use web_search first. Use read_page only when the snippets do not contain the exact fact.
+- Each search must look for something different. Never run two searches that ask for the same fact in different words. Search several times in one step only when the task needs different facts (for example, two separate currencies).
+- Start with one well-chosen search. Include the key terms and, for current values, today's date. Search again only if the results do not contain the fact, and then change the approach (another source, another wording, or read_page), not just the phrasing.
+- Read a full page only when the search results do not contain the exact fact.
 - Prefer official or well-known sources.
+- Stop as soon as you have the fact from one reliable source. Do not look for extra confirmation.
 - When you have the answer, reply briefly: each fact, its source URL, and the date the source gives.
 - If you cannot find a fact, say so. Do not guess.`;
 
 // Run one tool the model asked for. Errors go back to the model as a result,
 // so it can try something else instead of crashing the loop.
-export async function runToolCall(call) {
+export async function runToolCall(call, tools = webTools) {
   const name = call.function?.name;
-  const tool = webTools[name];
+  const tool = tools[name];
 
   let args = {};
   try {
@@ -47,10 +50,13 @@ export async function runToolCall(call) {
   }
 }
 
-// Remember every URL the agent saw, so the answer can show its sources.
 export function collectSources(output, sources) {
   if (output?.url && !output.error) sources.add(output.url);
   for (const r of output?.results ?? []) if (r.url) sources.add(r.url);
+  // MCP tools return plain text: take the URLs written in it
+  const urls =
+    String(output?.text ?? "").match(/https?:\/\/[^\s"'<>)\]]+/g) ?? [];
+  urls.slice(0, 10).forEach((url) => sources.add(url));
 }
 
 export async function runWebAgent(task, { maxSteps = MAX_STEPS, onStep } = {}) {

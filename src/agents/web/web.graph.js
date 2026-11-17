@@ -11,6 +11,7 @@ import {
   runToolCall,
   collectSources,
 } from "./web.agent.js";
+import { getMcpTools } from "../../mcp/mcp.client.js";
 
 // State: what the graph remembers between nodes.
 // reducer = how a node's return value is merged into the state.
@@ -27,10 +28,10 @@ const WebAgentState = Annotation.Root({
   stopReason: Annotation({ reducer: (x, y) => y, default: () => "" }),
 });
 
-const toolDefinitions = Object.values(webTools).map((t) => t.definition);
-
 // Node 1: ask the model (answer, or which tools next?)
-async function agentNode(state) {
+async function agentNode(state, config) {
+  const registry = config.configurable.tools;
+
   const step = state.stepCount + 1;
   const lastStep = step >= state.maxSteps;
 
@@ -46,7 +47,12 @@ async function agentNode(state) {
   const response = await chatCompletion("agent", {
     messages: [...state.messages, ...extra],
     temperature: 0,
-    ...(lastStep ? {} : { tools: toolDefinitions, tool_choice: "auto" }),
+    ...(lastStep
+      ? {}
+      : {
+          tools: Object.values(registry).map((t) => t.definition),
+          tool_choice: "auto",
+        }),
   });
   const message = response.choices[0].message;
   const toolCalls = message.tool_calls ?? [];
@@ -72,7 +78,9 @@ async function agentNode(state) {
 // Node 2: run the tools the model asked for
 async function toolsNode(state, config) {
   const last = state.messages.at(-1);
-  const results = await Promise.all(last.tool_calls.map(runToolCall));
+  const results = await Promise.all(
+    last.tool_calls.map((call) => runToolCall(call, config.configurable.tools)),
+  );
 
   const sources = new Set();
   results.forEach((r) => collectSources(r.output, sources));
@@ -82,6 +90,7 @@ async function toolsNode(state, config) {
     tool: r.name,
     args: r.args,
     ok: !r.output.error,
+    mcpServer: config.configurable.tools[r.name]?.mcpServer ?? null,
   }));
   steps.forEach((s) => config?.configurable?.onStep?.(s)); // later: agent_step SSE
 
@@ -114,10 +123,25 @@ export const webAgentGraph = new StateGraph(WebAgentState)
   // Without this it inherits CRAG's checkpointer, and parallel agents would share one slot.
   .compile({ checkpointer: false });
 
+// Web tools come from the Tavily MCP server; the built-in tools are the fallback.
+async function loadWebTools() {
+  try {
+    return await getMcpTools("tavily");
+  } catch (error) {
+    console.error(
+      "[Web agent] Tavily MCP unavailable, using built-in tools:",
+      error.message,
+    );
+    return webTools;
+  }
+}
+
 export async function runWebAgentGraph(
   task,
   { maxSteps = MAX_STEPS, onStep } = {},
 ) {
+  const tools = await loadWebTools();
+
   const today = new Date().toISOString().slice(0, 10);
   const final = await webAgentGraph.invoke(
     {
@@ -130,7 +154,7 @@ export async function runWebAgentGraph(
         { role: "user", content: task },
       ],
     },
-    { configurable: { onStep } },
+    { configurable: { onStep, tools } },
   );
 
   return {
