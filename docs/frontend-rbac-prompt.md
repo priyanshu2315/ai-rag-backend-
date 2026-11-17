@@ -385,18 +385,25 @@ The resume stream sends these events between `approval_result` and the answer to
 ```
 
 ```json
-{ "type": "agent_step", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "step": 1, "tool": "web_search", "args": { "query": "USD to EUR exchange rate today" }, "ok": true }
+{ "type": "agent_step", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "step": 1, "tool": "tavily_search", "args": { "query": "USD to EUR exchange rate today", "max_results": 5 }, "ok": true, "mcpServer": "tavily" }
 ```
 
 ```json
-{ "type": "agent_step", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "step": 2, "tool": "read_page", "args": { "url": "https://..." }, "ok": true }
+{ "type": "agent_step", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "step": 2, "tool": "tavily_extract", "args": { "urls": ["https://..."] }, "ok": true, "mcpServer": "tavily" }
 ```
 
 ```json
 { "type": "agent_finish", "agentId": "web-h2", "agent": "Web research", "hopId": "h2", "stopReason": "done", "answer": "1 USD = 0.86 EUR (source URL, date)", "sources": ["https://...", "https://..."] }
 ```
 
-- `agent_step`: one event per tool call; several can share the same `step` (an agent may run two searches at once). `tool` is `web_search` (show `args.query`) or `read_page` (show `args.url` as a link). `ok: false` means that call failed; show it greyed out.
+- `agent_step`: one event per tool call; several can share the same `step` (an agent may run two searches at once). `ok: false` means that call failed; show it greyed out.
+- Tool names (changed 17 November): the web agent now gets its tools from the Tavily MCP server. New runs send `tavily_search` and `tavily_extract`; saved older messages, and runs where the MCP server was unreachable (the backend falls back to built-in tools), send `web_search` and `read_page`. Map all four:
+  - `tavily_search` or `web_search`: label "Web search", show `args.query`.
+  - `tavily_extract`: label "Read page", show `args.urls` (an ARRAY of URLs) as links, one per line.
+  - `read_page`: label "Read page", show `args.url` as a link.
+  - Any other name: show the raw tool name and the args as compact JSON; never crash on an unknown tool (MCP servers can add tools).
+- `mcpServer` (new, 17 November): the MCP server name (for example `"tavily"`) when the tool came from an MCP server, `null` for built-in tools; missing in older saved messages. When set, show a small badge after the label, for example "Web search [MCP · tavily]". Show no badge when it is null or missing.
+- Running agents indicator: the latest-step text uses the same mapping: "Searching: <query>" for both search tools and "Reading: <first url>" for both read tools (for `tavily_extract` use `args.urls[0]`, plus "+N more" when there are several).
 - `agent_finish.stopReason`: `done` (normal) or `step_limit` (the agent had to stop after 4 steps and answered with what it found). On failure the event is `{ "type": "agent_finish", "agentId": "...", "agent": "Web research", "hopId": "...", "failed": true, "reason": "..." }`; other agents continue and the answer still comes.
 - `sources` are all pages that agent searched or read (not only the ones it used). Show them as a collapsible "Pages looked at" list per agent.
 

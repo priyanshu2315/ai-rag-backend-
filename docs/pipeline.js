@@ -1,5 +1,5 @@
 /**
- * The engineering timeline behind DocuMind, reviewed 14 November 2026.
+ * The engineering timeline behind DocuMind, reviewed 17 November 2026.
  * Earlier entries describe historical stages, not guarantees about the current
  * implementation. The November entries record the latest search, history,
  * grading, planning, access-control, email, web agent and approval behavior.
@@ -941,6 +941,22 @@ export const PIPELINE = [
       "Consent Before External Calls",
     ],
     date: "November 14, 2026",
+  },
+  {
+    id: 73,
+    title: "Opening the Search to Other AI Apps with MCP",
+    problem:
+      "The document search could only be reached through this app's own chat screen, and the web agent used hand-written code for every outside tool. Other AI apps such as Claude Code, Claude Desktop or Cursor could not ask questions about the company documents, and adding a new outside tool meant writing new agent code.",
+    solution:
+      "I built both sides of the Model Context Protocol. As a server, one endpoint exposes four tools (search documents, list my documents, get a summary, get a page); every request is checked with the existing login and role rules, so a user only reaches the documents their roles allow, and a missing or forbidden document gets the same answer. Long searches send progress messages, and when a question needs the web the server asks the human for permission through the client's own form instead of skipping it silently, with a safe fallback to documents only. As a client, the web agent now discovers its search and page-reading tools from the Tavily MCP server at run time, keeps only the two it needs, cuts long results, and falls back to the built-in tools when that server is unreachable.",
+    terms: [
+      "Model Context Protocol",
+      "MCP Server and Client",
+      "Runtime Tool Discovery",
+      "Elicitation",
+      "Role-Based Access Over MCP",
+    ],
+    date: "November 17, 2026",
   },
 ];
 

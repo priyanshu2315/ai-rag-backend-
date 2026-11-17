@@ -31,7 +31,7 @@
 </head>
 <body>
 <div class="scroll">
-<svg viewBox="0 0 1600 1240" role="img" aria-label="DocuMind architecture: chat API, CRAG LangGraph pipeline with web agents and approval, pause and resume, upload pipeline, AI models and data stores.">
+<svg viewBox="0 0 1600 1240" role="img" aria-label="DocuMind architecture: chat API, MCP server, CRAG LangGraph pipeline with web agents (Tavily MCP) and approval, pause and resume, upload pipeline, AI models and data stores.">
   <defs>
     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
       <path d="M40 0H0V40" fill="none" stroke="#141820" stroke-width="1"/>
@@ -85,6 +85,7 @@
   <path class="ar" d="M260 407H288V110H323"/>
   <path class="ar" d="M325 640H262"/>
   <path class="ar" d="M40 642H20V46H138"/>
+  <path class="ar teal" d="M260 735H322"/>
 
   <!-- intent routing -->
   <path class="ar" d="M475 122H523"/>
@@ -237,11 +238,16 @@
   <text class="fn" x="721" y="634" text-anchor="middle">tools</text>
   <path class="ar" d="M646 624H674"/>
   <path class="ar" d="M676 638H648"/>
-  <text class="fn" x="556" y="672">web_search · read_page</text>
-  <text class="fn" x="556" y="690">Tavily · 4 steps</text>
+  <text class="fn" x="556" y="672">tavily_search · tavily_extract</text>
+  <text class="fn" x="556" y="690">MCP client · 4 steps</text>
 
   <rect class="node" x="325" y="600" width="150" height="54" rx="8"/>
   <text class="lbl" x="400" y="632" text-anchor="middle">generate</text>
+
+  <!-- ================= MCP SERVER ================= -->
+  <rect class="node" x="40" y="700" width="220" height="56" rx="8" style="stroke:#43dcc4; stroke-width:1.4"/>
+  <text class="lbl" x="52" y="722">MCP server · POST /mcp</text>
+  <text class="fn" x="52" y="740">4 tools · sessions · RBAC</text>
 
   <!-- ================= PAUSE & RESUME ================= -->
   <rect class="node" x="958" y="818" width="140" height="48" rx="8"/>
@@ -312,8 +318,8 @@
   <text class="fn" x="1182" y="357">intent · rewriter · security check</text>
   <text class="lbl" x="1182" y="450">Cohere · rerank-english-v3.0</text>
   <text class="fn" x="1182" y="467">rerank</text>
-  <text class="lbl" x="1182" y="560">Tavily</text>
-  <text class="fn" x="1182" y="577">web_search · read_page</text>
+  <text class="lbl" x="1182" y="560">Tavily MCP server</text>
+  <text class="fn" x="1182" y="577">tavily_search · tavily_extract</text>
   <text class="lbl" x="1182" y="670">Xenova · all-MiniLM-L6-v2</text>
   <text class="fn" x="1182" y="687">embeddings (local)</text>
 

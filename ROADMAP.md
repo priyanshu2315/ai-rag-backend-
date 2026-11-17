@@ -4,7 +4,7 @@
 
 Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started · `[-]` inactive (kept for later, not planned now)
 
-Current order (updated 17 Nov): Step 5 (web agent and human in the loop) done 15 Nov, open tests included; Step 6 (MCP) nearly done: Part A server built (A1, A5, A6, Inspector), B1 client built; last item B2 (Tavily MCP in the web agent), then "Finish Step 6" docs, then finish (README, demo video). Inactive in Step 6: A2, A3, A4, A7, B3, B4, B5. Dropped 16 Nov: Step 5B (tasks and multi-agent; it would not improve search). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
+Current order (updated 17 Nov): Step 5 (web agent and human in the loop) done 15 Nov, open tests included; Step 6 (MCP) done 17 Nov (server A1, A5, A6; client B1, B2; docs updated); next finish (README, demo video). Inactive in Step 6: A2, A3, A4, A7, B3, B4, B5. Dropped 16 Nov: Step 5B (tasks and multi-agent; it would not improve search). Later: Step 5C (automation when a document is uploaded) and Step 3 (delta versioning, design agreed below). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
 
 ## Step 1: Search Optimization & structured-context-v4 Part 2 (16 hrs)
 
@@ -298,15 +298,16 @@ A user in Claude Desktop, VS Code Copilot or Cursor asks about company documents
 - [~] A6. Elicitation: when a question is unclear (for example "what is the limit?"), the server asks back which document or policy is meant, then searches
   - Done differently 17 Nov: elicitation asks the human to allow the web search (replaces the UI Allow/Skip card for MCP callers); `/mcp` now uses sessions (`Mcp-Session-Id`, in-memory map, session bound to the user who opened it). Clients without elicitation, a decline or a 5-minute timeout continue with Skip. Clarifying questions are not built.
 - [-] A7. Sampling and completions (optional): the server asks the client's model to write text; autocomplete document names in arguments
-- [~] A8. Test with MCP Inspector, then Claude Desktop
-  - Inspector verified 17 Nov (tools, RBAC, progress, approval form; request timeout raised to 300000 ms because CRAG takes 20 s-2 min). Claude Code setup given (`claude mcp add --transport http ...`); a real client choosing the tool by itself is not confirmed.
+- [x] A8. Test with MCP Inspector, then Claude Desktop
+  - Inspector verified 17 Nov (tools, RBAC, progress, approval form; request timeout raised to 300000 ms because CRAG takes 20 s-2 min).
+  - Claude app verified 17 Nov (screenshot from the user): the server was added as "Ai Rag integration"; asked "from my documents What was the value of purchase order PO-10234", Claude found `search_documents` through its tool search on its own and answered USD 64,800 with the Purchase Order Log page 2 details and the incident report mention. This is the live (deployed) server.
 
 ### Part B: MCP client, planner sources from MCP servers (learn the client side)
 Today the planner knows two sources, `documents` and `web` (hand-written Tavily code). With MCP the sources become a list read at runtime: CRAG connects to the configured MCP servers, reads their tools and descriptions, and the planner picks a source per hop. A new source is one line of config, no new code.
 - [x] B1. MCP client in CRAG (`@modelcontextprotocol/sdk` or `@langchain/mcp-adapters`): connect to configured servers at start-up, list their tools
   - Done 17 Nov in `src/mcp/mcp.client.js` (SDK client): `MCP_SERVERS` config, one connection per server opened on first use, `getMcpTools(name)` returns the same `{ definition, run }` registry shape as `webTools`. Verified: Tavily MCP lists `tavily_search`, `tavily_extract`, `tavily_crawl`, `tavily_map`, `tavily_research`.
-- [ ] B2. Replace the hand-written web tools with the Tavily MCP server; keep the web approval and the parallel web agents as they are
-  - Last MCP item (decided 17 Nov); the user applies the code. Plan: allow only `tavily_search` and `tavily_extract`, cut results to 6,000 characters, tools passed to the web agent graph through `config`, built-in `web.tools.js` as the fallback when the MCP server is unreachable.
+- [x] B2. Replace the hand-written web tools with the Tavily MCP server; keep the web approval and the parallel web agents as they are
+  - Done 17 Nov (user applied the code, tested in the chat UI): only `tavily_search` and `tavily_extract` are allowed, results are cut to 6,000 characters, the tools reach the web agent graph through `config.configurable.tools`, and the built-in `web.tools.js` is the fallback when the MCP server is unreachable (`loadWebTools()` in `web.graph.js`). `agent_step` events now carry `mcpServer` (`"tavily"` or `null`); `collectSources` also reads URLs from MCP text results.
 - [-] B3. Planner hop `source: "mcp"` with the tool name, chosen from the tool descriptions; same approval rule as web hops for anything that leaves the company
   - Inactive (17 Nov): needed only for B4.
 - [-] B4. Add one more server (for example exchange rates or a read-only company database) and test a mixed question, e.g. "What is order X in euros, and is its supplier still active?" (documents hop -> amount, rates server -> today's rate, database server -> supplier status)
@@ -315,7 +316,9 @@ Today the planner knows two sources, `documents` and `web` (hand-written Tavily 
   - Inactive with B3/B4.
 
 ### Finish Step 6
-- [ ] Update `AGENTS.md`, `ROADMAP.md`, `docs/architecture.html`, `docs/frontend-rbac-prompt.md` (if any API changes), and add a `docs/pipeline.js` entry
+- [x] Update `AGENTS.md`, `ROADMAP.md`, `docs/architecture.html`, `docs/frontend-rbac-prompt.md` (if any API changes), and add a `docs/pipeline.js` entry
+  - Done 17 Nov (pipeline entry 73, AGENTS.md "MCP server and client", `/mcp` and Tavily MCP in the diagram, frontend prompt section 5).
+- Optional later (not planned): OAuth 2.1 for `/mcp` (well-known metadata, `/register`, `/authorize`, `/token`) so ChatGPT and claude.ai custom connectors can connect; today only clients that send a Bearer header work (Claude Code, Claude Desktop through `mcp-remote`, Inspector).
 - Removed 16 Nov: Google Drive import (a fixed action, plain API code, not an MCP use case) and the 5B supervisor as the MCP client.
 
 ### Finish (after Step 6)
