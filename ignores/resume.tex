@@ -149,6 +149,8 @@
 
         \resumeItem{Added a tool-calling \textbf{web research agent} (Tavily search + page reading) that runs \textbf{in parallel} per web task only after \textbf{human-in-the-loop approval}, using LangGraph \texttt{interrupt()} and a \textbf{Postgres checkpointer} to pause and resume runs.}
 
+        \resumeItem{Implemented both sides of the \textbf{Model Context Protocol (MCP)}: exposed the search as an \textbf{MCP server} (4 tools, per-user sessions, role-based access, progress updates, human approval through elicitation) used from a \textbf{Claude} app, and an \textbf{MCP client} that lets the web agent discover \textbf{Tavily} tools at runtime, with a fallback to built-in tools.}
+
         \resumeItem{Shipped \textbf{role-based document access} (JWT, admin user/role management, email onboarding and OTP reset), per-task \textbf{multi-provider LLM routing}, and a step-by-step trace of search, grading and evidence for every answer.}
 
         \resumeItem{\textbf{Evaluated} on a \textbf{50-document, 31-question benchmark} with trace-level scoring: raised fully correct multi-hop answers from \textbf{68\% to 84\%} (13 $\rightarrow$ 16 of 19), \textbf{zero invented answers} on unanswerable questions, \textbf{100\%} of access-control checks passed; cut query-planning latency from \textbf{54 s+ to 6--29 s} at an average cost of \textbf{under \$0.01 per answer}.}
@@ -163,7 +165,7 @@
     \small{\item{
       \textbf{Languages}{: Python, JavaScript, TypeScript, HTML/CSS} \\
       \textbf{Frameworks \& Libraries}{: Next.js, React, Node.js/Express, FastAPI, Redux, Tailwind CSS, Three.js, Prisma} \\
-      \textbf{Generative AI}{: LLM APIs (OpenAI, Gemini, Claude, etc), Agentic AI (planning, tool calling, self-correction, human-in-the-loop), LangGraph, RAG Pipelines, Prompt Engineering, Hybrid Search \& Reranking, Vector Embeddings, Hugging Face Transformers, Ollama} \\
+      \textbf{Generative AI}{: LLM APIs (OpenAI, Gemini, Claude, etc), Agentic AI (planning, tool calling, self-correction, human-in-the-loop), Model Context Protocol (MCP), LangGraph, RAG Pipelines, Prompt Engineering, Hybrid Search \& Reranking, Vector Embeddings, Hugging Face Transformers, Ollama} \\
       \textbf{Databases \& Infra}{: MongoDB, MySQL, PostgreSQL, pgvector, Redis, BullMQ, Docker} \\
       \textbf{Dev \& Design Tools}{: Git, BitBucket, AWS, Google Cloud Platform, Firebase, Postman, Figma} \\
     }}

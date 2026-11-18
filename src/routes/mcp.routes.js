@@ -1,61 +1,24 @@
-import { randomUUID } from "node:crypto";
-// (keep your other imports)
 import express from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 import { buildMcpServer } from "../mcp/mcp.server.js";
 
 const router = express.Router();
 
-// sessionId -> { transport, userId }. In memory: a restart drops all
-// sessions and clients simply reconnect.
-const sessions = new Map();
-
-// Finds the caller's session; a session belongs to the user who opened it.
-function findSession(req, res) {
-  const sessionId = req.headers["mcp-session-id"];
-  const session = sessions.get(sessionId);
-  if (!session || session.userId !== req.user.id) {
-    res.status(404).json({
-      jsonrpc: "2.0",
-      error: { code: -32001, message: "Session not found" },
-      id: null,
-    });
-    return null;
-  }
-  return session;
-}
-
+// Stateless: every request builds its own server and transport and nothing is
+// stored between requests, so any server behind a load balancer can answer.
+// The user comes from the JWT on each request, so role rules still apply.
 router.post("/", requireAuth, async (req, res) => {
   try {
-    // 1. Known session: pass the message to its transport
-    if (req.headers["mcp-session-id"]) {
-      const session = findSession(req, res);
-      if (session) await session.transport.handleRequest(req, res, req.body);
-      return;
-    }
-
-    // 2. No session: only "initialize" may start one
-    if (!isInitializeRequest(req.body)) {
-      return res.status(400).json({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Send initialize first" },
-        id: null,
-      });
-    }
-
     const server = buildMcpServer(req.user);
     const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-      onsessioninitialized: (id) => {
-        sessions.set(id, { transport, userId: req.user.id });
-      },
+      sessionIdGenerator: undefined, // no session ID
     });
-    transport.onclose = () => {
-      if (transport.sessionId) sessions.delete(transport.sessionId);
+
+    res.on("close", () => {
+      transport.close();
       server.close();
-    };
+    });
 
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
@@ -71,12 +34,14 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-// GET = open a stream for server messages; DELETE = end the session.
-const sessionRequest = async (req, res) => {
-  const session = findSession(req, res);
-  if (session) await session.transport.handleRequest(req, res);
-};
-router.get("/", requireAuth, sessionRequest);
-router.delete("/", requireAuth, sessionRequest);
+// No server-to-client stream and no session to end in stateless mode.
+const notAllowed = (req, res) =>
+  res.status(405).json({
+    jsonrpc: "2.0",
+    error: { code: -32000, message: "Method not allowed (stateless server)" },
+    id: null,
+  });
+router.get("/", requireAuth, notAllowed);
+router.delete("/", requireAuth, notAllowed);
 
 export default router;
