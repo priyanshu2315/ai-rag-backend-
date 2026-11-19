@@ -275,7 +275,7 @@ export const searchAllUserDocuments = async (
         ) AS rank
       FROM "ChildChunk" c
       JOIN active_docs ad ON c."documentId" = ad.id
-      WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true' AND AND c."removedInVersion" IS NULL
+      WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true' AND  c."removedInVersion" IS NULL
       ORDER BY c."embedding" <=> ${vectorStr}::vector ASC
       LIMIT ${vectorLimit}
     ),
