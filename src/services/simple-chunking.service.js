@@ -1,12 +1,24 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import { appendixAtPage, normalizeWords, outlineTitle } from "./document-outline.service.js";
+import {
+  appendixAtPage,
+  normalizeWords,
+  outlineTitle,
+} from "./document-outline.service.js";
 
 const markdownParser = unified().use(remarkParse).use(remarkGfm);
-const VERSION = "ai-corrected-markdown-v4";
+const VERSION = "ai-corrected-markdown-v5";
 const unique = (values) => [...new Set(values)];
+
+// Same text = same hash. Only whitespace is evened out: case and punctuation
+// still count, because "CEO" -> "CFO" is a real change in a chunk.
+export const chunkHash = (text) =>
+  createHash("sha256")
+    .update(text.replace(/\s+/g, " ").trim())
+    .digest("hex")
+    .slice(0, 16);
 
 function inlineText(node) {
   if (["text", "inlineCode", "html"].includes(node.type)) return node.value;
@@ -16,45 +28,75 @@ function inlineText(node) {
 }
 
 function numberedRowKey(value) {
-  const match = value.trim().match(/^([\p{L}]+)[\s-]*(\d{1,6})(?:[^\p{L}\p{N}]|$)/u);
-  return match ? { prefix: match[1].toLowerCase(), number: Number(match[2]) } : null;
+  const match = value
+    .trim()
+    .match(/^([\p{L}]+)[\s-]*(\d{1,6})(?:[^\p{L}\p{N}]|$)/u);
+  return match
+    ? { prefix: match[1].toLowerCase(), number: Number(match[2]) }
+    : null;
 }
 
 function continuesNumberedRows(previous, next) {
-  return previous && next && previous.prefix === next.prefix &&
-    next.number === previous.number + 1;
+  return (
+    previous &&
+    next &&
+    previous.prefix === next.prefix &&
+    next.number === previous.number + 1
+  );
 }
 
 function compatibleTableLabels(previous, next) {
   if (previous.length !== next.length) return false;
   return previous.every((label, index) => {
-    const before = label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-    const after = next[index].toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    const before = label
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+    const after = next[index]
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
     if (!before || !after) return false;
-    return before === after || before.startsWith(after + " ") ||
+    return (
+      before === after ||
+      before.startsWith(after + " ") ||
       after.startsWith(before + " ") ||
-      (index >= 2 && before.startsWith("column " + after + " "));
+      (index >= 2 && before.startsWith("column " + after + " "))
+    );
   });
 }
 
 function detectDocumentBoundary(page, documentOutline = []) {
   const pageText = page.text || "";
   const pageNum = page.sourcePageNumber;
-  const lines = pageText.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 6);
+  const lines = pageText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 6);
   const headerBlock = lines.join(" ");
   // 1. Check official Table of Contents outline
   if (Array.isArray(documentOutline) && documentOutline.length > 0) {
     const match = documentOutline.find((entry) => {
-      const isAppendixOrAnnex = /(?:appendix|annex|exhibit|schedule|attachment|minutes|restatement)/i.test(
-        `${entry.sectionCode || ""} ${entry.title || ""}`
-      );
+      const isAppendixOrAnnex =
+        /(?:appendix|annex|exhibit|schedule|attachment|minutes|restatement)/i.test(
+          `${entry.sectionCode || ""} ${entry.title || ""}`,
+        );
       // For appendices/annexures: page match is sufficient (e.g. Appendix B on page 20)
-      if (isAppendixOrAnnex && entry.targetPage != null && entry.targetPage === pageNum) {
+      if (
+        isAppendixOrAnnex &&
+        entry.targetPage != null &&
+        entry.targetPage === pageNum
+      ) {
         return true;
       }
       // For top-level sections (e.g. Section 7): only if title is in headerBlock and NOT a dotted subsection (7.1, 7.2)
       const isSubsection = /\d+\.\d+/.test(entry.sectionCode || "");
-      if (!isSubsection && entry.title && headerBlock.toLowerCase().includes(entry.title.toLowerCase())) {
+      if (
+        !isSubsection &&
+        entry.title &&
+        headerBlock.toLowerCase().includes(entry.title.toLowerCase())
+      ) {
         return true;
       }
       return false;
@@ -63,7 +105,11 @@ function detectDocumentBoundary(page, documentOutline = []) {
       const code = match.sectionCode ? match.sectionCode.trim() : "";
       const title = match.title ? match.title.trim() : "";
       // Avoid stuttering like "7 - 7 Governance and Approval Matrix"
-      if (code && title && !title.toLowerCase().startsWith(code.toLowerCase())) {
+      if (
+        code &&
+        title &&
+        !title.toLowerCase().startsWith(code.toLowerCase())
+      ) {
         return `${code} - ${title}`;
       }
       return title || code;
@@ -75,7 +121,9 @@ function detectDocumentBoundary(page, documentOutline = []) {
   }
 
   // 3. Regex Fallback: Explicit Appendix / Annex header on the page
-  const appendixMatch = headerBlock.match(/^(?:[A-Z]\s+)?(Appendix\s+[A-Z0-9]+[\s:\-\–—]+[^\n\r]+)/i);
+  const appendixMatch = headerBlock.match(
+    /^(?:[A-Z]\s+)?(Appendix\s+[A-Z0-9]+[\s:\-\–—]+[^\n\r]+)/i,
+  );
   if (appendixMatch) {
     return appendixMatch[1].trim();
   }
@@ -86,7 +134,11 @@ function detectDocumentBoundary(page, documentOutline = []) {
   }
 
   // 5. Regex Fallback: CFO Letterhead / Restatement
-  if (/(?:Office of the Chief Financial Officer|Subject:\s*Restatement)/i.test(headerBlock)) {
+  if (
+    /(?:Office of the Chief Financial Officer|Subject:\s*Restatement)/i.test(
+      headerBlock,
+    )
+  ) {
     return "CFO restatement letter";
   }
 
@@ -98,8 +150,13 @@ function detectDocumentBoundary(page, documentOutline = []) {
   return null;
 }
 
-
-const PLURAL_REFERENCE = { appendices: "Appendix", figures: "Figure", tables: "Table", sections: "§", clauses: "§" };
+const PLURAL_REFERENCE = {
+  appendices: "Appendix",
+  figures: "Figure",
+  tables: "Table",
+  sections: "§",
+  clauses: "§",
+};
 const REFERENCE_ID = String.raw`(?:\d+(?:\.\d+)*[a-z]?|[A-Z])`;
 const REFERENCE_LIST = new RegExp(
   String.raw`\b(Appendices|Figures|Tables|Sections|Clauses)\s+(${REFERENCE_ID}(?:\s*(?:,|\band\b|&|\bto\b|\bthrough\b|–|-)\s*${REFERENCE_ID})+)\b`,
@@ -112,15 +169,24 @@ const RANGE_WORD = /^(?:to|through|–|-)$/;
 function expandRange(from, to) {
   if (/^[A-Z]$/.test(from) && /^[A-Z]$/.test(to) && from < to) {
     const start = from.charCodeAt(0);
-    return Array.from({ length: to.charCodeAt(0) - start + 1 }, (_, i) => String.fromCharCode(start + i));
+    return Array.from({ length: to.charCodeAt(0) - start + 1 }, (_, i) =>
+      String.fromCharCode(start + i),
+    );
   }
   const prefix = (value) => value.split(".").slice(0, -1).join(".");
-  if (/^\d+(?:\.\d+)*$/.test(from) && /^\d+(?:\.\d+)*$/.test(to) && prefix(from) === prefix(to)) {
+  if (
+    /^\d+(?:\.\d+)*$/.test(from) &&
+    /^\d+(?:\.\d+)*$/.test(to) &&
+    prefix(from) === prefix(to)
+  ) {
     const start = Number(from.split(".").at(-1));
     const end = Number(to.split(".").at(-1));
     if (end > start && end - start <= 50) {
       const base = prefix(from) ? prefix(from) + "." : "";
-      return Array.from({ length: end - start + 1 }, (_, i) => base + (start + i));
+      return Array.from(
+        { length: end - start + 1 },
+        (_, i) => base + (start + i),
+      );
     }
   }
   return [from, to];
@@ -132,7 +198,9 @@ export function extractCrossReferences(text) {
   const refs = new Set();
 
   // 1. Section & Clause references: §3.5, Section 7.1, Clause 4.2
-  for (const match of text.matchAll(/(?:§|Section|Clause)\s*(\d+(?:\.\d+)*)/gi)) {
+  for (const match of text.matchAll(
+    /(?:§|Section|Clause)\s*(\d+(?:\.\d+)*)/gi,
+  )) {
     refs.add(`§${match[1]}`);
   }
   // 2. Appendix references: Appendix B, Appendix C. The letter is a capital on its own,
@@ -141,7 +209,9 @@ export function extractCrossReferences(text) {
     refs.add(`Appendix ${match[1]}`);
   }
   // 3. Table and Figure references: Table 7.1, Figure 4.3, Figure 4.4b
-  for (const match of text.matchAll(/\b(Table|Figure)\s+(\d+(?:\.\d+)*[a-z]?)\b/g)) {
+  for (const match of text.matchAll(
+    /\b(Table|Figure)\s+(\d+(?:\.\d+)*[a-z]?)\b/g,
+  )) {
     refs.add(`${match[1]} ${match[2]}`);
   }
   // 3a. Lists and ranges: "Appendices B, C and D", "Figures 3.1 to 3.4", "Sections 1 and 3",
@@ -149,12 +219,14 @@ export function extractCrossReferences(text) {
   for (const match of text.matchAll(REFERENCE_LIST)) {
     const kind = PLURAL_REFERENCE[match[1].toLowerCase()];
     const name = (value) => (kind === "§" ? "§" + value : kind + " " + value);
-    const parts = match[2].split(/\s*(,|\band\b|&|\bto\b|\bthrough\b|–|-)\s*/)
+    const parts = match[2]
+      .split(/\s*(,|\band\b|&|\bto\b|\bthrough\b|–|-)\s*/)
       .filter((part) => part && !/^(?:,|and|&)$/.test(part));
     for (let index = 0; index < parts.length; index++) {
       if (RANGE_WORD.test(parts[index])) continue;
       if (RANGE_WORD.test(parts[index + 1] ?? "") && parts[index + 2]) {
-        for (const value of expandRange(parts[index], parts[index + 2])) refs.add(name(value));
+        for (const value of expandRange(parts[index], parts[index + 2]))
+          refs.add(name(value));
         index += 2;
       } else {
         refs.add(name(parts[index]));
@@ -164,13 +236,17 @@ export function extractCrossReferences(text) {
   // 4. Resolutions: "Resolution 2025-14", "Resolution No. 7", "Resolution BR-12".
   // The id must start with a digit or be a code, so "resolution within" or
   // "Resolution SLA" is not a reference.
-  for (const match of text.matchAll(/\b(?:Resolution|RESOLUTION)\s+(?:No\.?\s*)?(\d[\w\-\/]*|[A-Z]+-\d[\w\-\/]*)/g)) {
+  for (const match of text.matchAll(
+    /\b(?:Resolution|RESOLUTION)\s+(?:No\.?\s*)?(\d[\w\-\/]*|[A-Z]+-\d[\w\-\/]*)/g,
+  )) {
     refs.add(`Resolution ${match[1]}`);
   }
   // 5. Codes: R-01 (risks), TN-6 (tech notes), PO-10234, INC-2025-014, PP-FT-01.
   // The whole code is kept, so "PP-FT-01" does not become "FT-01", and "ST-PL-02" and
   // "PKG-PL-02" stay apart. A code has upper-case parts joined by hyphens and a digit.
-  for (const match of text.matchAll(/(?<![\p{L}\p{N}-])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+(?![\p{L}\p{N}])/gu)) {
+  for (const match of text.matchAll(
+    /(?<![\p{L}\p{N}-])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+(?![\p{L}\p{N}])/gu,
+  )) {
     if (/\d/.test(match[0]) && match[0].length <= 40) refs.add(match[0]);
   }
 
@@ -184,21 +260,31 @@ function isTableOfContentsChunk(headingPath, text) {
     return true;
   }
   // Matches repeated dot-leader lines ending in page numbers (. . . 4, .... 12)
-  const dotLines = (text || "").split("\n").filter((l) => /\.{3,}|\. \. \./.test(l) && /\d+\s*$/.test(l.trim()));
+  const dotLines = (text || "")
+    .split("\n")
+    .filter((l) => /\.{3,}|\. \. \./.test(l) && /\d+\s*$/.test(l.trim()));
   return dotLines.length >= 3;
 }
 
 const SUB_DOCUMENT_WORD = /\b(?:appendix|annexure|annex|exhibit|attachment)\b/i;
-const SUB_DOCUMENT_HEADING = /^(?:[A-Z]\s+)?((?:Appendix|Annexure|Annex|Exhibit|Attachment)\s+[A-Z0-9]+\b.*)$/i;
+const SUB_DOCUMENT_HEADING =
+  /^(?:[A-Z]\s+)?((?:Appendix|Annexure|Annex|Exhibit|Attachment)\s+[A-Z0-9]+\b.*)$/i;
 
 // "annex|F" for "Annexure F – Data Required", "A Appendix A - Glossary" → "appendix|A".
 // Annex and Annexure are the same kind.
 function subDocumentCode(text) {
   const match = String(text ?? "")
-    .replace(/^\s*[A-Z]\s+(?=(?:Appendix|Annexure|Annex|Exhibit|Attachment)\b)/i, "")
+    .replace(
+      /^\s*[A-Z]\s+(?=(?:Appendix|Annexure|Annex|Exhibit|Attachment)\b)/i,
+      "",
+    )
     .match(/^(Appendix|Annexure|Annex|Exhibit|Attachment)[\s-]+([A-Z0-9]+)\b/i);
   if (!match) return null;
-  return match[1].toLowerCase().replace(/^annexure$/, "annex") + "|" + match[2].toUpperCase();
+  return (
+    match[1].toLowerCase().replace(/^annexure$/, "annex") +
+    "|" +
+    match[2].toUpperCase()
+  );
 }
 
 // The section title for a heading that opens a different appendix from the current one,
@@ -206,8 +292,11 @@ function subDocumentCode(text) {
 function subDocumentStart(title, boundary, outline) {
   const match = title.match(SUB_DOCUMENT_HEADING);
   const code = match ? subDocumentCode(match[1]) : null;
-  if (!code || (boundary && subDocumentCode(boundary.title) === code)) return null;
-  const entry = (outline ?? []).find((item) => subDocumentCode(outlineTitle(item)) === code);
+  if (!code || (boundary && subDocumentCode(boundary.title) === code))
+    return null;
+  const entry = (outline ?? []).find(
+    (item) => subDocumentCode(outlineTitle(item)) === code,
+  );
   return entry ? outlineTitle(entry) : match[1].trim();
 }
 
@@ -216,8 +305,12 @@ function subDocumentStart(title, boundary, outline) {
 function repeatsBoundaryTitle(title, boundaryTitle) {
   const heading = normalizeWords(title.replace(SUB_DOCUMENT_HEADING, "$1"));
   const boundary = normalizeWords(boundaryTitle);
-  return Boolean(heading) && (heading === boundary || boundary.startsWith(heading + " ") ||
-    (SUB_DOCUMENT_WORD.test(title) && heading.startsWith(boundary)));
+  return (
+    Boolean(heading) &&
+    (heading === boundary ||
+      boundary.startsWith(heading + " ") ||
+      (SUB_DOCUMENT_WORD.test(title) && heading.startsWith(boundary)))
+  );
 }
 
 // Where text too long for one snippet is cut: at the line break nearest the middle (so a
@@ -239,8 +332,10 @@ export function cutPoint(chars) {
   if (line !== -1) return { index: line, separator: "\n" };
   const quarter = Math.floor(chars.length / 4);
   const sentence = nearest(
-    (index) => /\s/u.test(chars[index]) && /[.;:!?]/.test(chars[index - 1] ?? ""),
-    quarter, chars.length - quarter,
+    (index) =>
+      /\s/u.test(chars[index]) && /[.;:!?]/.test(chars[index - 1] ?? ""),
+    quarter,
+    chars.length - quarter,
   );
   if (sentence !== -1) return { index: sentence, separator: chars[sentence] };
   const space = nearest((index) => /\s/u.test(chars[index]), 1, last);
@@ -251,7 +346,9 @@ export function cutPoint(chars) {
 function getHeadingLevel(title, rawDepth, hasActiveBoundary = false) {
   const clean = title.trim();
   // Match decimal numbering: "1.", "1.1", "4.4.1"
-  const match = clean.match(/^(?:section|clause|article)?\s*(\d+(?:\.\d+)*)(?:[.\s\-]|$)/i);
+  const match = clean.match(
+    /^(?:section|clause|article)?\s*(\d+(?:\.\d+)*)(?:[.\s\-]|$)/i,
+  );
   if (match) {
     const parts = match[1].split(".").filter(Boolean);
     // When inside an Appendix or Document Boundary, items like "1.", "2.", "3."
@@ -260,14 +357,16 @@ function getHeadingLevel(title, rawDepth, hasActiveBoundary = false) {
     return parts.length - 1 + baseLevel;
   }
   // Major standalone document markers are always Level 2 (main sections)
-  if (/^(?:Table of Contents|Contents|Document Control|Appendix\s+[A-Z0-9]|Annex|Exhibit)/i.test(clean)) {
+  if (
+    /^(?:Table of Contents|Contents|Document Control|Appendix\s+[A-Z0-9]|Annex|Exhibit)/i.test(
+      clean,
+    )
+  ) {
     return 2;
   }
 
   return Math.max(rawDepth || 3, 3);
 }
-
-
 
 // Gemini fixes the Markdown first. This function reads its headings, tables, and boundaries.
 export function splitMarkdownSections(extraction) {
@@ -294,7 +393,9 @@ export function splitMarkdownSections(extraction) {
       : null;
     // An established appendix range takes priority over an AI boundary flag.
     const boundaryTitle = appendix
-      ? (headingStack[0]?.title === appendix.title ? null : appendix.title)
+      ? headingStack[0]?.title === appendix.title
+        ? null
+        : appendix.title
       : detectDocumentBoundary(page, documentOutline);
 
     if (boundaryTitle) {
@@ -306,14 +407,14 @@ export function splitMarkdownSections(extraction) {
     const nodes =
       page.textFormat === "plain"
         ? [
-          {
-            type: "paragraph",
-            position: {
-              start: { offset: 0 },
-              end: { offset: page.text.length },
+            {
+              type: "paragraph",
+              position: {
+                start: { offset: 0 },
+                end: { offset: page.text.length },
+              },
             },
-          },
-        ]
+          ]
         : markdownParser.parse(page.text).children;
     for (const node of nodes) {
       let text = page.text.slice(
@@ -321,7 +422,9 @@ export function splitMarkdownSections(extraction) {
         node.position.end.offset,
       );
       if (node.type === "heading") {
-        text = text.replace(/[\s\-_]*\((?:continued|cont\.?|continuation)\)\s*$/i, "").trim();
+        text = text
+          .replace(/[\s\-_]*\((?:continued|cont\.?|continuation)\)\s*$/i, "")
+          .trim();
       }
       if (!text.trim()) continue;
       let tableHeader;
@@ -331,24 +434,38 @@ export function splitMarkdownSections(extraction) {
         const [header, ...rows] = node.children;
         const labels = header.children.map((cell) => inlineText(cell).trim());
         tableHeader = labels.map((label) => label.toLowerCase()).join("|");
-        const firstRowKey = numberedRowKey(inlineText(rows[0]?.children[0] ?? { type: "text", value: "" }));
-        const lastRowKey = numberedRowKey(inlineText(rows.at(-1)?.children[0] ?? { type: "text", value: "" }));
-        const isSameSection = current?.id && tables.some((t) => t.sectionId === current.id);
+        const firstRowKey = numberedRowKey(
+          inlineText(rows[0]?.children[0] ?? { type: "text", value: "" }),
+        );
+        const lastRowKey = numberedRowKey(
+          inlineText(rows.at(-1)?.children[0] ?? { type: "text", value: "" }),
+        );
+        const isSameSection =
+          current?.id && tables.some((t) => t.sectionId === current.id);
         if ((beforeFirstHeading || isSameSection) && rows.length > 0) {
-          const candidates = tables.filter((candidate) =>
-            candidate.labels.length === labels.length &&
-            (!appendix || candidate.headingStack[0]?.title === appendix.title) &&
-            candidate.pageIndex < page.sequenceIndex &&
-            candidate.pageIndex >= page.sequenceIndex - 2,
+          const candidates = tables.filter(
+            (candidate) =>
+              candidate.labels.length === labels.length &&
+              (!appendix ||
+                candidate.headingStack[0]?.title === appendix.title) &&
+              candidate.pageIndex < page.sequenceIndex &&
+              candidate.pageIndex >= page.sequenceIndex - 2,
           );
-          const numbered = candidates.filter((candidate) =>
-            labels.length >= 3 &&
-            continuesNumberedRows(candidate.lastRowKey, firstRowKey) &&
-            compatibleTableLabels(candidate.labels, labels),
+          const numbered = candidates.filter(
+            (candidate) =>
+              labels.length >= 3 &&
+              continuesNumberedRows(candidate.lastRowKey, firstRowKey) &&
+              compatibleTableLabels(candidate.labels, labels),
           );
-          const exact = candidates.filter((candidate) => candidate.headers.has(tableHeader));
-          table = numbered.length === 1 ? numbered[0] :
-            numbered.length === 0 && exact.length === 1 ? exact[0] : null;
+          const exact = candidates.filter((candidate) =>
+            candidate.headers.has(tableHeader),
+          );
+          table =
+            numbered.length === 1
+              ? numbered[0]
+              : numbered.length === 0 && exact.length === 1
+                ? exact[0]
+                : null;
           if (table) {
             table.continued = true;
             continuation = {
@@ -356,10 +473,14 @@ export function splitMarkdownSections(extraction) {
               table_id: table.id,
               from_page: table.pageNumber,
               to_page: page.sourcePageNumber,
-              match: numbered.includes(table) ? "row_sequence" : "column_headers",
+              match: numbered.includes(table)
+                ? "row_sequence"
+                : "column_headers",
             };
             if (current?.id !== table.sectionId) {
-              headingStack = table.headingStack.map((heading) => ({ ...heading }));
+              headingStack = table.headingStack.map((heading) => ({
+                ...heading,
+              }));
               startSection(table.headingPath, table.sectionId);
             }
           }
@@ -382,7 +503,9 @@ export function splitMarkdownSections(extraction) {
       }
       if (node.type === "heading") {
         const rawTitle = inlineText(node).trim();
-        const title = rawTitle.replace(/[\s\-_]*\((?:continued|cont\.?|continuation)\)\s*$/i, "").trim();
+        const title = rawTitle
+          .replace(/[\s\-_]*\((?:continued|cont\.?|continuation)\)\s*$/i, "")
+          .trim();
         const isDocumentTitle =
           node.depth === 1 && title === extraction.documentTitle;
         if (!isDocumentTitle) {
@@ -390,11 +513,19 @@ export function splitMarkdownSections(extraction) {
           const boundary = headingStack.find((h) => h.isBoundary);
           // A heading for another appendix ("Annexure F – …" on the page where Annexure E
           // ends) starts that appendix's own section tree instead of nesting under E.
-          const nextAppendix = subDocumentStart(title, boundary, documentOutline);
+          const nextAppendix = subDocumentStart(
+            title,
+            boundary,
+            documentOutline,
+          );
           if (nextAppendix) {
-            headingStack = [{ level: 2, title: nextAppendix, isBoundary: true }];
+            headingStack = [
+              { level: 2, title: nextAppendix, isBoundary: true },
+            ];
             const resumed = sections.find(
-              (section) => JSON.stringify(section.headingPath) === JSON.stringify([nextAppendix]),
+              (section) =>
+                JSON.stringify(section.headingPath) ===
+                JSON.stringify([nextAppendix]),
             );
             startSection([nextAppendix], resumed?.id);
             beforeFirstHeading = false;
@@ -405,22 +536,34 @@ export function splitMarkdownSections(extraction) {
           } else {
             // A repeated appendix heading must not pop its resolved container.
             const effectiveLevel = appendix
-              ? Math.max(3, getHeadingLevel(title, node.depth, hasActiveBoundary))
+              ? Math.max(
+                  3,
+                  getHeadingLevel(title, node.depth, hasActiveBoundary),
+                )
               : getHeadingLevel(title, node.depth, hasActiveBoundary);
 
             // Pop any headings of equal or deeper level
             headingStack = headingStack.filter((h) => h.level < effectiveLevel);
             headingStack.push({ level: effectiveLevel, title });
             const nextPath = headingStack.map((h) => h.title);
-            const repeatedHeading = beforeFirstHeading &&
-              current && JSON.stringify(nextPath) === JSON.stringify(current.headingPath);
+            const repeatedHeading =
+              beforeFirstHeading &&
+              current &&
+              JSON.stringify(nextPath) === JSON.stringify(current.headingPath);
             if (!repeatedHeading) {
               const resumed = sections.find(
-                (section) => JSON.stringify(section.headingPath) === JSON.stringify(nextPath),
+                (section) =>
+                  JSON.stringify(section.headingPath) ===
+                  JSON.stringify(nextPath),
               );
               startSection(nextPath, resumed?.id);
               beforeFirstHeading = false;
             }
+            // v5: a heading reprinted at the top of a page (same open section) is page
+            // layout, not content. Parents no longer close at a page break, so keeping it
+            // would put the heading twice in one chunk and make its hash depend on where
+            // the page breaks.
+            if (repeatedHeading) continue;
           }
         }
       }
@@ -438,7 +581,8 @@ export function splitMarkdownSections(extraction) {
         headingPath: headingStack.map((heading) => heading.title),
         tableId: table?.id ?? null,
         table,
-        tableLabels: continuation?.match === "row_sequence" ? table.labels : null,
+        tableLabels:
+          continuation?.match === "row_sequence" ? table.labels : null,
         continuation,
         location: {
           sourceId: page.id,
@@ -461,9 +605,14 @@ function blockPassages(block) {
   if (block.type !== "table") return [{ text: block.text, block }];
   const [header, ...rows] = block.node.children;
   if (!rows.length) return [{ text: block.text, block }];
-  const labels = (block.tableLabels ?? header.children.map((cell) => inlineText(cell).trim()))
+  const labels = (
+    block.tableLabels ?? header.children.map((cell) => inlineText(cell).trim())
+  )
     // A blank top-left heading cell names the rows ("Row: Revenue"), not "Column 1".
-    .map((label, index) => label || (index === 0 ? "Row" : "Column " + (index + 1)));
+    .map(
+      (label, index) =>
+        label || (index === 0 ? "Row" : "Column " + (index + 1)),
+    );
   return rows.map((row, index) => {
     const fields = row.children.map((cell, column) => ({
       label: labels[column] ?? "Column " + (column + 1),
@@ -483,7 +632,7 @@ export async function buildDocumentChunks(
   extraction,
   documentId,
   filename,
-  onEvent = () => { },
+  onEvent = () => {},
   { measure, parentTokenLimit = 1024, childTokenLimit = 256 } = {},
 ) {
   if (!extraction?.pages?.length)
@@ -517,9 +666,13 @@ export async function buildDocumentChunks(
   const count = async (text) => (await measure(text)).tokenCount;
   // Pieces cut from one block are joined with the character the cut removed, so a split
   // never adds a paragraph break inside a sentence or a list item.
-  const joinPieces = (pieces) => pieces
-    .map((piece, index) => (index ? piece.joinWith ?? "\n\n" : "") + piece.text)
-    .join("");
+  const joinPieces = (pieces) =>
+    pieces
+      .map(
+        (piece, index) =>
+          (index ? (piece.joinWith ?? "\n\n") : "") + piece.text,
+      )
+      .join("");
   const searchText = (pieces) => {
     let lastPath = null;
     let text = "Document: " + title;
@@ -531,8 +684,12 @@ export async function buildDocumentChunks(
         context.push(pathStr);
         lastPath = pathStr;
       }
-      const separator = context.length || piece.joinWith == null ? "\n\n" : piece.joinWith;
-      text += (context.length ? "\n\n" + context.join("\n\n") : "") + separator + piece.text;
+      const separator =
+        context.length || piece.joinWith == null ? "\n\n" : piece.joinWith;
+      text +=
+        (context.length ? "\n\n" + context.join("\n\n") : "") +
+        separator +
+        piece.text;
     }
     return text;
   };
@@ -564,20 +721,38 @@ export async function buildDocumentChunks(
         fragment: true,
         joinWith,
         context: "Row identity: " + passage.rowIdentity + "\n",
-        text: fields.map((field) => field.label + ": " + field.value).join("\n"),
+        text: fields
+          .map((field) => field.label + ": " + field.value)
+          .join("\n"),
       });
       const pieces = [];
       let fields = [];
       for (const field of passage.fields.slice(1)) {
         const candidate = group([...fields, field]);
-        if (fields.length && (await count(searchText([{ ...candidate, text: candidate.context + candidate.text }]))) > childLimit) {
-          pieces.push(...(await splitPassage(group(fields, pieces.length ? "\n" : undefined))));
+        if (
+          fields.length &&
+          (await count(
+            searchText([
+              { ...candidate, text: candidate.context + candidate.text },
+            ]),
+          )) > childLimit
+        ) {
+          pieces.push(
+            ...(await splitPassage(
+              group(fields, pieces.length ? "\n" : undefined),
+            )),
+          );
           fields = [field];
         } else {
           fields.push(field);
         }
       }
-      if (fields.length) pieces.push(...(await splitPassage(group(fields, pieces.length ? "\n" : undefined))));
+      if (fields.length)
+        pieces.push(
+          ...(await splitPassage(
+            group(fields, pieces.length ? "\n" : undefined),
+          )),
+        );
       return pieces;
     }
     // Keep an explicit repeated prefix separate from the value being split.
@@ -588,7 +763,11 @@ export async function buildDocumentChunks(
       );
     const { index, separator } = cutPoint(chars);
     return [
-      ...(await splitPassage({ ...passage, text: chars.slice(0, index).join(""), fragment: true })),
+      ...(await splitPassage({
+        ...passage,
+        text: chars.slice(0, index).join(""),
+        fragment: true,
+      })),
       ...(await splitPassage({
         ...passage,
         text: chars.slice(index + separator.length).join(""),
@@ -609,10 +788,18 @@ export async function buildDocumentChunks(
         JSON.stringify(block.headingPath) ===
         JSON.stringify(blocks[0].headingPath),
     );
-    const primaryPage = first.sourcePageNumber ?? (first.sequenceIndex != null ? first.sequenceIndex + 1 : 1);
+    const primaryPage =
+      first.sourcePageNumber ??
+      (first.sequenceIndex != null ? first.sequenceIndex + 1 : 1);
     const pages = unique(
       blocks
-        .map((block) => block.page.sourcePageNumber ?? (block.page.sequenceIndex != null ? block.page.sequenceIndex + 1 : 1))
+        .map(
+          (block) =>
+            block.page.sourcePageNumber ??
+            (block.page.sequenceIndex != null
+              ? block.page.sequenceIndex + 1
+              : 1),
+        )
         .filter((page) => page != null),
     );
 
@@ -628,8 +815,8 @@ export async function buildDocumentChunks(
     });
 
     const combinedRefs = unique([
-      ...extractedRefs,   // Regex detections (§4.3, Table 4.2, TN-6)
-      ...verifiedAiRefs,  // AI semantic citations verified inside this specific chunk
+      ...extractedRefs, // Regex detections (§4.3, Table 4.2, TN-6)
+      ...verifiedAiRefs, // AI semantic citations verified inside this specific chunk
     ]);
 
     return {
@@ -661,15 +848,15 @@ export async function buildDocumentChunks(
       // Avoid copying the full 600-page batch usage list into every saved chunk.
       correction: extraction.correction
         ? {
-          version: extraction.correction.version,
-          provider: extraction.correction.provider,
-          model: extraction.correction.model,
-          visualInput: extraction.correction.visualInput,
-          operation: extraction.correction.operation ?? "correction",
-          batches: unique(
-            blocks.map((block) => block.page.correctionBatch).filter(Boolean),
-          ),
-        }
+            version: extraction.correction.version,
+            provider: extraction.correction.provider,
+            model: extraction.correction.model,
+            visualInput: extraction.correction.visualInput,
+            operation: extraction.correction.operation ?? "correction",
+            batches: unique(
+              blocks.map((block) => block.page.correctionBatch).filter(Boolean),
+            ),
+          }
         : null,
       document_title: title,
       document_identity: identity,
@@ -692,9 +879,11 @@ export async function buildDocumentChunks(
       block_ids: blocks.map((block) => block.id),
       block_types: unique(blocks.map((block) => block.type)),
       table_ids: unique(blocks.map((block) => block.tableId).filter(Boolean)),
-      linked_table_ids: unique(blocks
-        .filter((block) => block.table?.continued)
-        .map((block) => block.tableId)),
+      linked_table_ids: unique(
+        blocks
+          .filter((block) => block.table?.continued)
+          .map((block) => block.tableId),
+      ),
       row_ids: unique(pieces.map((piece) => piece.rowId).filter(Boolean)),
       contains_unit_fragments: pieces.some((piece) => piece.fragment),
       structure_warnings: [],
@@ -743,22 +932,27 @@ export async function buildDocumentChunks(
       });
       childPieces = [];
     }
+
     async function finishParent() {
       if (!parentPieces.length) return;
       await finishChild();
       const id = randomUUID();
       const chunkIndex = parents.length;
+      const parentText = bodyText(parentPieces);
+      const parentSearchText = searchText(parentPieces);
       parents.push({
         id,
         documentId,
-        text: bodyText(parentPieces),
-        searchText: searchText(parentPieces),
+        text: parentText,
+        searchText: parentSearchText,
         prevParentId: null,
         nextParentId: null,
         metadata: {
           ...metadata(parentPieces, section, chunkIndex),
+          content_hash: chunkHash(parentText),
+          context_hash: chunkHash(parentSearchText),
           token_budget: {
-            tokenCount: await count(searchText(parentPieces)),
+            tokenCount: await count(parentSearchText),
             tokenLimit: parentTokenLimit,
           },
         },
@@ -771,6 +965,8 @@ export async function buildDocumentChunks(
           metadata: {
             ...metadata(child.pieces, section, chunkIndex),
             child_index: childIndex,
+            content_hash: chunkHash(child.text),
+            context_hash: chunkHash(child.searchText),
             token_budget: {
               ...child.tokens,
               tokenLimit: childLimit,
@@ -783,13 +979,11 @@ export async function buildDocumentChunks(
       children = [];
     }
     for (const piece of pieces) {
-      const parentPage = parentPieces[0]?.block.page.sourcePageNumber;
-      const piecePage = piece.block.page.sourcePageNumber;
-      const newPage = parentPage != null && piecePage != null && parentPage !== piecePage;
+      // v5: a parent closes only at the token limit or at the end of its section,
+      // never at a page break, so an insert cannot shift chunks in other sections.
       if (
         parentPieces.length &&
-        (newPage ||
-          (await count(searchText([...parentPieces, piece]))) > parentTokenLimit)
+        (await count(searchText([...parentPieces, piece]))) > parentTokenLimit
       ) {
         await finishParent();
       }
@@ -808,9 +1002,14 @@ export async function buildDocumentChunks(
   for (let index = 1; index < parents.length; index++) {
     const before = parents[index - 1];
     const current = parents[index];
-    const sameChapter = before.metadata?.heading_path?.[0] &&
-      before.metadata?.heading_path?.[0] === current.metadata?.heading_path?.[0];
-    if (before.metadata.section_id === current.metadata.section_id || sameChapter) {
+    const sameChapter =
+      before.metadata?.heading_path?.[0] &&
+      before.metadata?.heading_path?.[0] ===
+        current.metadata?.heading_path?.[0];
+    if (
+      before.metadata.section_id === current.metadata.section_id ||
+      sameChapter
+    ) {
       before.nextParentId = current.id;
       current.prevParentId = before.id;
     }

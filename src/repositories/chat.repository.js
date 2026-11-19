@@ -109,7 +109,7 @@ export const searchSingleDocument = async (
         ) AS rank
       FROM "ChildChunk"
       WHERE "documentId" = ${documentId}
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true' AND "removedInVersion" IS NULL
       ORDER BY "embedding" <=> ${vectorStr}::vector ASC
       LIMIT ${RAG_CONFIG.SEARCH_VECTOR_MATCH_LIMIT}
     ),
@@ -121,7 +121,7 @@ export const searchSingleDocument = async (
       FROM "ChildChunk"
       WHERE "documentId" = ${documentId}
         AND "searchText" ILIKE ANY(${idPatterns}::text[])
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true' AND "removedInVersion" IS NULL
       ORDER BY rank
       LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
     ),
@@ -140,7 +140,7 @@ export const searchSingleDocument = async (
         AND ${phraseQuery}::text <> ''
         AND to_tsvector('english', "searchText")
             @@ to_tsquery('english', ${phraseQuery})
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true' AND "removedInVersion" IS NULL
       ORDER BY rank
       LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
     ),
@@ -159,7 +159,7 @@ export const searchSingleDocument = async (
         AND ${wordQuery}::text <> ''
         AND to_tsvector('english', "searchText")
             @@ to_tsquery('english', ${wordQuery})
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true' AND "removedInVersion" IS NULL
       ORDER BY rank
       LIMIT ${RAG_CONFIG.SEARCH_KEYWORD_MATCH_LIMIT}
     ),
@@ -171,14 +171,14 @@ export const searchSingleDocument = async (
         AND ${wordQuery}::text <> ''
         AND to_tsvector('english', "searchText")
             @@ to_tsquery('english', ${wordQuery})
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true' AND "removedInVersion" IS NULL
     ),
 
     vector_debug AS (
       SELECT COUNT(*) AS vector_count
       FROM "ChildChunk"
       WHERE "documentId" = ${documentId}
-        AND (metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (metadata->>'is_toc') IS DISTINCT FROM 'true' AND "removedInVersion" IS NULL
     ),
 
     -- Weighted RRF: exact IDs count most, then phrases, then vector and keywords
@@ -275,7 +275,7 @@ export const searchAllUserDocuments = async (
         ) AS rank
       FROM "ChildChunk" c
       JOIN active_docs ad ON c."documentId" = ad.id
-      WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+      WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true' AND AND c."removedInVersion" IS NULL
       ORDER BY c."embedding" <=> ${vectorStr}::vector ASC
       LIMIT ${vectorLimit}
     ),
@@ -287,7 +287,7 @@ export const searchAllUserDocuments = async (
       FROM "ChildChunk" c
       JOIN active_docs ad ON c."documentId" = ad.id
       WHERE c."searchText" ILIKE ANY(${idPatterns}::text[])
-        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true' AND c."removedInVersion" IS NULL
       ORDER BY rank
       LIMIT ${keywordLimit}
     ),
@@ -306,7 +306,7 @@ export const searchAllUserDocuments = async (
       WHERE ${phraseQuery}::text <> ''
         AND to_tsvector('english', c."searchText")
             @@ to_tsquery('english', ${phraseQuery})
-        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true' AND c."removedInVersion" IS NULL
       ORDER BY rank
       LIMIT ${keywordLimit}
     ),
@@ -325,7 +325,7 @@ export const searchAllUserDocuments = async (
       WHERE ${wordQuery}::text <> ''
         AND to_tsvector('english', c."searchText")
             @@ to_tsquery('english', ${wordQuery})
-        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true' AND c."removedInVersion" IS NULL
       ORDER BY rank
       LIMIT ${keywordLimit}
     ),
@@ -337,14 +337,14 @@ export const searchAllUserDocuments = async (
       WHERE ${wordQuery}::text <> ''
         AND to_tsvector('english', c."searchText")
             @@ to_tsquery('english', ${wordQuery})
-        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (c.metadata->>'is_toc') IS DISTINCT FROM 'true' AND c."removedInVersion" IS NULL
     ),
 
     vector_debug AS (
       SELECT COUNT(*) AS vector_count
       FROM "ChildChunk" c
       JOIN active_docs ad ON c."documentId" = ad.id
-      WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true'
+      WHERE (c.metadata->>'is_toc') IS DISTINCT FROM 'true' AND c."removedInVersion" IS NULL
     ),
 
     -- Weighted RRF: exact IDs count most, then phrases, then vector and keywords
@@ -425,6 +425,8 @@ export const getChunksByPage = async (documentId, pageNumber) => {
     FROM "ParentChunk" p
     JOIN "Document" d ON p."documentId" = d.id
     WHERE p."documentId" = ${documentId}
+    AND p."removedInVersion" IS NULL
+
       AND (
         (p.metadata->>'page_number')::int = ${pageNumber}
         OR (p.metadata->'source_pages')::jsonb @> ${JSON.stringify([pageNumber])}::jsonb
@@ -472,7 +474,7 @@ export const getChatHistory = async (conversationId, limit = 6) => {
 export const getDocumentText = async (documentId) => {
   // Fetch up to 10 chunks to stay under token limits during summarization
   const chunks = await prisma.parentChunk.findMany({
-    where: { documentId },
+    where: { documentId, removedInVersion: null },
     take: 10,
   });
   return chunks.map((c) => c.text).join("\n\n");
@@ -549,6 +551,7 @@ export async function getParentNeighbors(
       const siblings = await prismaClient.parentChunk.findMany({
         where: {
           id: { in: siblingIds },
+          removedInVersion,
           document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         },
         include: {
@@ -581,6 +584,7 @@ export async function getParentNeighbors(
         where: {
           documentId: parent.documentId,
           metadata: { path: ["section_id"], equals: sectionId },
+          removedInVersion,
           document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         },
         orderBy: { createdAt: "asc" },
@@ -625,7 +629,7 @@ export async function getParentNeighbors(
         WHERE p."documentId" = ${parent.documentId}
         AND d.id = ANY(${allowedDocumentIds}::text[])          
         AND d."status" = 'COMPLETED'
-        AND (p.metadata->>'is_toc') IS DISTINCT FROM 'true'
+        AND (p.metadata->>'is_toc') IS DISTINCT FROM 'true'  AND p."removedInVersion" IS NULL
         AND p.metadata->'heading_path'->>0 = ${rootChapter}
         ORDER BY (p.metadata->>'chunk_index')::int ASC
         LIMIT ${RAG_CONFIG.MAX_CHAPTER_EXPANSION_CHUNKS};
@@ -673,6 +677,7 @@ export async function getParentNeighbors(
     const related = await prismaClient.parentChunk.findMany({
       where: {
         documentId,
+        removedInVersion,
         document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         OR: [
           { metadata: { path: ["table_ids"], array_contains: [tableId] } },
@@ -788,6 +793,7 @@ export async function getParentNeighbors(
     const matched = await prismaClient.parentChunk.findMany({
       where: {
         documentId,
+        removedInVersion,
         document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         searchText: { contains: searchPattern, mode: "insensitive" },
       },

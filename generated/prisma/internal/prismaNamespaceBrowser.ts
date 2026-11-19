@@ -59,7 +59,8 @@ export const ModelName = {
   ParentChunk: 'ParentChunk',
   ChildChunk: 'ChildChunk',
   Conversation: 'Conversation',
-  Message: 'Message'
+  Message: 'Message',
+  DocumentUnit: 'DocumentUnit'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -132,7 +133,10 @@ export const DocumentScalarFieldEnum = {
   status: 'status',
   summaryStatus: 'summaryStatus',
   summary: 'summary',
-  userId: 'userId'
+  userId: 'userId',
+  fileHash: 'fileHash',
+  version: 'version',
+  updatedAt: 'updatedAt'
 } as const
 
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
@@ -145,7 +149,9 @@ export const ParentChunkScalarFieldEnum = {
   prevParentId: 'prevParentId',
   nextParentId: 'nextParentId',
   documentId: 'documentId',
-  metadata: 'metadata'
+  metadata: 'metadata',
+  addedInVersion: 'addedInVersion',
+  removedInVersion: 'removedInVersion'
 } as const
 
 export type ParentChunkScalarFieldEnum = (typeof ParentChunkScalarFieldEnum)[keyof typeof ParentChunkScalarFieldEnum]
@@ -157,7 +163,9 @@ export const ChildChunkScalarFieldEnum = {
   searchText: 'searchText',
   parentId: 'parentId',
   documentId: 'documentId',
-  metadata: 'metadata'
+  metadata: 'metadata',
+  addedInVersion: 'addedInVersion',
+  removedInVersion: 'removedInVersion'
 } as const
 
 export type ChildChunkScalarFieldEnum = (typeof ChildChunkScalarFieldEnum)[keyof typeof ChildChunkScalarFieldEnum]
@@ -186,6 +194,20 @@ export const MessageScalarFieldEnum = {
 } as const
 
 export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
+
+
+export const DocumentUnitScalarFieldEnum = {
+  id: 'id',
+  documentId: 'documentId',
+  position: 'position',
+  kind: 'kind',
+  text: 'text',
+  hash: 'hash',
+  page: 'page',
+  parentChunkId: 'parentChunkId'
+} as const
+
+export type DocumentUnitScalarFieldEnum = (typeof DocumentUnitScalarFieldEnum)[keyof typeof DocumentUnitScalarFieldEnum]
 
 
 export const SortOrder = {

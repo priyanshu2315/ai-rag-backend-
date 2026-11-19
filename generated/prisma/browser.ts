@@ -62,3 +62,8 @@ export type Conversation = Prisma.ConversationModel
  * 
  */
 export type Message = Prisma.MessageModel
+/**
+ * Model DocumentUnit
+ * 
+ */
+export type DocumentUnit = Prisma.DocumentUnitModel

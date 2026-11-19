@@ -73,9 +73,10 @@ Every authenticated request now loads the account from the database.
 Admin-only endpoints so far:
 
 - `POST /api/documents/upload`
+- `PUT /api/documents/:docId` (replace with a new version, see "Replace a document with a new version")
 - `DELETE /api/documents/:docId`
 
-Hide the Upload module and the delete buttons when `type !== "ADMIN"`.
+Hide the Upload module and the replace and delete buttons when `type !== "ADMIN"`.
 
 ## Step 6: Passwords (Implemented)
 
@@ -429,6 +430,86 @@ Saved on the finished answer (`metadata.webFacts`, only after Allow), one result
 
 - Under the answer, show a small "Web sources" block: the `sources` links of all results (without duplicates) and "Searched on <date of searchedAt>". A result with `stopReason: "failed"` and an empty `answer` failed; show "Web search failed for: <task>".
 - Web facts are cited in the answer text as a URL with a date, not as `[Source ID: ...]`. Document citations work as before. Do not turn web URLs into document citation chips; render them as normal links.
+
+## Replace a document with a new version (Implemented 19 November, not yet tested)
+
+An admin uploads a new version of an existing document onto the **same** document: same ID, same roles, same chats. Unchanged parts keep their chunks (old chat answers keep working); only changed parts are processed again. PDF only.
+
+### `PUT /api/documents/:docId` (admin only, `multipart/form-data`)
+
+Body: the new file in the field `file` (the same field as upload).
+
+- `200` nothing to do, the document is not changed:
+  ```json
+  { "success": true, "message": "No changes found; the document was not updated",
+    "data": { "documentId": "uuid", "changed": false, "reason": "same_file" } }
+  ```
+  `reason` is `"same_file"` (identical file) or `"same_text"` (a different file with the same text, for example re-exported; `data.moved` may count lines that only moved to another page). Show "No changes found in this file".
+- `202` a new version is being processed in the background:
+  ```json
+  { "success": true, "message": "New version queued for processing",
+    "data": { "documentId": "uuid", "changed": true, "version": 2,
+              "diff": { "kept": 74, "added": 2, "removed": 1, "moved": 3 } } }
+  ```
+  `diff` counts sentences and table rows of the PDF text (not chunks). It is `null` when the old and new text could not be compared (scanned PDF, or the old file is missing); processing still runs. Show for example "Version 2: 2 lines added, 1 removed. Processing...".
+- Errors (`{ "success": false, "error": "..." }`): `400` `Invalid document ID`, `No file uploaded`, `Only a PDF can replace a document`; `404 Document not found`; `409` `Only a fully processed document can be replaced` (still processing or failed) or `A replacement for this document is already running`; `502 Could not store the new file. Please try again.`; `500 Failed to replace document. Please try again.`
+
+While the new version is processed, the document stays `status: "COMPLETED"` and chat keeps answering from the old version. The switch to the new version happens all at once at the end. If processing fails, the old version stays in use unchanged.
+
+### Progress
+
+Open `GET /api/documents/progress/:docId` (the same SSE stream as upload) right after the `202`. Events for a replace:
+
+- `replace_running` (sent when you connect while the replace is waiting or running)
+- `replace_start` `{ version }`
+- the usual extraction and chunking events (`extraction_start`, `page_transcribed`, `chunking_start`, `parent_created`, ...)
+- `replace_complete` `{ version, parents: { kept, added, removed }, children: { kept, added, removed }, embedded }`: the stream ends. Refresh the document and show for example "Version 2 is live: 4 parts kept, 1 updated".
+- `replace_failed` `{ version, message }`: the stream ends. Show "The new version could not be processed; the previous version is still in use".
+
+New uploads also send `units_linked` `{ totalUnits, linkedUnits }` (or `units_failed` `{ message }`) after chunking; this is internal bookkeeping, no UI needed.
+
+### Document list
+
+`GET /api/documents` and `GET /api/documents/my-documents` items now also have `version` (1 for a document never replaced) and `updatedAt`. Show `v{version}` next to the filename when `version > 1`. `filename` is the latest uploaded file's name.
+
+### What changed: `GET /api/documents/:docId/changes?version=N` (Implemented 19 November)
+
+Any user who can access the document (same rule as the chunk inspector). `version` is optional and defaults to the latest version; it must be between 2 and the document's current `version`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "documentId": "uuid",
+    "version": 2,
+    "currentVersion": 2,
+    "keptChunks": 6,
+    "changes": [
+      {
+        "section": "3. Approval limits",
+        "type": "changed",
+        "before": { "id": "uuid", "text": "## 3. Approval limits\n\n...\nOrder value (GBP): 5,001 to 50,000\n...", "pages": [1] },
+        "after":  { "id": "uuid", "text": "## 3. Approval limits\n\n...\nOrder value (GBP): 5,001 to 40,000\n...", "pages": [1] }
+      },
+      { "section": "9. Leasing", "type": "added", "after": { "id": "uuid", "text": "...", "pages": [2] } },
+      { "section": "6. New suppliers", "type": "removed", "before": { "id": "uuid", "text": "...", "pages": [2] } }
+    ]
+  }
+}
+```
+
+- `type`: `changed` (the section has an old and a new chunk; both `before` and `after`), `added` (only `after`), `removed` (only `before`).
+- `section` is the heading path joined with " > "; `"Title and cover"` when the chunk has no heading.
+- `keptChunks`: chunks that stayed unchanged through this version (same ID, not re-processed).
+- `text` is the stored chunk text (Markdown-like: `## heading`, `- label: value` lines, table rows as `Label: value` lines). Show it with line breaks kept.
+- Errors: `400` `Invalid document ID`, `This document has only one version`, `version must be between 2 and N`; `404 Document not found` (also without access).
+
+Line highlighting: for a `changed` card, split `before.text` and `after.text` on `\n`; a line in `before` that is not in `after` is removed (red), a line in `after` that is not in `before` is added (green); other lines are unchanged context (grey). Example from the test document: section 3 shows `5,001 to 50,000` -> `5,001 to 40,000` and `Above 50,000` -> `Above 40,000`; section 7 shows "six years" -> "eight years".
+
+### UI
+
+- A "Replace with new version" action on each document in the admin library (next to Delete): file picker (PDF only), then `PUT`, then handle `200` / `202` as above. Disable the action while a replace for that document is running.
+- A "What changed" tab on the document page, shown when `version > 1`: a version picker (v2 .. current, default the latest), a summary line ("6 parts unchanged, 3 changed, 0 added, 0 removed"), then one card per change: section name, page numbers, and for `changed` the before and after text side by side (stacked on narrow screens) with the line highlighting above; `added` cards show only the new text in green, `removed` cards only the old text in red. After a `replace_complete` event, open this tab for the new version.
 
 ## Architecture diagram (Implemented 14 November)
 

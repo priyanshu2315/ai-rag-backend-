@@ -9,6 +9,7 @@ Current order (updated 17 Nov): Step 5 (web agent and human in the loop) done 15
 ## Step 1: Search Optimization & structured-context-v4 Part 2 (16 hrs)
 
 ### Nov 4 (4 hrs)
+
 - [x] Replace `plainto_tsquery` (keyword search optimization)
   - Done with custom `buildSearchTiers()`: identifier (`ILIKE`), phrase, and keyword tiers plus weighted RRF. `websearch_to_tsquery` was not used because it ANDs words and splits IDs.
 - [x] Fix duplicate question injection in history
@@ -17,18 +18,21 @@ Current order (updated 17 Nov): Step 5 (web agent and human in the loop) done 15
   - History budget in `getChatHistory()`: last 4 messages up to 3,000 chars, older ones 200 chars. Retrieved context was already capped by `MAX_CONTEXT_CHARS`.
 
 ### Nov 5 (4 hrs)
+
 - [~] Multi-hop pointer expansion (K-hop backward/forward along `prevParentId`/`nextParentId`)
   - Exists today: only immediate prev/next (`section_sibling`) and `section_lead`.
 - [~] `section_id` window retrieval
   - Exists today: `chapter_expansion` only when the question mentions process/step/flow/etc.
 
 ### Nov 6 (4 hrs)
+
 - [~] Explicit `references` metadata traversal
   - Exists today: `reference_following`, only for override references, references cited in the question, or ToC/guide lines.
 - [~] Full `table_id` and `list_id` sibling chunk completion
   - Exists today: `table_continuation` via `table_ids`/`linked_table_ids`. No `list_id`.
 
 ### Nov 7 (4 hrs)
+
 - [x] Upgrade decompose for sequential two-stage dependent lookups
   - Planner rule 7 "one hop = one lookup" (generic example, not from a test document). Verified 7 Nov: "name of the person who owns the risk linked to the Hosur expansion project" planned as 3 hops (project -> risk ID -> owner role -> name), each resolved in its own round with `inputBindings` filled.
   - Grader `next_query` and the rewriter now return the same `{ text, keywords, identifiers, entities }` object as the planner (`toSearchQuery()`), so follow-up rounds run ID and Name search too.
@@ -49,6 +53,7 @@ Current order (updated 17 Nov): Step 5 (web agent and human in the loop) done 15
   - Not now: a graph database (Neo4j or similar). The AI would have to extract every relation correctly, many facts depend on dates and rules, it would need sync with re-uploads and roles, and 50 documents are too few to need it. Reconsider only if many questions ask for lists across documents or the links table is not enough.
 
 ### Extra work done in Step 1 (not in the original plan)
+
 - [x] Planner returns `{ text, keywords, identifiers, entities }` per query
 - [x] Per-tier `ORDER BY` before `LIMIT`, empty-tsquery crash fix, `searchAllUserDocuments` parity
 - [x] Live search tracking: `matchedBy`, per-tier ranks, `retrievalRank`/`rerankRank`/`rerankApplied`/`searchInputs`, final `ORDER BY total_score`
@@ -74,6 +79,7 @@ Current order (updated 17 Nov): Step 5 (web agent and human in the loop) done 15
 Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order after this step: frontend restructure (header, sidebar modules, multiple chats), then the large knowledge base, then measured search optimization.
 
 ### Agreed model
+
 - One library: every uploaded document is in one place. Only the admin uploads.
 - Role = a name + a list of documents picked from a dropdown of the library.
 - User = name, email, temporary password (set at creation), one or more roles.
@@ -84,12 +90,14 @@ Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order afte
 - Current account becomes admin through a one-time database update; old accounts are cleaned up later by hand.
 
 ### Phase A: Data
+
 - [x] 1. Plan the tables in words, review together: user name, admin flag, active flag, "must change password" flag; roles; role documents; user roles; conversation type (global or document)
 - [x] 2. Migration + Prisma Client generate (only after explicit approval)
 - [x] 3. Set the current account as admin in the database
   - Test: account shows admin; every old document still opens
 
 ### Phase B: Login and access
+
 - [x] 4. Login returns name, admin flag and "must change password"; public registration turned off; disabled users cannot log in
 - [x] 5. Admin guard: admin-only routes reject normal users
 - [x] 6. Change password: a user with a temporary password must set a new one first
@@ -98,22 +106,26 @@ Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order afte
   - Test: two roles sharing a document, user with both sees it once
 
 ### Phase C: Admin modules
+
 - [x] 8. Role module: create, list, rename, delete; add/remove documents (dropdown uses the library list)
 - [x] 9. User module: create (name, email, temporary password, roles), list, edit roles, disable
   - Test: role "Finance" with the KHI document, a user with that role sees only KHI
 
 ### Phase D: Apply access everywhere
+
 - [x] 10. Document list shows only the user's documents; upload and delete become admin-only
 - [x] 11. Document chat and chunk inspector use the access check ("not found" without access)
 - [x] 12. Global search filters to the user's documents; remove the "newest file per filename" rule in `searchAllUserDocuments`
   - Test: the Finance user asks a Vantara question; the answer must not use Vantara
 
 ### Phase E: Chats
+
 - [x] 13. Global chats: new, list, rename, delete, each with its own history
 - [x] 14. Document chat stays one per user per document, as now
   - Test: two global chats keep separate histories; document chat unchanged
 
 ### Phase F: Check and tidy
+
 - [x] 15. Full check with two test users, different roles, admin vs user vs disabled user
   - Tested by the user 9 Nov: roles and access, admin knowledge base (after the `req.user` fix), asking about a document outside the user's roles.
   - Forgot-password returned the reset code in its response until email existed (no attempt limit on the code).
@@ -122,6 +134,7 @@ Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order afte
 - [x] 16. Update `AGENTS.md`, `ROADMAP.md` and the frontend notes (9 Nov; frontend contract in `docs/frontend-rbac-prompt.md`)
 
 ### What happens on change
+
 - A document removed from a role: users lose it on their next question; old chat answers that cited it stay in history.
 - A document deleted: it disappears from every role.
 - A role deleted: users lose its documents; their chats stay.
@@ -129,9 +142,10 @@ Plan agreed 8 Nov (replaces the earlier ADMIN/MANAGER/EMPLOYEE plan). Order afte
 
 ## Step 3: Delta Versioning & Pointer Splicing (10 hrs)
 
-Postponed 13 Nov until after Step 5.
+Postponed 13 Nov until after Step 5. Started 18 Nov. Items 1-7 coded 18-19 Nov (replace works with full AI extraction); item 8 (send only changed sections to the AI) skipped for now; next: one end-to-end test (item 9), then AGENTS.md, diagram and pipeline entry.
 
-### Design agreed 13 Nov
+### Design agreed 13 Nov (partly superseded by "Approach agreed 18 Nov" below: change detection now runs before AI extraction)
+
 - Why: hashes are made after AI extraction, so this saves almost no cost or time (extraction is about 80% of the work; embedding is local). Built for learning and for two real gains: old chat traces keep valid chunk IDs, and the detail page can show what changed between versions.
 - Replace endpoint (e.g. `PUT /api/documents/:id`): a re-upload keeps the same document ID, roles and chats. Today a re-upload creates a new document.
 - Same hash = same chunk. Hash the normalized `text` plus its section heading path, not `searchText` (it starts with the filename, so a renamed file would change every hash).
@@ -142,6 +156,7 @@ Postponed 13 Nov until after Step 5.
 - Later, for a real saving: hash each PDF page before extraction and reuse the earlier extracted text of unchanged pages (skips the AI call for those pages).
 
 ### Reflow problem and paragraph hashes (discussed 17 Nov, to deep-dive again)
+
 - Problem: one paragraph inserted on page 1 pushes the last paragraph of every page onto the next page, so every page hash changes and the whole document looks new. Pages are fixed containers; the same cascade happens with fixed-size chunks.
 - The current chunker has the same cascade: it starts a new parent at every page change (`simple-chunking.service.js`, `newPage` check) and packs pieces by token budget, so a moved paragraph changes every later parent's hash.
 - Fix: hash content, not containers.
@@ -152,26 +167,69 @@ Postponed 13 Nov until after Step 5.
 - Extraction cost: page hashes cannot survive a reflow; they only save the AI call for edits that do not move text (a number, a typo). Simple option (preferred): re-extract everything and let the paragraph diff keep DB changes small. Advanced option: hash paragraphs from the free PDF text layer, send only pages with new paragraphs to the AI and rebuild the rest from old extracted paragraphs (hard part: matching text-layer paragraphs to the AI's Markdown).
 - Open questions for the deep-dive: does AI extraction give the same text on a re-run (normalization before hashing)? How to split a paragraph that the old version split across a page break? Does cutting at headings change search quality (bigger parents for long sections)?
 
-### Build order
-1. Migration plan in words (exact new columns), approved before writing
-2. Migration + Prisma Client generate (only after explicit approval)
-3. Replace endpoint
-4. Diff service: old vs new chunks by hash -> keep / add / remove
-5. Save only the changes in one transaction and re-stitch prev/next links
-6. Search and neighbor expansion skip removed chunks; detail page shows versions
-7. Test: re-upload the same file (expect 0 changes; AI extraction can vary, so check normalization), then a file with one edited page (only its chunks change)
+### Approach agreed 18 Nov (replaces "hash after extraction" from 13 Nov)
 
-### Nov 10 (5 hrs)
-- [ ] Add SHA-256 `contentHash` to `ParentChunk`
-- [ ] In-memory chunk diffing service for updated document uploads
+- Goal: find what changed BEFORE any AI call, so a re-upload of a frequently changing document (10k-document scale) costs AI only for the changed sections.
+- Gate 1, file hash: SHA-256 of the PDF bytes; same hash = same file, stop (0 AI calls).
+- Gate 2, text-layer diff (free): `pdf-parse` reads the PDF text layer (checked 18 Nov: PRC-02, 3 pages in 145 ms). The text layer has no paragraph marks (one line per printed line, wrapped by width), so join all pages into one stream (line wraps and page breaks removed), then split into units: sentences (end at `.`, `?`, `!`; a sentence is not a line), table rows (one line with tabs), and other short lines without a full stop (each its own unit). `pdf-parse` does not know headings; no heading guessing is needed (sections come from the old chunks, below). Normalize (spaces, case for matching) and drop running headers/footers and page numbers (a line that repeats on most pages), otherwise one added page shifts every page and looks like many changes. Hash each unit. Diff old vs new unit lists like `git diff` (`diff` npm package, longest common sequence) -> added/removed units with their new page. Unit hashes ignore line wrap and page breaks, so a reflow does not look like a change.
+- Unit storage (one table, current version only, overwritten on each replace): `documentId`, `position` (order; the diff needs it), `kind` (sentence/row/line), `text` (so the old PDF never has to be downloaded again; also for debugging), `hash`, `page`, `parentChunkId`. About 500 units per document, 5 million rows at 10k documents; index on `documentId`.
+- Unit -> chunk link, made once at upload (like a book index): right after chunking, find for each unit the parent chunk that holds it and save `parentChunkId`. Matching: normalize both (lowercase, letters and digits only), candidates = old chunks on the unit's page (2-4), pick the chunk containing at least about 90% of the unit's words in order (reuse `isQuoteInDocText()` from `hop-evidence.service.js`). The chunk text is the AI's Markdown (`- **Orders above 50,000** need...`), so an exact match would miss. No match (AI dropped a line): leave `parentChunkId` null; at replace time use the next unchanged unit before or after the change, else the whole page's sections.
+- Old unit list: saved at upload from now on. Documents uploaded before this: built lazily from the old PDF in Supabase Storage (`Document.fileUrl`) on their first replace, then linked to chunks by the same matching; no `fileUrl` -> full extraction once.
+- Find the section of a change (free, database read): take the unchanged unit just before the change -> its `parentChunkId` -> that chunk's `heading_path`; the last entry is the smallest section holding the change (a list is not a heading; list items belong to the heading above them). Example: Title > 4. Approvals > 4.2 Limits > list item changed -> replace section "4.2 Limits" with its whole list. Change at the edge of two sections -> replace both.
+- Gate 3, AI only for the changed section: send the new pages that hold the section's units (not a fixed +-1 page; a long section can span 5 pages), pass the section's known `heading_path` in the prompt. Parse the AI Markdown into headings (remark, as the chunker does), find the heading whose TEXT matches the section's last path entry (not its level; the AI may write `##` or `###` when it sees only a few pages), cut from it to the next heading of the same or higher level. Re-chunk that piece with the known parent path, so new chunks get the full `heading_path`. Heading renamed (no text match) -> widen to the parent section; never guess. A new section -> send the pages between the known neighbouring sections. Unchanged sections are not re-extracted and keep their chunks.
+- Chunk diff after re-chunking: two hashes per chunk. `contentHash` (chunk `text` only) decides keep/add/remove; `contextHash` (full `searchText`: title + section path + text) decides re-embed. Same content = same ID; new content = new row + embedding; old chunk without a match = `removedInVersion` (kept, not deleted, so old chat traces and a version view still work). Page moved only = update page metadata (`searchText` has no page number). Title or heading renamed = same IDs, re-embed locally (no AI).
+- Chunker prerequisite: today a parent closes at a section change, at a page change (`newPage`, `simple-chunking.service.js` about line 788) or at 1,024 tokens. Drop the page-change cut so an insert only changes its own section; page stays in metadata (a chunk may span pages). Old documents keep their v4 chunks and search keeps working; each moves to v5 on its first replace (that first replace changes every chunk once).
+- Fallbacks to full extraction: no text layer (scanned), more than about 40% of units changed, missing old PDF.
+- Images and scans (later): embedded images in a text PDF -> hash image bytes (usually identical when unchanged). Fully scanned PDFs: rescans give different bytes, so use a perceptual hash per page, local OCR (tesseract.js) plus fuzzy diff for unsure pages; start with full extraction for scans.
 
-### Nov 11 (5 hrs)
-- [ ] Surgical DB updates that replace modified chunks
-- [ ] Re-stitch `prevParentId` / `nextParentId` links
+### Worked example (v1 -> v2, one line changed)
+
+- v1 upload: 3 pages; pdf-parse units u1-u9; full AI extraction; chunks C1 (4.1 Requests, p1), C2 (4.2 Limits, p2), C3 (4.3 Emergencies, p3); links u1-u4 -> C1, u5-u7 -> C2, u8-u9 -> C3; embed; version 1.
+- v2 re-upload ("Orders above 100,000 need the CFO" -> "75,000"): Gate 1 hash differs -> Gate 2 diff: u7 removed, 1 new unit on page 2 -> unit before (u6) -> C2 -> section 4.2 Limits -> send page 2 only -> cut "### 4.2 Limits" to the next heading -> re-chunk -> C1 keep, C2 `removedInVersion = 2`, C2' insert + embed, C3 keep -> one transaction: overwrite units, links C1 -> C2' -> C3, `fileHash`, version 2. AI: 1 of 3 pages; old chats still valid.
+
+### Good to know before coding (agreed 18 Nov)
+
+- AI output is not exactly repeatable: when a section is re-extracted, its unchanged lines may come back slightly different (spacing, bold), so 2 chunks change instead of 1. Accepted: costs a little embedding, never a wrong answer.
+- Search during a replace: old chunks stay active until the final transaction commits; the switch is all at once.
+- Old documents keep v4 chunks and search keeps working; no mass re-upload needed. Each moves to v5 on its first replace (every chunk changes once). Optional later: re-chunk from stored `ParentChunk.text` without AI (verify the stored text can rebuild the Markdown first).
+- Cutting at headings makes some parents bigger (up to 1,024 tokens); the reranker scores whole parents (Vantara burying problem), so test search quality on a few documents before trusting v5.
+
+### Decisions for later steps
+
+- Summary after a replace: regenerate only when more than about 10% of units changed (proposed), else keep the old summary.
+- Two replaces of one document at once: answer 409 while its status is `PROCESSING`.
+- Removed chunks pile up per version: fine for now; later a cleanup (for example keep the last 3 versions).
+- PDF only; Word/Excel need their own text reader (out of scope).
+
+### Build plan (step by step; the user applies code from chat guidance)
+
+1. [x] Unit extraction + diff as a read-only script (no DB): `extractUnits(pdfBuffer)` (join lines, split sentences/rows, drop repeated headers/footers and page numbers, hash) and `diffUnits(old, new)`. Run it piped into `node --input-type=module` or from the scratchpad, not as a file in the project folder (nodemon restarts). Test: edit one sentence in a Calderwick source (`eval-docs/kb/build/`), regenerate the PDF, check the diff finds only that sentence; then insert a paragraph on page 1 and check later pages are not reported.
+   - Done 18 Nov: `src/services/document-units.service.js` (`diff@9.0.0` added). Units: tab line = `row`; a wide line without an end mark is wrapped (joined, also across pages); other lines end a block that is split into sentences; "1." merged with its heading; hyphen line ends joined without a space. Furniture: a line in the top or bottom 2 lines of at least half the pages (min 3), digits masked so "1/3" and "2/3" match. `diffUnits` returns `kept`, `added`, `removed` and `moved` (same hash removed and added: table rows that crossed a repeated table header). Tested on scratch copies of PRC-02 and HR-01 (corpus PDFs untouched): same file 0 changes; one sentence edited 1 removed + 1 added; paragraph inserted 2 added, 0 removed, 3 moved; with browser header/footer the same, no header/footer units.
+2. [~] Chunker v5: remove the page-change cut, add `contentHash` and `contextHash` to chunk metadata, bump `chunker_version`. Test: re-upload 3-5 documents, re-run guards Q1, Q3, Q11, Q13.
+   - Applied 18 Nov (`ai-corrected-markdown-v5`): no `newPage` cut; parent and child `metadata.content_hash` (`text`) and `context_hash` (`searchText`), SHA-256 of whitespace-collapsed text, 16 hex, case kept; a heading reprinted at the top of a page for the section already open is dropped (otherwise it appears twice in one parent and the hash depends on the page break). Two tests in `tests/ai-corrected-ingestion.test.js` updated to the v5 behaviour (one parent across the page break, `source_pages` [1, 2]). Chunker tests 42 pass; the 4 failures existed before (2 extraction-model tests; 2 in `table-continuation-retrieval.test.js` call `getParentNeighbors()` with the pre-RBAC arguments). Not yet checked on a real upload; guards wait until documents move to v5 through replace (items 5-6).
+3. [x] Migration plan in words, approved before writing, then migration + `prisma generate` (only after explicit approval). Draft: `Document.fileHash`, `version` (default 1), `updatedAt`; table `DocumentUnit` (`documentId`, `position`, `kind`, `text`, `hash`, `page`, `parentChunkId`, index on `documentId`); parent and child `contentHash`, `contextHash`, `addedInVersion` (default 1), `removedInVersion` (nullable); indexes on `(documentId, removedInVersion)`.
+   - Applied 18 Nov: `20261118103110_delta_versioning` (Document `fileHash`, `version`, `updatedAt`; parent and child `addedInVersion`, `removedInVersion`; `DocumentUnit` with unique `(documentId, position)`, cascade on document delete, `SetNull` on chunk) and `20261118103600_chunk_version_indexes` (`(documentId, removedInVersion)` on both chunk tables). Chunk hashes stay in `metadata` (no columns): the replace diff compares one document's chunks in memory. Existing data: 70 documents at version 1, every chunk active.
+4. [x] Upload saves the file hash, the unit list and each unit's `parentChunkId` link (worker, after chunking).
+   - Code done 18 Nov, not yet tested on an upload. The worker downloads once (`aiService.downloadDocument()`, `extractDocument({ buffer })`), saves `fileHash` with `status: COMPLETED`, and `buildUnitIndex()` runs `extractUnits` + `linkUnitsToChunks` for PDFs (a failure only logs `units_failed`); `saveDocumentChunks(documentId, parents, units)` saves units in the chunk transaction. Matching: letters and digits only (codes split at hyphens), candidates = chunks whose `source_pages` hold the unit's page, current chunk first; 3 words or fewer must all match, longer units 90% in order. Read-only check against the stored chunks of all 50 knowledge-base documents: 3,395 of 3,401 units linked (99.8%); the 6 misses are the AI misread "Ardmooor".
+5. [x] Replace endpoint (`PUT /api/documents/:id`, admin): same document ID, roles and chats, `version + 1`; Gate 1 and Gate 2 (no changes -> stop). Lazy old units from Storage.
+   - Code done 19 Nov, not yet tested. `replaceDocument()` in `document.service.js`: PDF only, `status` must be `COMPLETED`, one replace per document (BullMQ job ID `replace-<docId>`, freed on complete or fail); Gate 1 `fileHash`, Gate 2 `diffUnits` (only "moved" = no change; skipped for scanned PDFs or a missing old file); the new PDF goes to the uploader's folder (delete checks it); `Document` is not changed here. `storagePathOf()` is shared with delete. `Document.status` stays `COMPLETED` during a replace so search keeps the old chunks.
+6. [x] Chunk diff with full extraction first (correct end to end before saving cost): keep/add/remove, re-embed on `contextHash` change, page metadata updates, re-stitch `prevParentId`/`nextParentId`, all in one transaction.
+   - Code done 19 Nov, not yet tested on a real replace. `src/services/document-replace.service.js`: `planChunkChanges()` (match by content hash, one old chunk per new chunk; v4 chunks hashed from their text; children matched inside kept parents; links re-pointed to final IDs) and `runReplaceJob()` (full extraction, v5 chunks, embed only added children and kept children whose `searchText` changed, units, then `saveReplacedVersion()` in one transaction with a version check, then the old PDF is deleted; on failure the new PDF is deleted and nothing changes). The summary is kept as it was. Checked with the real chunker: same text 5/5 kept; one value changed 4 kept, 1 added, 1 removed, 0 re-embedded; title renamed 4 kept, 1 added, 1 removed, 6 children re-embedded.
+7. [x] Search, neighbor expansion, page fetch, MCP tools and chunk inspector skip chunks with `removedInVersion`.
+   - Code done 19 Nov: 19 filters in `chat.repository.js` (both search functions, every tier, chapter, sibling, section-lead, table and reference expansion, `getChunksByPage`, `getDocumentText`) and the inspector (`getAllParentChunks`, `getChildChunksByParentId`). `getParentChunkById` still opens a removed chunk on purpose (old chat answers link to it). Read-only check on KHI: search, page fetch and inspector return as before.
+8. [-] Gate 3: partial extraction of changed sections only, reuse stored Markdown for the rest.
+   - Skipped 19 Nov by the user's decision (the hardest part; replace already works with full extraction). Kept for later.
+9. [~] Tests: same file (0 AI calls), one sentence edited, paragraph inserted (reflow), title changed, scanned PDF (falls back), missing old PDF (falls back).
+   - Test documents 19 Nov: `delta-version-docs/` (one 2-page policy in 3 versions, expected diffs and chat questions in its README). v1 -> v2 run by the user 19 Nov (document `02feb006-e179-4f36-8db6-7bb7dcd8b9ce`): exactly the 3 changed sections replaced (cover, 3. Approval limits, 7. Records), the other 6 parents kept with their v1 IDs, 3 children embedded, 48 of 48 units linked. Not yet run: v2 -> v3 (reflow, renamed heading, removed sentence), the chat questions, scanned and missing-file fallbacks.
+   - Added 19 Nov: `GET /api/documents/:docId/changes?version=N` (chunks added and removed in a version, paired per section as changed/added/removed, plus `keptChunks`) for a "What changed" tab; checked on the test document (3 changed, 6 kept).
+10. [~] Update `docs/frontend-rbac-prompt.md` (replace endpoint, versions), `docs/architecture.html`, `docs/pipeline.js`, AGENTS.md.
+   - 19 Nov: `docs/frontend-rbac-prompt.md` has the replace endpoint, progress events and `version` in the document list. AGENTS.md, `docs/architecture.html` and `docs/pipeline.js` wait for the test results.
+11. [ ] Later: image byte hashes, perceptual hash/OCR for scans, optional re-chunk of old documents from stored text (verify the stored text can rebuild the Markdown first).
 
 ## Step 4: Enterprise Knowledge Base Corpus & Evals (6 hrs)
 
 ### Before the knowledge base (9 Nov)
+
 - [~] Ingestion fixes ported from the ISGEC project (unit-tested, not yet verified on a real upload)
   - 429 retry for every extraction call; table repair on every page; contents/appendix problems become warnings instead of failing the upload; second appendix on the same page gets its own section; "Row" label for a blank top-left cell; long text cut at a line or sentence end; long table rows split into groups of whole fields; whole codes (`INC-2025-014`, `PO-10234`) and plural references ("Appendices B to D") in `references`. Chunker version `ai-corrected-markdown-v4`.
   - Next: pilot upload of 5 knowledge-base documents, compare stored chunks with the source, then the rest.
@@ -183,9 +241,11 @@ Postponed 13 Nov until after Step 5.
 - [ ] Next search fixes, in order: identifier ranking (O-5), reranker (O-13), invented chunk-ID tails (O-19); then re-test Q9, Q14, Q16, Q22 with guards Q1, Q3, Q5, Q11, Q13. Details, the Q13 history and open issues O-1 to O-23 are in `eval-docs/kb/ISSUES.md`.
 
 ### Nov 12 (3 hrs)
+
 - [ ] Ingest the interconnected enterprise dataset (multi-quarter financial filings, v1/v2 policy amendments, SLA tables)
 
 ### Nov 13 (3 hrs)
+
 - [ ] Wire up the `goldenDataSet3.js` eval runner for multi-document and multi-hop CRAG accuracy
 
 ## Step 5: Web Research Agent & Human-in-the-Loop Interrupts (12 hrs)
@@ -193,6 +253,7 @@ Postponed 13 Nov until after Step 5.
 Built and verified 14 Nov (5 runs, all correct; see Phase 4). Open: Skip, restart-while-paused and guard re-tests (task 16).
 
 ### Design agreed 13 Nov
+
 - Goal: learn and build a real AI agent: a web research agent where the model chooses tools (`web_search`, `read_page`) in a loop until it says it is done or hits a step limit (4). CRAG stays a code-driven agentic workflow; the web agent is the AI agent.
 - Where it fits: inside CRAG, not in parallel. It runs after the document loop finishes, only for what the documents could not answer, and only after the user approves. It is its own small LangGraph graph (own files, testable alone), added to CRAG as one node.
 - When to ask for web search (at most one approval per question):
@@ -205,6 +266,7 @@ Built and verified 14 Nov (5 runs, all correct; see Phase 4). Open: Skip, restar
 - Not now: supervisor / multi-agent (possible later; Step 6 MCP client is the natural place for a general tool-choosing agent). What can be said after this step: "I built a tool-calling web research agent, gated by human approval, inside an agentic RAG workflow." Do not call it multi-agent.
 
 ### Phase 1: Web agent alone (Nov 14, about half a day)
+
 - [x] 1. Tavily account and `TAVILY_API_KEY` in `.env` (user)
 - [x] 2. Tools in `src/agents/web/web.tools.js`: `web_search(query)` (Tavily search, top 5: title, URL, text) and `read_page(url)` (Tavily extract), each with a JSON tool definition like `searchToolDefinition` in `ai.service.js`
 - [x] 3. Plain agent loop in `src/agents/web/web.agent.js` (no LangGraph): call the model with tools; run requested tools and add results; stop when the model answers or after 4 steps; return `{ answer, sources }`
@@ -214,6 +276,7 @@ Built and verified 14 Nov (5 runs, all correct; see Phase 4). Open: Skip, restar
   - `src/agents/web/web.graph.js` (`webAgentGraph`, `runWebAgentGraph`); reuses `MAX_STEPS`, `SYSTEM_PROMPT`, `runToolCall`, `collectSources` exported from `web.agent.js`. `onStep` is passed in `config.configurable`, not state, so state stays saveable for the checkpointer.
 
 ### Phase 2: Pause and resume, human in the loop (Nov 15, about a day)
+
 - [x] 6. Install `@langchain/langgraph-checkpoint-postgres`; `src/config/checkpointer.js`; tables in schema `langgraph` (approval before creating them)
   - 14 Nov: version 1.1.2 (1.1.3 was 2 days old). `setupCheckpointer()` created schema `langgraph` with `checkpoints`, `checkpoint_blobs`, `checkpoint_writes`, `checkpoint_migrations` (verified). A function in `config.configurable` (`onEvent`) works with it, and `deleteThread()` removes a run's rows.
 - [x] 7. Compile CRAG with the checkpointer; each question gets a new `threadId` passed as `{ configurable: { thread_id } }`
@@ -227,6 +290,7 @@ Built and verified 14 Nov (5 runs, all correct; see Phase 4). Open: Skip, restar
   - Pause -> Allow -> resume verified 14 Nov. Not yet run: Skip, and restarting the server while paused (proves the checkpointer).
 
 ### Phase 3: Connect to CRAG (Nov 16, about a day)
+
 - [x] 11. Planner: `source: "documents" | "web"` per hop, prompt rule with a generic example; the document loop skips `"web"` hops
   - 14 Nov: planner rule 13 (rules reordered; query-object rule is now 14). `validateHopPlan()` keeps `source` only for web hops. `decompose` splits the plan: `hopPlan` = document hops only (grader, `nextPendingHop`, `isPlanComplete` unchanged), `webHops` = web hops; no starting queries for web hops; a document hop may not depend on a web hop, and a web hop may not depend on another web hop (planning retries otherwise). A web-only plan skips document search.
   - 14 Nov fix: the planner wrote "find the new monthly fee in euros stated in the amendment" (a value the documents do not have; 3 rounds wasted, then the answer used the FY2026 budget rate). Rule 13 now says documents state amounts in their own currency: plan "find the value and its currency" plus a rate hop, which is "web" unless the question names a company rate (budget, contract, internal). Re-test planned the web hop.
@@ -238,6 +302,7 @@ Built and verified 14 Nov (5 runs, all correct; see Phase 4). Open: Skip, restar
   - Also: "not found on the web" tasks are named; after Skip the answer says which outside facts were not looked up. `webHops` is in ANSWER COVERAGE.
 
 ### Phase 4: UI, tests and docs (Nov 17, about half a day)
+
 - [x] 15. Events `agent_start`, `agent_step` (each tool call), `agent_finish`, `approval_required`; update `docs/frontend-rbac-prompt.md` for agent cards and Allow/Skip buttons
   - Every `agent_*` event carries `agentId` and `hopId`; the doc describes the "● N agents working" indicator, `webFacts`, and "Decide later" as UI-only (no backend action).
 - [x] 16. End-to-end tests (all run by the user, 15 Nov): P11-in-INR style question (one approval, Allow, correct converted answer with both sources); a question the documents cannot answer (asks); Skip (answers from documents and says what is missing); a private fact (never asks); guards Q1 and Q13 unchanged
@@ -251,6 +316,7 @@ Built and verified 14 Nov (5 runs, all correct; see Phase 4). Open: Skip, restar
 Added 14 Nov. Dropped 16 Nov by the user's decision: the project is about search, and tasks or a multi-agent layer would add cost and latency without better answers (the planner already runs independent hops in parallel in round 1). Kept below for reference only. Lets a user give a task (question plus action), not only a question. Separate APIs and frontend page; the RAG chat stays as it is.
 
 ### Design agreed 14 Nov
+
 - Supervisor agent (outer loop with a step limit) picks tools until the task is done. Sub-agents have their own inner loops ("agent as a tool"): the supervisor only sees their result.
 - CRAG stays a code-driven workflow and becomes the document tool `search_documents`; agents call it, they do not replace it.
 - Agents are roles (few: web researcher, writer). Tools are actions (many: `send_email`, `count_documents`). A new kind of task usually needs a new tool, not a new agent; Step 6 MCP adds tools without changing agent code. When no tool fits, the supervisor does what it can and says what it could not do.
@@ -259,6 +325,7 @@ Added 14 Nov. Dropped 16 Nov by the user's decision: the project is about search
 - Example task: "Check if PO-xxx followed the approval policy, find today's steel price, and email a short report to the finance lead."
 
 ### Tasks
+
 - [ ] 1. Tools: `search_documents` (wraps CRAG, keeps role access), `web_research` (Step 5 web agent), `count_documents`, `send_email` (`email.service.js`)
 - [ ] 2. Writer agent: turns facts into a report or email draft
 - [ ] 3. Supervisor agent: LangGraph loop with a step limit
@@ -277,6 +344,7 @@ Parked 14 Nov. Trigger + steps + action: when the document worker finishes an up
 Next after Step 5 (decided 16 Nov; Step 5B is dropped because chat is for search, not tasks). Goal: learn MCP beyond tool calling, on use cases about search where MCP is the right tool. MCP earns its place when an AI app picks tools it discovers at runtime; a fixed action (such as "import this Drive link") is plain API code and is not an MCP use case. Every MCP tool must take the full user object and respect roles, or counts and lists leak.
 
 ### What MCP offers (who decides)
+
 - Tools: the model picks them (actions).
 - Resources: the app or user attaches them (read-only data).
 - Prompts: the user picks them (saved templates, like slash commands).
@@ -284,7 +352,9 @@ Next after Step 5 (decided 16 Nov; Step 5B is dropped because chat is for search
 - Transport: Streamable HTTP mounted on Express (`/mcp`); stdio only for local testing.
 
 ### Part A: MCP server, your search inside other AI apps (learn the server side)
+
 A user in Claude Desktop, VS Code Copilot or Cursor asks about company documents; that app discovers this server, reads its tools and calls them. Same services as the REST API, a new door.
+
 - [x] A1. Tools: `search_documents` (runs CRAG without streaming, returns answer and sources), `list_my_documents`, `get_summary`, `get_page`
   - Done 16-17 Nov in `src/mcp/mcp.server.js` (`buildMcpServer(user)`, one server per user) and `src/routes/mcp.routes.js` (`/mcp`). `get_page` reuses `chatRepository.getChunksByPage`; missing and forbidden documents both answer "Document not found."
 - [-] A2. Auth: token -> user -> roles (a per-user token to start, OAuth 2.1 later), so RBAC holds; audit log of who called what and when
@@ -303,7 +373,9 @@ A user in Claude Desktop, VS Code Copilot or Cursor asks about company documents
   - Claude app verified 17 Nov (screenshot from the user): the server was added as "Ai Rag integration"; asked "from my documents What was the value of purchase order PO-10234", Claude found `search_documents` through its tool search on its own and answered USD 64,800 with the Purchase Order Log page 2 details and the incident report mention. This is the live (deployed) server.
 
 ### Part B: MCP client, planner sources from MCP servers (learn the client side)
+
 Today the planner knows two sources, `documents` and `web` (hand-written Tavily code). With MCP the sources become a list read at runtime: CRAG connects to the configured MCP servers, reads their tools and descriptions, and the planner picks a source per hop. A new source is one line of config, no new code.
+
 - [x] B1. MCP client in CRAG (`@modelcontextprotocol/sdk` or `@langchain/mcp-adapters`): connect to configured servers at start-up, list their tools
   - Done 17 Nov in `src/mcp/mcp.client.js` (SDK client): `MCP_SERVERS` config, one connection per server opened on first use, `getMcpTools(name)` returns the same `{ definition, run }` registry shape as `webTools`. Verified: Tavily MCP lists `tavily_search`, `tavily_extract`, `tavily_crawl`, `tavily_map`, `tavily_research`.
 - [x] B2. Replace the hand-written web tools with the Tavily MCP server; keep the web approval and the parallel web agents as they are
@@ -316,12 +388,14 @@ Today the planner knows two sources, `documents` and `web` (hand-written Tavily 
   - Inactive with B3/B4.
 
 ### Finish Step 6
+
 - [x] Update `AGENTS.md`, `ROADMAP.md`, `docs/architecture.html`, `docs/frontend-rbac-prompt.md` (if any API changes), and add a `docs/pipeline.js` entry
   - Done 17 Nov (pipeline entry 73, AGENTS.md "MCP server and client", `/mcp` and Tavily MCP in the diagram, frontend prompt section 5).
 - Optional later (not planned): OAuth 2.1 for `/mcp` (well-known metadata, `/register`, `/authorize`, `/token`) so ChatGPT and claude.ai custom connectors can connect; today only clients that send a Bearer header work (Claude Code, Claude Desktop through `mcp-remote`, Inspector).
 - Removed 16 Nov: Google Drive import (a fixed action, plain API code, not an MCP use case) and the 5B supervisor as the MCP client.
 
 ### Finish (after Step 6)
+
 - [ ] README with the architecture pictures and eval numbers
 - [ ] Short demo video: a question, a task with approval
 - [ ] Stop adding features; fix what the demo shows

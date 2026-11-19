@@ -8,6 +8,7 @@ import {
 import { randomUUID } from "node:crypto";
 import prisma from "../config/db.js";
 import { canAccessDocument } from "../services/access.service.js";
+import { documentQueue } from "../config/queue.js";
 
 export const streamProgress = async (req, res) => {
   const documentId = req.params.docId;
@@ -62,7 +63,9 @@ export const streamProgress = async (req, res) => {
     if (
       event.type === "completed" ||
       event.type === "failed" ||
-      event.type === "summary_failed"
+      event.type === "summary_failed" ||
+      event.type === "replace_complete" ||
+      event.type === "replace_failed"
     ) {
       finish(event);
     } else {
@@ -98,6 +101,18 @@ export const streamProgress = async (req, res) => {
   if (fresh.status === "FAILED") {
     return finish({ type: "failed" });
   }
+  // A replace keeps status COMPLETED (chat keeps using the old chunks), so while a replace
+  // job is waiting or running, stay open; the stream ends on replace_complete/replace_failed.
+  const replaceJob = await documentQueue.getJob(`replace-${documentId}`);
+  if (
+    replaceJob &&
+    ["waiting", "active", "delayed", "prioritized"].includes(
+      await replaceJob.getState(),
+    )
+  ) {
+    return send({ type: "replace_running" });
+  }
+
   if (fresh.status === "COMPLETED") {
     send({ type: "chunks_ready" });
     if (
@@ -215,6 +230,31 @@ export const deleteDocument = async (req, res) => {
   }
 };
 
+export const replaceDocument = async (req, res) => {
+  try {
+    const result = await documentService.replaceDocument(
+      req.params.docId,
+      req.file,
+    );
+    return res.status(result.changed ? 202 : 200).json({
+      success: true,
+      message: result.changed
+        ? "New version queued for processing"
+        : "No changes found; the document was not updated",
+      data: result,
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    if (status >= 500) console.error("Document replace failed:", error.message);
+    return res.status(status).json({
+      success: false,
+      error: error.statusCode
+        ? error.message
+        : "Failed to replace document. Please try again.",
+    });
+  }
+};
+
 export const getAllParentChunks = async (req, res) => {
   try {
     const docId = req.params.docId;
@@ -250,6 +290,26 @@ export const getChildChunksOfParent = async (req, res) => {
     return res.status(status).json({
       success: false,
       error: error.message,
+    });
+  }
+};
+
+export const getVersionChanges = async (req, res) => {
+  try {
+    const result = await documentService.getVersionChanges(
+      req.params.docId,
+      req.user,
+      req.query.version,
+    );
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    if (status >= 500) console.error("Version changes failed:", error.message);
+    return res.status(status).json({
+      success: false,
+      error: error.statusCode
+        ? error.message
+        : "Could not load the changes. Please try again.",
     });
   }
 };

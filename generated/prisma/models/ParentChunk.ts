@@ -20,8 +20,20 @@ export type ParentChunkModel = runtime.Types.Result.DefaultSelection<Prisma.$Par
 
 export type AggregateParentChunk = {
   _count: ParentChunkCountAggregateOutputType | null
+  _avg: ParentChunkAvgAggregateOutputType | null
+  _sum: ParentChunkSumAggregateOutputType | null
   _min: ParentChunkMinAggregateOutputType | null
   _max: ParentChunkMaxAggregateOutputType | null
+}
+
+export type ParentChunkAvgAggregateOutputType = {
+  addedInVersion: number | null
+  removedInVersion: number | null
+}
+
+export type ParentChunkSumAggregateOutputType = {
+  addedInVersion: number | null
+  removedInVersion: number | null
 }
 
 export type ParentChunkMinAggregateOutputType = {
@@ -31,6 +43,8 @@ export type ParentChunkMinAggregateOutputType = {
   prevParentId: string | null
   nextParentId: string | null
   documentId: string | null
+  addedInVersion: number | null
+  removedInVersion: number | null
 }
 
 export type ParentChunkMaxAggregateOutputType = {
@@ -40,6 +54,8 @@ export type ParentChunkMaxAggregateOutputType = {
   prevParentId: string | null
   nextParentId: string | null
   documentId: string | null
+  addedInVersion: number | null
+  removedInVersion: number | null
 }
 
 export type ParentChunkCountAggregateOutputType = {
@@ -50,9 +66,21 @@ export type ParentChunkCountAggregateOutputType = {
   nextParentId: number
   documentId: number
   metadata: number
+  addedInVersion: number
+  removedInVersion: number
   _all: number
 }
 
+
+export type ParentChunkAvgAggregateInputType = {
+  addedInVersion?: true
+  removedInVersion?: true
+}
+
+export type ParentChunkSumAggregateInputType = {
+  addedInVersion?: true
+  removedInVersion?: true
+}
 
 export type ParentChunkMinAggregateInputType = {
   id?: true
@@ -61,6 +89,8 @@ export type ParentChunkMinAggregateInputType = {
   prevParentId?: true
   nextParentId?: true
   documentId?: true
+  addedInVersion?: true
+  removedInVersion?: true
 }
 
 export type ParentChunkMaxAggregateInputType = {
@@ -70,6 +100,8 @@ export type ParentChunkMaxAggregateInputType = {
   prevParentId?: true
   nextParentId?: true
   documentId?: true
+  addedInVersion?: true
+  removedInVersion?: true
 }
 
 export type ParentChunkCountAggregateInputType = {
@@ -80,6 +112,8 @@ export type ParentChunkCountAggregateInputType = {
   nextParentId?: true
   documentId?: true
   metadata?: true
+  addedInVersion?: true
+  removedInVersion?: true
   _all?: true
 }
 
@@ -121,6 +155,18 @@ export type ParentChunkAggregateArgs<ExtArgs extends runtime.Types.Extensions.In
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: ParentChunkAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: ParentChunkSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: ParentChunkMinAggregateInputType
@@ -151,6 +197,8 @@ export type ParentChunkGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   _count?: ParentChunkCountAggregateInputType | true
+  _avg?: ParentChunkAvgAggregateInputType
+  _sum?: ParentChunkSumAggregateInputType
   _min?: ParentChunkMinAggregateInputType
   _max?: ParentChunkMaxAggregateInputType
 }
@@ -163,7 +211,11 @@ export type ParentChunkGroupByOutputType = {
   nextParentId: string | null
   documentId: string
   metadata: runtime.JsonValue | null
+  addedInVersion: number
+  removedInVersion: number | null
   _count: ParentChunkCountAggregateOutputType | null
+  _avg: ParentChunkAvgAggregateOutputType | null
+  _sum: ParentChunkSumAggregateOutputType | null
   _min: ParentChunkMinAggregateOutputType | null
   _max: ParentChunkMaxAggregateOutputType | null
 }
@@ -194,7 +246,10 @@ export type ParentChunkWhereInput = {
   nextParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
   documentId?: Prisma.StringFilter<"ParentChunk"> | string
   metadata?: Prisma.JsonNullableFilter<"ParentChunk">
+  addedInVersion?: Prisma.IntFilter<"ParentChunk"> | number
+  removedInVersion?: Prisma.IntNullableFilter<"ParentChunk"> | number | null
   children?: Prisma.ChildChunkListRelationFilter
+  units?: Prisma.DocumentUnitListRelationFilter
   document?: Prisma.XOR<Prisma.DocumentScalarRelationFilter, Prisma.DocumentWhereInput>
 }
 
@@ -206,7 +261,10 @@ export type ParentChunkOrderByWithRelationInput = {
   nextParentId?: Prisma.SortOrderInput | Prisma.SortOrder
   documentId?: Prisma.SortOrder
   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
+  addedInVersion?: Prisma.SortOrder
+  removedInVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   children?: Prisma.ChildChunkOrderByRelationAggregateInput
+  units?: Prisma.DocumentUnitOrderByRelationAggregateInput
   document?: Prisma.DocumentOrderByWithRelationInput
 }
 
@@ -221,7 +279,10 @@ export type ParentChunkWhereUniqueInput = Prisma.AtLeast<{
   nextParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
   documentId?: Prisma.StringFilter<"ParentChunk"> | string
   metadata?: Prisma.JsonNullableFilter<"ParentChunk">
+  addedInVersion?: Prisma.IntFilter<"ParentChunk"> | number
+  removedInVersion?: Prisma.IntNullableFilter<"ParentChunk"> | number | null
   children?: Prisma.ChildChunkListRelationFilter
+  units?: Prisma.DocumentUnitListRelationFilter
   document?: Prisma.XOR<Prisma.DocumentScalarRelationFilter, Prisma.DocumentWhereInput>
 }, "id">
 
@@ -233,9 +294,13 @@ export type ParentChunkOrderByWithAggregationInput = {
   nextParentId?: Prisma.SortOrderInput | Prisma.SortOrder
   documentId?: Prisma.SortOrder
   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
+  addedInVersion?: Prisma.SortOrder
+  removedInVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ParentChunkCountOrderByAggregateInput
+  _avg?: Prisma.ParentChunkAvgOrderByAggregateInput
   _max?: Prisma.ParentChunkMaxOrderByAggregateInput
   _min?: Prisma.ParentChunkMinOrderByAggregateInput
+  _sum?: Prisma.ParentChunkSumOrderByAggregateInput
 }
 
 export type ParentChunkScalarWhereWithAggregatesInput = {
@@ -249,6 +314,8 @@ export type ParentChunkScalarWhereWithAggregatesInput = {
   nextParentId?: Prisma.StringNullableWithAggregatesFilter<"ParentChunk"> | string | null
   documentId?: Prisma.StringWithAggregatesFilter<"ParentChunk"> | string
   metadata?: Prisma.JsonNullableWithAggregatesFilter<"ParentChunk">
+  addedInVersion?: Prisma.IntWithAggregatesFilter<"ParentChunk"> | number
+  removedInVersion?: Prisma.IntNullableWithAggregatesFilter<"ParentChunk"> | number | null
 }
 
 export type ParentChunkCreateInput = {
@@ -258,7 +325,10 @@ export type ParentChunkCreateInput = {
   prevParentId?: string | null
   nextParentId?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
   children?: Prisma.ChildChunkCreateNestedManyWithoutParentInput
+  units?: Prisma.DocumentUnitCreateNestedManyWithoutParentChunkInput
   document: Prisma.DocumentCreateNestedOneWithoutParentsInput
 }
 
@@ -270,7 +340,10 @@ export type ParentChunkUncheckedCreateInput = {
   nextParentId?: string | null
   documentId: string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
   children?: Prisma.ChildChunkUncheckedCreateNestedManyWithoutParentInput
+  units?: Prisma.DocumentUnitUncheckedCreateNestedManyWithoutParentChunkInput
 }
 
 export type ParentChunkUpdateInput = {
@@ -280,7 +353,10 @@ export type ParentChunkUpdateInput = {
   prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   children?: Prisma.ChildChunkUpdateManyWithoutParentNestedInput
+  units?: Prisma.DocumentUnitUpdateManyWithoutParentChunkNestedInput
   document?: Prisma.DocumentUpdateOneRequiredWithoutParentsNestedInput
 }
 
@@ -292,7 +368,10 @@ export type ParentChunkUncheckedUpdateInput = {
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   children?: Prisma.ChildChunkUncheckedUpdateManyWithoutParentNestedInput
+  units?: Prisma.DocumentUnitUncheckedUpdateManyWithoutParentChunkNestedInput
 }
 
 export type ParentChunkCreateManyInput = {
@@ -303,6 +382,8 @@ export type ParentChunkCreateManyInput = {
   nextParentId?: string | null
   documentId: string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
 }
 
 export type ParentChunkUpdateManyMutationInput = {
@@ -312,6 +393,8 @@ export type ParentChunkUpdateManyMutationInput = {
   prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type ParentChunkUncheckedUpdateManyInput = {
@@ -322,6 +405,8 @@ export type ParentChunkUncheckedUpdateManyInput = {
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type ParentChunkListRelationFilter = {
@@ -342,6 +427,13 @@ export type ParentChunkCountOrderByAggregateInput = {
   nextParentId?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
+  addedInVersion?: Prisma.SortOrder
+  removedInVersion?: Prisma.SortOrder
+}
+
+export type ParentChunkAvgOrderByAggregateInput = {
+  addedInVersion?: Prisma.SortOrder
+  removedInVersion?: Prisma.SortOrder
 }
 
 export type ParentChunkMaxOrderByAggregateInput = {
@@ -351,6 +443,8 @@ export type ParentChunkMaxOrderByAggregateInput = {
   prevParentId?: Prisma.SortOrder
   nextParentId?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
+  addedInVersion?: Prisma.SortOrder
+  removedInVersion?: Prisma.SortOrder
 }
 
 export type ParentChunkMinOrderByAggregateInput = {
@@ -360,11 +454,23 @@ export type ParentChunkMinOrderByAggregateInput = {
   prevParentId?: Prisma.SortOrder
   nextParentId?: Prisma.SortOrder
   documentId?: Prisma.SortOrder
+  addedInVersion?: Prisma.SortOrder
+  removedInVersion?: Prisma.SortOrder
+}
+
+export type ParentChunkSumOrderByAggregateInput = {
+  addedInVersion?: Prisma.SortOrder
+  removedInVersion?: Prisma.SortOrder
 }
 
 export type ParentChunkScalarRelationFilter = {
   is?: Prisma.ParentChunkWhereInput
   isNot?: Prisma.ParentChunkWhereInput
+}
+
+export type ParentChunkNullableScalarRelationFilter = {
+  is?: Prisma.ParentChunkWhereInput | null
+  isNot?: Prisma.ParentChunkWhereInput | null
 }
 
 export type ParentChunkCreateNestedManyWithoutDocumentInput = {
@@ -409,12 +515,36 @@ export type ParentChunkUncheckedUpdateManyWithoutDocumentNestedInput = {
   deleteMany?: Prisma.ParentChunkScalarWhereInput | Prisma.ParentChunkScalarWhereInput[]
 }
 
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type ParentChunkUpdateOneRequiredWithoutChildrenNestedInput = {
   create?: Prisma.XOR<Prisma.ParentChunkCreateWithoutChildrenInput, Prisma.ParentChunkUncheckedCreateWithoutChildrenInput>
   connectOrCreate?: Prisma.ParentChunkCreateOrConnectWithoutChildrenInput
   upsert?: Prisma.ParentChunkUpsertWithoutChildrenInput
   connect?: Prisma.ParentChunkWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.ParentChunkUpdateToOneWithWhereWithoutChildrenInput, Prisma.ParentChunkUpdateWithoutChildrenInput>, Prisma.ParentChunkUncheckedUpdateWithoutChildrenInput>
+}
+
+export type ParentChunkCreateNestedOneWithoutUnitsInput = {
+  create?: Prisma.XOR<Prisma.ParentChunkCreateWithoutUnitsInput, Prisma.ParentChunkUncheckedCreateWithoutUnitsInput>
+  connectOrCreate?: Prisma.ParentChunkCreateOrConnectWithoutUnitsInput
+  connect?: Prisma.ParentChunkWhereUniqueInput
+}
+
+export type ParentChunkUpdateOneWithoutUnitsNestedInput = {
+  create?: Prisma.XOR<Prisma.ParentChunkCreateWithoutUnitsInput, Prisma.ParentChunkUncheckedCreateWithoutUnitsInput>
+  connectOrCreate?: Prisma.ParentChunkCreateOrConnectWithoutUnitsInput
+  upsert?: Prisma.ParentChunkUpsertWithoutUnitsInput
+  disconnect?: Prisma.ParentChunkWhereInput | boolean
+  delete?: Prisma.ParentChunkWhereInput | boolean
+  connect?: Prisma.ParentChunkWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ParentChunkUpdateToOneWithWhereWithoutUnitsInput, Prisma.ParentChunkUpdateWithoutUnitsInput>, Prisma.ParentChunkUncheckedUpdateWithoutUnitsInput>
 }
 
 export type ParentChunkCreateWithoutDocumentInput = {
@@ -424,7 +554,10 @@ export type ParentChunkCreateWithoutDocumentInput = {
   prevParentId?: string | null
   nextParentId?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
   children?: Prisma.ChildChunkCreateNestedManyWithoutParentInput
+  units?: Prisma.DocumentUnitCreateNestedManyWithoutParentChunkInput
 }
 
 export type ParentChunkUncheckedCreateWithoutDocumentInput = {
@@ -434,7 +567,10 @@ export type ParentChunkUncheckedCreateWithoutDocumentInput = {
   prevParentId?: string | null
   nextParentId?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
   children?: Prisma.ChildChunkUncheckedCreateNestedManyWithoutParentInput
+  units?: Prisma.DocumentUnitUncheckedCreateNestedManyWithoutParentChunkInput
 }
 
 export type ParentChunkCreateOrConnectWithoutDocumentInput = {
@@ -474,6 +610,8 @@ export type ParentChunkScalarWhereInput = {
   nextParentId?: Prisma.StringNullableFilter<"ParentChunk"> | string | null
   documentId?: Prisma.StringFilter<"ParentChunk"> | string
   metadata?: Prisma.JsonNullableFilter<"ParentChunk">
+  addedInVersion?: Prisma.IntFilter<"ParentChunk"> | number
+  removedInVersion?: Prisma.IntNullableFilter<"ParentChunk"> | number | null
 }
 
 export type ParentChunkCreateWithoutChildrenInput = {
@@ -483,6 +621,9 @@ export type ParentChunkCreateWithoutChildrenInput = {
   prevParentId?: string | null
   nextParentId?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
+  units?: Prisma.DocumentUnitCreateNestedManyWithoutParentChunkInput
   document: Prisma.DocumentCreateNestedOneWithoutParentsInput
 }
 
@@ -494,6 +635,9 @@ export type ParentChunkUncheckedCreateWithoutChildrenInput = {
   nextParentId?: string | null
   documentId: string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
+  units?: Prisma.DocumentUnitUncheckedCreateNestedManyWithoutParentChunkInput
 }
 
 export type ParentChunkCreateOrConnectWithoutChildrenInput = {
@@ -519,6 +663,9 @@ export type ParentChunkUpdateWithoutChildrenInput = {
   prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  units?: Prisma.DocumentUnitUpdateManyWithoutParentChunkNestedInput
   document?: Prisma.DocumentUpdateOneRequiredWithoutParentsNestedInput
 }
 
@@ -530,6 +677,77 @@ export type ParentChunkUncheckedUpdateWithoutChildrenInput = {
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   documentId?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  units?: Prisma.DocumentUnitUncheckedUpdateManyWithoutParentChunkNestedInput
+}
+
+export type ParentChunkCreateWithoutUnitsInput = {
+  id?: string
+  text: string
+  searchText: string
+  prevParentId?: string | null
+  nextParentId?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
+  children?: Prisma.ChildChunkCreateNestedManyWithoutParentInput
+  document: Prisma.DocumentCreateNestedOneWithoutParentsInput
+}
+
+export type ParentChunkUncheckedCreateWithoutUnitsInput = {
+  id?: string
+  text: string
+  searchText: string
+  prevParentId?: string | null
+  nextParentId?: string | null
+  documentId: string
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
+  children?: Prisma.ChildChunkUncheckedCreateNestedManyWithoutParentInput
+}
+
+export type ParentChunkCreateOrConnectWithoutUnitsInput = {
+  where: Prisma.ParentChunkWhereUniqueInput
+  create: Prisma.XOR<Prisma.ParentChunkCreateWithoutUnitsInput, Prisma.ParentChunkUncheckedCreateWithoutUnitsInput>
+}
+
+export type ParentChunkUpsertWithoutUnitsInput = {
+  update: Prisma.XOR<Prisma.ParentChunkUpdateWithoutUnitsInput, Prisma.ParentChunkUncheckedUpdateWithoutUnitsInput>
+  create: Prisma.XOR<Prisma.ParentChunkCreateWithoutUnitsInput, Prisma.ParentChunkUncheckedCreateWithoutUnitsInput>
+  where?: Prisma.ParentChunkWhereInput
+}
+
+export type ParentChunkUpdateToOneWithWhereWithoutUnitsInput = {
+  where?: Prisma.ParentChunkWhereInput
+  data: Prisma.XOR<Prisma.ParentChunkUpdateWithoutUnitsInput, Prisma.ParentChunkUncheckedUpdateWithoutUnitsInput>
+}
+
+export type ParentChunkUpdateWithoutUnitsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  text?: Prisma.StringFieldUpdateOperationsInput | string
+  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  children?: Prisma.ChildChunkUpdateManyWithoutParentNestedInput
+  document?: Prisma.DocumentUpdateOneRequiredWithoutParentsNestedInput
+}
+
+export type ParentChunkUncheckedUpdateWithoutUnitsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  text?: Prisma.StringFieldUpdateOperationsInput | string
+  searchText?: Prisma.StringFieldUpdateOperationsInput | string
+  prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  documentId?: Prisma.StringFieldUpdateOperationsInput | string
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  children?: Prisma.ChildChunkUncheckedUpdateManyWithoutParentNestedInput
 }
 
 export type ParentChunkCreateManyDocumentInput = {
@@ -539,6 +757,8 @@ export type ParentChunkCreateManyDocumentInput = {
   prevParentId?: string | null
   nextParentId?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: number
+  removedInVersion?: number | null
 }
 
 export type ParentChunkUpdateWithoutDocumentInput = {
@@ -548,7 +768,10 @@ export type ParentChunkUpdateWithoutDocumentInput = {
   prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   children?: Prisma.ChildChunkUpdateManyWithoutParentNestedInput
+  units?: Prisma.DocumentUnitUpdateManyWithoutParentChunkNestedInput
 }
 
 export type ParentChunkUncheckedUpdateWithoutDocumentInput = {
@@ -558,7 +781,10 @@ export type ParentChunkUncheckedUpdateWithoutDocumentInput = {
   prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   children?: Prisma.ChildChunkUncheckedUpdateManyWithoutParentNestedInput
+  units?: Prisma.DocumentUnitUncheckedUpdateManyWithoutParentChunkNestedInput
 }
 
 export type ParentChunkUncheckedUpdateManyWithoutDocumentInput = {
@@ -568,6 +794,8 @@ export type ParentChunkUncheckedUpdateManyWithoutDocumentInput = {
   prevParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   nextParentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  addedInVersion?: Prisma.IntFieldUpdateOperationsInput | number
+  removedInVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 
@@ -577,10 +805,12 @@ export type ParentChunkUncheckedUpdateManyWithoutDocumentInput = {
 
 export type ParentChunkCountOutputType = {
   children: number
+  units: number
 }
 
 export type ParentChunkCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   children?: boolean | ParentChunkCountOutputTypeCountChildrenArgs
+  units?: boolean | ParentChunkCountOutputTypeCountUnitsArgs
 }
 
 /**
@@ -600,6 +830,13 @@ export type ParentChunkCountOutputTypeCountChildrenArgs<ExtArgs extends runtime.
   where?: Prisma.ChildChunkWhereInput
 }
 
+/**
+ * ParentChunkCountOutputType without action
+ */
+export type ParentChunkCountOutputTypeCountUnitsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DocumentUnitWhereInput
+}
+
 
 export type ParentChunkSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -609,7 +846,10 @@ export type ParentChunkSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   nextParentId?: boolean
   documentId?: boolean
   metadata?: boolean
+  addedInVersion?: boolean
+  removedInVersion?: boolean
   children?: boolean | Prisma.ParentChunk$childrenArgs<ExtArgs>
+  units?: boolean | Prisma.ParentChunk$unitsArgs<ExtArgs>
   document?: boolean | Prisma.DocumentDefaultArgs<ExtArgs>
   _count?: boolean | Prisma.ParentChunkCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["parentChunk"]>
@@ -622,6 +862,8 @@ export type ParentChunkSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   nextParentId?: boolean
   documentId?: boolean
   metadata?: boolean
+  addedInVersion?: boolean
+  removedInVersion?: boolean
   document?: boolean | Prisma.DocumentDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["parentChunk"]>
 
@@ -633,6 +875,8 @@ export type ParentChunkSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   nextParentId?: boolean
   documentId?: boolean
   metadata?: boolean
+  addedInVersion?: boolean
+  removedInVersion?: boolean
   document?: boolean | Prisma.DocumentDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["parentChunk"]>
 
@@ -644,11 +888,14 @@ export type ParentChunkSelectScalar = {
   nextParentId?: boolean
   documentId?: boolean
   metadata?: boolean
+  addedInVersion?: boolean
+  removedInVersion?: boolean
 }
 
-export type ParentChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "text" | "searchText" | "prevParentId" | "nextParentId" | "documentId" | "metadata", ExtArgs["result"]["parentChunk"]>
+export type ParentChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "text" | "searchText" | "prevParentId" | "nextParentId" | "documentId" | "metadata" | "addedInVersion" | "removedInVersion", ExtArgs["result"]["parentChunk"]>
 export type ParentChunkInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   children?: boolean | Prisma.ParentChunk$childrenArgs<ExtArgs>
+  units?: boolean | Prisma.ParentChunk$unitsArgs<ExtArgs>
   document?: boolean | Prisma.DocumentDefaultArgs<ExtArgs>
   _count?: boolean | Prisma.ParentChunkCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -663,6 +910,7 @@ export type $ParentChunkPayload<ExtArgs extends runtime.Types.Extensions.Interna
   name: "ParentChunk"
   objects: {
     children: Prisma.$ChildChunkPayload<ExtArgs>[]
+    units: Prisma.$DocumentUnitPayload<ExtArgs>[]
     document: Prisma.$DocumentPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -673,6 +921,8 @@ export type $ParentChunkPayload<ExtArgs extends runtime.Types.Extensions.Interna
     nextParentId: string | null
     documentId: string
     metadata: runtime.JsonValue | null
+    addedInVersion: number
+    removedInVersion: number | null
   }, ExtArgs["result"]["parentChunk"]>
   composites: {}
 }
@@ -1068,6 +1318,7 @@ readonly fields: ParentChunkFieldRefs;
 export interface Prisma__ParentChunkClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   children<T extends Prisma.ParentChunk$childrenArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ParentChunk$childrenArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChildChunkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  units<T extends Prisma.ParentChunk$unitsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ParentChunk$unitsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentUnitPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   document<T extends Prisma.DocumentDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.DocumentDefaultArgs<ExtArgs>>): Prisma.Prisma__DocumentClient<runtime.Types.Result.GetResult<Prisma.$DocumentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1105,6 +1356,8 @@ export interface ParentChunkFieldRefs {
   readonly nextParentId: Prisma.FieldRef<"ParentChunk", 'String'>
   readonly documentId: Prisma.FieldRef<"ParentChunk", 'String'>
   readonly metadata: Prisma.FieldRef<"ParentChunk", 'Json'>
+  readonly addedInVersion: Prisma.FieldRef<"ParentChunk", 'Int'>
+  readonly removedInVersion: Prisma.FieldRef<"ParentChunk", 'Int'>
 }
     
 
@@ -1527,6 +1780,30 @@ export type ParentChunk$childrenArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   distinct?: Prisma.ChildChunkScalarFieldEnum | Prisma.ChildChunkScalarFieldEnum[]
+}
+
+/**
+ * ParentChunk.units
+ */
+export type ParentChunk$unitsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DocumentUnit
+   */
+  select?: Prisma.DocumentUnitSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DocumentUnit
+   */
+  omit?: Prisma.DocumentUnitOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentUnitInclude<ExtArgs> | null
+  where?: Prisma.DocumentUnitWhereInput
+  orderBy?: Prisma.DocumentUnitOrderByWithRelationInput | Prisma.DocumentUnitOrderByWithRelationInput[]
+  cursor?: Prisma.DocumentUnitWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DocumentUnitScalarFieldEnum | Prisma.DocumentUnitScalarFieldEnum[]
 }
 
 /**

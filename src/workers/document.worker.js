@@ -10,12 +10,44 @@ import {
   clearProgressHistory,
 } from "../config/uploadProgress.js";
 import { saveDocumentChunks } from "../repositories/document.repository.js";
+import {
+  extractUnits,
+  linkUnitsToChunks,
+  hashFile,
+} from "../services/document-units.service.js";
+import { runReplaceJob } from "../services/document-replace.service.js";
+
 const redisConnection = new Redis(process.env.REDIS_URL, {
   // host: "localhost",
   // port: 6379,
   maxRetriesPerRequest: null,
   tls: {},
 });
+
+// The PDF's text-layer units, each linked to the chunk that holds it (document-units.service.js).
+// A failure here never fails the upload: the document is saved without units, and they are
+// built from the stored PDF on its first replace.
+async function buildUnitIndex(fileBuffer, mimetype, parents, documentId) {
+  if (!mimetype?.toLowerCase().startsWith("application/pdf")) return [];
+  try {
+    const units = linkUnitsToChunks(await extractUnits(fileBuffer), parents);
+    await publishProgress(documentId, {
+      type: "units_linked",
+      stage: "preparing",
+      totalUnits: units.length,
+      linkedUnits: units.filter((unit) => unit.parentChunkId).length,
+    });
+    return units;
+  } catch (error) {
+    console.error(`[Units] ${documentId}: unit index failed:`, error.message);
+    await publishProgress(documentId, {
+      type: "units_failed",
+      stage: "preparing",
+      message: error.message,
+    });
+    return [];
+  }
+}
 
 export const startWorker = () => {
   console.log("👷 Background Worker started, listening to Redis...");
@@ -24,6 +56,10 @@ export const startWorker = () => {
   new Worker(
     process.env.DOCUMENT_QUEUE_NAME || "document-processing",
     async (job) => {
+      if (job.name === "replace-document") {
+        return runReplaceJob(job, publishProgress);
+      }
+
       const { documentId, filepath, mimetype } = job.data;
       console.log(`[Job ${job.id}] Started processing document...`);
 
@@ -39,16 +75,22 @@ export const startWorker = () => {
           select: { filename: true },
         });
 
+        // Download once: the bytes feed the file hash, the AI extraction and the units.
+        const fileBuffer = await aiService.downloadDocument(filepath);
+        const fileHash = hashFile(fileBuffer);
+
         const extraction = await aiService.extractDocument({
           filepath,
           filename: document.filename,
           mimetype,
+          buffer: fileBuffer,
           onEvent: (event) => publishProgress(documentId, event),
         });
 
         const pages = extraction.pages;
 
-        const reportedPageCount = extraction.pageCount ?? extraction.rawResult?.job_metadata?.job_pages;
+        const reportedPageCount =
+          extraction.pageCount ?? extraction.rawResult?.job_metadata?.job_pages;
 
         const totalPages =
           extraction.source.mimetype === "application/pdf" &&
@@ -109,6 +151,13 @@ export const startWorker = () => {
           documentId,
           document.filename,
           (event) => publishProgress(documentId, event),
+        );
+
+        const units = await buildUnitIndex(
+          fileBuffer,
+          mimetype,
+          parents,
+          documentId,
         );
 
         for (const parent of parents) {
@@ -213,7 +262,7 @@ export const startWorker = () => {
           ),
         };
         await publishProgress(documentId, { type: "saving_chunks", ...totals });
-        await saveDocumentChunks(documentId, parents);
+        await saveDocumentChunks(documentId, parents, units);
         await publishProgress(documentId, {
           type: "chunks_saved",
           stage: "saved",
@@ -225,6 +274,7 @@ export const startWorker = () => {
           data: {
             status: "COMPLETED",
             summaryStatus: "PROCESSING",
+            fileHash,
           },
         });
         await publishProgress(documentId, { type: "chunks_ready" });

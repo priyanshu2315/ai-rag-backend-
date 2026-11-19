@@ -405,7 +405,8 @@ export const ModelName = {
   ParentChunk: 'ParentChunk',
   ChildChunk: 'ChildChunk',
   Conversation: 'Conversation',
-  Message: 'Message'
+  Message: 'Message',
+  DocumentUnit: 'DocumentUnit'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -421,7 +422,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "role" | "userRole" | "roleDocument" | "document" | "parentChunk" | "childChunk" | "conversation" | "message"
+    modelProps: "user" | "role" | "userRole" | "roleDocument" | "document" | "parentChunk" | "childChunk" | "conversation" | "message" | "documentUnit"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1075,6 +1076,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    DocumentUnit: {
+      payload: Prisma.$DocumentUnitPayload<ExtArgs>
+      fields: Prisma.DocumentUnitFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DocumentUnitFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DocumentUnitFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>
+        }
+        findFirst: {
+          args: Prisma.DocumentUnitFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DocumentUnitFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>
+        }
+        findMany: {
+          args: Prisma.DocumentUnitFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>[]
+        }
+        create: {
+          args: Prisma.DocumentUnitCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>
+        }
+        createMany: {
+          args: Prisma.DocumentUnitCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DocumentUnitCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>[]
+        }
+        delete: {
+          args: Prisma.DocumentUnitDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>
+        }
+        update: {
+          args: Prisma.DocumentUnitUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>
+        }
+        deleteMany: {
+          args: Prisma.DocumentUnitDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DocumentUnitUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DocumentUnitUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>[]
+        }
+        upsert: {
+          args: Prisma.DocumentUnitUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DocumentUnitPayload>
+        }
+        aggregate: {
+          args: Prisma.DocumentUnitAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDocumentUnit>
+        }
+        groupBy: {
+          args: Prisma.DocumentUnitGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DocumentUnitGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DocumentUnitCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DocumentUnitCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1168,7 +1243,10 @@ export const DocumentScalarFieldEnum = {
   status: 'status',
   summaryStatus: 'summaryStatus',
   summary: 'summary',
-  userId: 'userId'
+  userId: 'userId',
+  fileHash: 'fileHash',
+  version: 'version',
+  updatedAt: 'updatedAt'
 } as const
 
 export type DocumentScalarFieldEnum = (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum]
@@ -1181,7 +1259,9 @@ export const ParentChunkScalarFieldEnum = {
   prevParentId: 'prevParentId',
   nextParentId: 'nextParentId',
   documentId: 'documentId',
-  metadata: 'metadata'
+  metadata: 'metadata',
+  addedInVersion: 'addedInVersion',
+  removedInVersion: 'removedInVersion'
 } as const
 
 export type ParentChunkScalarFieldEnum = (typeof ParentChunkScalarFieldEnum)[keyof typeof ParentChunkScalarFieldEnum]
@@ -1193,7 +1273,9 @@ export const ChildChunkScalarFieldEnum = {
   searchText: 'searchText',
   parentId: 'parentId',
   documentId: 'documentId',
-  metadata: 'metadata'
+  metadata: 'metadata',
+  addedInVersion: 'addedInVersion',
+  removedInVersion: 'removedInVersion'
 } as const
 
 export type ChildChunkScalarFieldEnum = (typeof ChildChunkScalarFieldEnum)[keyof typeof ChildChunkScalarFieldEnum]
@@ -1222,6 +1304,20 @@ export const MessageScalarFieldEnum = {
 } as const
 
 export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
+
+
+export const DocumentUnitScalarFieldEnum = {
+  id: 'id',
+  documentId: 'documentId',
+  position: 'position',
+  kind: 'kind',
+  text: 'text',
+  hash: 'hash',
+  page: 'page',
+  parentChunkId: 'parentChunkId'
+} as const
+
+export type DocumentUnitScalarFieldEnum = (typeof DocumentUnitScalarFieldEnum)[keyof typeof DocumentUnitScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1321,6 +1417,20 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
 
 
 /**
+ * Reference to a field of type 'Int'
+ */
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
+
+
+/**
+ * Reference to a field of type 'Int[]'
+ */
+export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
  * Reference to a field of type 'Json'
  */
 export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -1349,16 +1459,16 @@ export type ListEnumConversationTypeFieldRefInput<$PrismaModel> = FieldRefInputT
 
 
 /**
- * Reference to a field of type 'Int'
+ * Reference to a field of type 'Float'
  */
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
     
 
 
 /**
- * Reference to a field of type 'Int[]'
+ * Reference to a field of type 'Float[]'
  */
-export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
     
 
 /**
@@ -1521,6 +1631,7 @@ export type GlobalOmitConfig = {
   childChunk?: Prisma.ChildChunkOmit
   conversation?: Prisma.ConversationOmit
   message?: Prisma.MessageOmit
+  documentUnit?: Prisma.DocumentUnitOmit
 }
 
 /* Types for Logging */

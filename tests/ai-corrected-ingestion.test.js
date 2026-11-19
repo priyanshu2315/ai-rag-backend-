@@ -188,13 +188,15 @@ test("interrupted financial rows keep their table and section across a different
   };
   const parents = await buildDocumentChunks(extraction, "document-1", "handbook.pdf",
     () => {}, { measure: async (text) => ({ tokenCount: Math.ceil(text.length / 5), tokenLimit: 256 }) });
-  const heading = parents.find((parent) => parent.metadata.page_number === 1 && parent.text.includes("Financial record"));
   const first = parents.find((parent) => parent.text.includes("First Depot"));
   const resumed = parents.find((parent) => parent.text.includes("Third Depot"));
   const pallets = parents.find((parent) => parent.text.includes("Pallet rules"));
-  assert.equal(first.metadata.section_id, heading.metadata.section_id);
-  assert.equal(heading.nextParentId, first.id);
-  assert.equal(first.prevParentId, heading.id);
+  // v5: no cut at a page break, so the heading (page 1) and its rows (page 2) share one
+  // parent, and the heading reprinted at the top of page 2 is kept only once.
+  assert.match(first.text, /^## 5\. Financial record/);
+  assert.equal(first.text.match(/## 5\. Financial record/g).length, 1);
+  assert.deepEqual(first.metadata.source_pages, [1, 2]);
+  assert.equal(first.metadata.page_number, 1);
   assert.equal(resumed.metadata.section_id, first.metadata.section_id);
   assert.deepEqual(resumed.metadata.heading_path, ["5. Financial record"]);
   assert.equal(resumed.metadata.page_number, 3);
@@ -364,11 +366,16 @@ Column key notes.`,
   );
 
   const sec5Page2 = parents.find((p) => p.metadata.page_number === 2 && p.text.includes("DEPOT FINANCIAL RECORD"));
-  const sec5Page3 = parents.find((p) => p.metadata.page_number === 3 && p.text.includes("Alderbank Yard"));
+  const sec5Page3 = parents.find((p) => p.metadata.source_pages.includes(3) && p.text.includes("Alderbank Yard"));
   const palletSec = parents.find((p) => p.metadata.page_number === 3 && p.text.includes("PALLET"));
   const sec5Page4 = parents.find((p) => p.metadata.page_number === 4 && p.text.includes("Tollwick Hub II"));
 
   assert.ok(sec5Page2 && sec5Page3 && palletSec && sec5Page4);
+  // v5: the heading on page 2 and the rows on page 3 are one parent (no cut at a page
+  // break); the "(continued)" heading reprinted on page 3 is dropped.
+  assert.equal(sec5Page3, sec5Page2);
+  assert.deepEqual(sec5Page2.metadata.source_pages, [2, 3]);
+  assert.equal(sec5Page2.text.match(/## 5\. DEPOT FINANCIAL RECORD/g).length, 1);
   assert.equal(sec5Page3.metadata.section_id, sec5Page2.metadata.section_id);
   assert.equal(sec5Page4.metadata.section_id, sec5Page2.metadata.section_id);
   assert.notEqual(palletSec.metadata.section_id, sec5Page2.metadata.section_id);

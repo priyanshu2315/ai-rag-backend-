@@ -7,6 +7,8 @@ import {
   getChildChunksOfParent,
   streamProgress,
   deleteDocument,
+  replaceDocument,
+  getVersionChanges,
 } from "../controllers/document.controller.js";
 import { upload } from "../config/upload.js"; // Import Multer
 import { requireAuth, requireAdmin } from "../middlewares/auth.middleware.js";
@@ -30,6 +32,14 @@ router.get(
   getChildChunksOfParent,
 );
 router.get("/progress/:docId", requireAuth, streamProgress);
+router.get("/:docId/changes", requireAuth, getVersionChanges);
 router.delete("/:docId", requireAuth, requireAdmin, deleteDocument);
+router.put(
+  "/:docId",
+  requireAuth,
+  requireAdmin,
+  upload.single("file"),
+  replaceDocument,
+);
 
 export default router;
