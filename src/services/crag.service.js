@@ -150,7 +150,9 @@ Rules:
    Example: "Can we cancel order SO-12 for repeated late deliveries?" hops: h1 "find the number of late deliveries that allows cancellation, and the period" []; h2 "count the late deliveries on order SO-12 within that period" []; h3 "compare the count from h2 with the rule from h1" ["h1","h2"]
 12. A value the user states as a premise ("an order of USD 5,000 raised on 3 May", "a trip starting next week", "if a supplier is late twice") is a given, not a fact to find. Do not plan a hop to find or confirm it; use the stated value directly inside the dependent tasks.
    Example: "Who approves a USD 5,000 order raised on 3 May 2025?" hops: h1 "find the purchase approval limits by value" []; h2 "find the role that approves USD 5,000 on 3 May 2025 under the limits from h1" ["h1"]; h3 "find the person who held the role from h2 on 3 May 2025" ["h2"]
-13. Each hop has "source": "documents" or "web".
+13. Eligibility and entitlement questions ("will I get", "am I eligible", "am I entitled", "do I still get ... if I ...", "what happens to my ... if I ...") depend on several conditions that a policy often keeps in different sections. Plan one entry-point hop for each kind of condition the question touches (who qualifies and from when; when it is paid, granted or due; what happens on leaving, transfer or another change the user mentions), then one last hop that applies them to the user's stated facts (rule 12). Facts the user stated about themselves earlier in this conversation (such as a join date) count as stated facts. Never write one task that both finds a rule and decides the user's case.
+   Example: "I joined in May. If I resign in October, can I carry forward my unused leave?" hops: h1 "find the eligibility condition for leave carry-forward" []; h2 "find the carry-forward limit and the date by which leave must be used" []; h3 "find what happens to unused leave when an employee resigns" []; h4 "apply the rules from h1, h2 and h3 to a May join date and an October resignation" ["h1","h2","h3"]
+14. Each hop has "source": "documents" or "web".
    - Use "web" only for public or live facts that company documents cannot contain: current exchange rates, market or commodity prices, news, laws and regulations, public facts about other organizations.
    - Everything about the company's own records is "documents" (people, roles, approvals, orders, contracts, budgets, policies, internal figures), even when it may be missing.
    - A web hop may depend on document hops; a document hop must never depend on a web hop.
@@ -160,7 +162,7 @@ Rules:
    - That rate hop is "web" (current market rate) unless the question names a company rate (budget rate, contract rate, an internal rate); then it is "documents". Do not add a hop for the arithmetic itself; the answer step calculates from the found values.
    Example: "What is the price of order SO-12 in euros?" hops: h1 "find the total price and currency of order SO-12" source "documents" []; h2 "find the current exchange rate from the currency in h1 to euros" source "web" ["h1"]
 
-14. For each starting query return an object:
+15. For each starting query return an object:
    - "hopId": the ID of the entry-point task this query searches for.
    - "text": one short standalone search sentence for that task. Resolve pronouns from history, keep names, codes, and dates, and drop filler such as greetings, "please tell me", or "according to the document". Do not paste the whole user question when it asks several things.
    - "keywords": 2-6 important single words for exact keyword search (e.g. vessel, carrier, dividend). Skip vague words such as new, that, details, information, document. Do not repeat identifiers or entities here.
