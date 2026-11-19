@@ -551,7 +551,7 @@ export async function getParentNeighbors(
       const siblings = await prismaClient.parentChunk.findMany({
         where: {
           id: { in: siblingIds },
-          removedInVersion,
+          removedInVersion: null,
           document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         },
         include: {
@@ -584,7 +584,7 @@ export async function getParentNeighbors(
         where: {
           documentId: parent.documentId,
           metadata: { path: ["section_id"], equals: sectionId },
-          removedInVersion,
+          removedInVersion: null,
           document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         },
         orderBy: { createdAt: "asc" },
@@ -677,7 +677,7 @@ export async function getParentNeighbors(
     const related = await prismaClient.parentChunk.findMany({
       where: {
         documentId,
-        removedInVersion,
+        removedInVersion: null,
         document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         OR: [
           { metadata: { path: ["table_ids"], array_contains: [tableId] } },
@@ -793,7 +793,7 @@ export async function getParentNeighbors(
     const matched = await prismaClient.parentChunk.findMany({
       where: {
         documentId,
-        removedInVersion,
+        removedInVersion: null,
         document: { id: { in: allowedDocumentIds }, status: "COMPLETED" },
         searchText: { contains: searchPattern, mode: "insensitive" },
       },
