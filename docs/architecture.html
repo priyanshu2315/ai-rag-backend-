@@ -31,7 +31,7 @@
 </head>
 <body>
 <div class="scroll">
-<svg viewBox="0 0 1600 1240" role="img" aria-label="DocuMind architecture: chat API, MCP server, CRAG LangGraph pipeline with web agents (Tavily MCP) and approval, pause and resume, upload pipeline, AI models and data stores.">
+<svg viewBox="0 0 1600 1240" role="img" aria-label="DocuMind architecture: chat API, MCP server, CRAG LangGraph pipeline with web agents (Tavily MCP) and approval, pause and resume, upload pipeline with document replace, AI models and data stores.">
   <defs>
     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
       <path d="M40 0H0V40" fill="none" stroke="#141820" stroke-width="1"/>
@@ -146,6 +146,12 @@
   <path class="ar green" d="M922 982H938"/>
   <path class="ar green" d="M1020 1014V1078"/>
   <path class="ar amber" d="M486 1014V1048H308V1078"/>
+
+  <!-- replace row -->
+  <path class="ar green" d="M566 1112H582"/>
+  <path class="ar green" d="M744 1112H760"/>
+  <path class="ar" d="M664 1078V1016"/>
+  <text class="alb" x="672" y="1052">reuses</text>
 
   <!-- ================= CHAT API COLUMN ================= -->
   <circle cx="150" cy="46" r="9" fill="none" stroke="#e9edf4" stroke-width="1.6"/>
@@ -299,7 +305,22 @@
   <rect class="node" x="940" y="950" width="160" height="64" rx="8"/>
   <text class="lbl" x="950" y="972">Save</text>
   <text class="fn sm" x="950" y="989">saveDocumentChunks()</text>
-  <text class="fn sm" x="950" y="1004">status COMPLETED</text>
+  <text class="fn sm" x="950" y="1004">units · fileHash</text>
+
+  <rect class="node" x="406" y="1080" width="160" height="64" rx="8" style="stroke:#5fd38d; stroke-width:1.4"/>
+  <text class="lbl" x="416" y="1102">Replace</text>
+  <text class="fn sm" x="416" y="1119">PUT /api/documents/:id</text>
+  <text class="fn sm" x="416" y="1134">file hash · unit diff</text>
+
+  <rect class="node" x="584" y="1080" width="160" height="64" rx="8"/>
+  <text class="lbl" x="594" y="1102">Replace job</text>
+  <text class="fn sm" x="594" y="1119">planChunkChanges()</text>
+  <text class="fn sm" x="594" y="1134">keep · add · remove</text>
+
+  <rect class="node" x="762" y="1080" width="160" height="64" rx="8"/>
+  <text class="lbl" x="772" y="1102">Version switch</text>
+  <text class="fn sm" x="772" y="1119">saveReplacedVersion()</text>
+  <text class="fn sm" x="772" y="1134">removedInVersion</text>
 
   <rect class="node" x="940" y="1080" width="160" height="54" rx="8"/>
   <text class="lbl" x="950" y="1102">Summary</text>
@@ -326,7 +347,7 @@
   <!-- ================= DATA ================= -->
   <rect class="node" x="1180" y="800" width="380" height="56" rx="8"/>
   <text class="lbl" x="1194" y="823">PostgreSQL · pgvector</text>
-  <text class="fn" x="1194" y="841">ParentChunk · ChildChunk</text>
+  <text class="fn" x="1194" y="841">ParentChunk · ChildChunk · DocumentUnit</text>
 
   <rect class="node" x="1180" y="868" width="380" height="56" rx="8"/>
   <text class="lbl" x="1194" y="891">PostgreSQL · Prisma</text>

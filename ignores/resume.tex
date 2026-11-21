@@ -147,6 +147,8 @@
 
         \resumeItem{Built an async \textbf{document ingestion pipeline} (BullMQ workers, Redis Pub/Sub, live SSE progress): LLM-based PDF extraction with a contents outline, table repair, token-budgeted \textbf{parent/child chunking}, and local \textbf{Transformers.js embeddings}.}
 
+        \resumeItem{Built \textbf{incremental re-indexing} for document updates: a new version replaces the old one in place (same ID, roles and chats); a \textbf{file hash} and a \textbf{sentence-level diff} of the PDF text stop unchanged uploads with \textbf{zero LLM calls}, and \textbf{content-hashed chunks} keep unchanged chunks and embeddings, re-embed only what changed, survive page reflow, and \textbf{switch versions atomically}, with a per-section ``what changed'' view.}
+
         \resumeItem{Added a tool-calling \textbf{web research agent} (Tavily search + page reading) that runs \textbf{in parallel} per web task only after \textbf{human-in-the-loop approval}, using LangGraph \texttt{interrupt()} and a \textbf{Postgres checkpointer} to pause and resume runs.}
 
         \resumeItem{Implemented both sides of the \textbf{Model Context Protocol (MCP)}: exposed the search as an \textbf{MCP server} (4 tools, per-user sessions, role-based access, progress updates, human approval through elicitation) used from a \textbf{Claude} app, and an \textbf{MCP client} that lets the web agent discover \textbf{Tavily} tools at runtime, with a fallback to built-in tools.}

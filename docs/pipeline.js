@@ -1,8 +1,9 @@
 /**
- * The engineering timeline behind DocuMind, reviewed 17 November 2026.
+ * The engineering timeline behind DocuMind, reviewed 21 November 2026.
  * Earlier entries describe historical stages, not guarantees about the current
  * implementation. The November entries record the latest search, history,
- * grading, planning, access-control, email, web agent and approval behavior.
+ * grading, planning, access-control, email, web agent, approval, MCP and
+ * document versioning behavior.
  *
  * Content only: the About page renders it and holds no copy of its own, so a
  * new phase is one entry here rather than an edit to the markup.
@@ -957,6 +958,22 @@ export const PIPELINE = [
       "Role-Based Access Over MCP",
     ],
     date: "November 17, 2026",
+  },
+  {
+    id: 74,
+    title: "Updating a Document Without Starting Over",
+    problem:
+      "Policies change often, but a new version could only be uploaded as a new document: a new ID, roles to set again, old chats pointing at an outdated copy, and the AI reading and embedding every page again even when only one number had changed. Comparing page by page does not work either, because one added paragraph pushes text onto the next page and makes every later page look different.",
+    solution:
+      "An admin can now replace a document with a new version that keeps its ID, roles and chats. Before any AI call, two free checks run: the file's fingerprint (same file, nothing to do) and a sentence-level comparison of the PDF's own text, which ignores page breaks, headers and footers. When something did change, the new chunks are matched to the old ones by a fingerprint of their text: unchanged chunks keep their IDs and embeddings, changed ones are replaced, and old ones are marked as removed rather than deleted, so earlier answers still point to real chunks. Chunks are no longer cut at page breaks, so an insert only touches its own section. The switch happens in one transaction, search only reads the current version, and a new endpoint shows what changed in each version, section by section. In the test, a 3-version policy changed exactly the edited sections each time, including a version whose new paragraph pushed text onto the next page.",
+    terms: [
+      "Incremental Re-indexing",
+      "Content Hashing",
+      "Sequence Diff",
+      "Soft Deletes with Version Markers",
+      "Atomic Version Switch",
+    ],
+    date: "November 19, 2026",
   },
 ];
 

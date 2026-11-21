@@ -99,6 +99,22 @@ The test files are in [`delta-version-docs/`](../delta-version-docs/README.md): 
 
 6 parents kept, 3 replaced, and only 3 child chunks were embedded again. 48 of 48 units were linked to their chunks.
 
+**Then v2 → v3** (also 19 November). v3 adds a paragraph about leased equipment in section 1, renames "5. Emergency purchases" to "5. Urgent repairs", changes "two working days" to "one working day", and removes the sanctions sentence in section 6. The new paragraph pushes the end of section 3 from page 1 onto page 2.
+
+| Section | Result of v2 → v3 |
+|---|---|
+| Title and cover | replaced (version 3.0, new date) |
+| 1. Purpose | replaced (new paragraph) |
+| 2. Roles | kept |
+| 3. Approval limits | **kept, same ID**, now on pages 1 and 2 (only its page list changed) |
+| 4. Quotes and supplier choice | kept |
+| 5. Emergency purchases → Urgent repairs | replaced |
+| 6. New suppliers | replaced (sentence removed) |
+| 7. Records | kept |
+| 8. Breaches | kept |
+
+Section 3 is the important row. With v4 chunks (cut at every page break) the moved text would have changed section 3 and everything after it. With v5 it changed nothing.
+
 Keep this table in mind: every flow below explains one part of how we got here.
 
 ---
@@ -522,11 +538,11 @@ Tested on all 50 knowledge-base documents: 3,395 of 3,401 units linked (99.8%). 
 | Item | What it would add |
 |---|---|
 | Step 3 item 8 (skipped) | Send only the changed pages or sections to the AI (the real cost saving). The unit → chunk links are the base for it. |
-| Tests still to run | v2 → v3 (the reflow, a renamed heading, a removed sentence), the chat questions in [`delta-version-docs/README.md`](../delta-version-docs/README.md), a scanned PDF, a missing old file. |
+| Tests still to run | the chat questions in [`delta-version-docs/README.md`](../delta-version-docs/README.md), a scanned PDF, a missing old file, a title-only change. (v1 → v2 and v2 → v3 passed on 19 November.) |
 | Summary refresh | Regenerate the summary when much of the text changed. |
 | Cleanup | Remove chunks of very old versions (for example keep the last 3). |
 | Other formats | Replace works for PDFs only. |
-| Docs | AGENTS.md, `docs/architecture.html` and a `docs/pipeline.js` entry are to be written after the v3 test. |
+| Frontend | the Replace button and the "What changed" page (contract in [`frontend-rbac-prompt.md`](frontend-rbac-prompt.md)). Docs were updated on 21 November: AGENTS.md, the architecture diagram, pipeline entry 74. |
 
 ---
 
