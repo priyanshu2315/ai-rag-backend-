@@ -4,7 +4,7 @@
 
 Legend: `[x]` done · `[~]` partly done / done differently · `[ ]` not started · `[-]` inactive (kept for later, not planned now)
 
-Current order (updated 21 Nov): Step 5 (web agent and human in the loop) done 15 Nov, open tests included; Step 6 (MCP) done 17 Nov (server A1, A5, A6; client B1, B2; docs updated); Step 3 (delta versioning: replace a document with full extraction) done and verified 18-19 Nov, item 8 skipped; next finish (README, demo video). Inactive in Step 6: A2, A3, A4, A7, B3, B4, B5. Dropped 16 Nov: Step 5B (tasks and multi-agent; it would not improve search). Later: Step 5C (automation when a document is uploaded) and Step 3 item 8 (send only changed sections to the AI). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F).
+Current order (updated 21 Nov): Step 5 (web agent and human in the loop) done 15 Nov, open tests included; Step 6 (MCP) done 17 Nov (server A1, A5, A6; client B1, B2; docs updated); Step 3 (delta versioning: replace a document with full extraction) done and verified 18-19 Nov, item 8 skipped; next finish (README, demo video). Inactive in Step 6: A2, A3, A4, A7, B3, B4, B5. Dropped 16 Nov: Step 5B (tasks and multi-agent; it would not improve search). Later: Step 5C (automation when a document is uploaded) and Step 3 item 8 (send only changed sections to the AI). Parked for now: search fixes O-5, O-13, O-19 (Step 4) and the forgot-password fix (Step 2, Phase F). Started 23 Nov: side project "Evidence Finder model, SFT + RL" (separate repo, see the last section).
 
 ## Step 1: Search Optimization & structured-context-v4 Part 2 (16 hrs)
 
@@ -399,3 +399,41 @@ Today the planner knows two sources, `documents` and `web` (hand-written Tavily 
 - [ ] README with the architecture pictures and eval numbers
 - [ ] Short demo video: a question, a task with approval
 - [ ] Stop adding features; fix what the demo shows
+
+## Side project: Evidence Finder model, SFT + RL (personal, separate repo, started 23 Nov)
+
+Train a small open model to do the grader's core job, so the user learns SFT and RL. Built in a **separate repo** (`evidence-finder/`), not in this one. **Do not integrate it into this RAG until the user says it is robust.** Cost target: ₹0 (free resources only). About 90 hours.
+
+### Agreed design (22-23 Nov)
+
+- Task: question + 5-8 chunks -> `{ "found": true, "chunk_id", "quote", "value" }` or `{ "found": false }`. One hop only (no multi-hop batch like the real grader).
+- Models: Qwen3-4B (main), Qwen3-1.7B (quick tests and RL debugging); use the latest small Qwen on Unsloth's list if newer.
+- Data: the 50 synthetic Calderwick documents (`eval-docs/kb/`), so no permission or privacy issue. About 1,500 examples (1,200 train, 300 test): 2-3 questions per chunk, 4-7 similar distractor chunks per question, 20% "not found" cases (correct chunk removed). Hand-check about 50 questions.
+- Rewards (plain Python, no judge model): valid JSON +0.5; right chunk +1; quote really in the chunk +1 (Python port of `isQuoteInDocText()` from `src/services/hop-evidence.service.js`), invented quote -2; right value +2; correct "not found" +2, invented answer instead of "not found" -2.
+- Watch for reward hacking: always "not found", quoting the first line every time, copying a real but useless line.
+- Platforms: laptop for data, rewards and scoring (no NVIDIA GPU: i5-1155G7, 16 GB, Iris Xe); Kaggle free GPU (T4, about 30 h/week, 12 h sessions, save checkpoints) for training; Hugging Face private repo for the model; Unsloth + TRL (`SFTTrainer`, `GRPOTrainer`); Ollama on the laptop to try the finished model; Groq free tier to generate questions.
+- LoRA vs RL: not alternatives. LoRA = which weights change (small add-on, fits a free T4). SFT = learn by copying examples; RL (GRPO) = try 8 answers, code scores them, keep what scored well. Order: SFT first, then RL, both with LoRA.
+
+### Repo layout (`evidence-finder/`)
+
+- `CLAUDE.md` (this plan), `README.md`
+- `data/` (git-ignored; uploaded to Kaggle as a private dataset)
+- `scripts/export_chunks.py` (read-only DB user in its own `.env`), `scripts/make_questions.py`
+- `src/rewards.py`, `src/score.py`
+- `notebooks/sft.ipynb`, `notebooks/grpo.ipynb` (written locally, run on Kaggle)
+- Claude: a new Claude Code session in that repo; `/add-dir` this repo when RAG code must be read.
+
+### Steps
+
+- [ ] 1. Basics (~10 h): run Unsloth's Qwen SFT and GRPO Kaggle notebooks unchanged; understand every cell.
+- [ ] 2. Data (~20 h): export parent chunks, generate questions with answer and quote, add distractors and "not found" cases, split train/test, hand-check.
+- [ ] 3. Scorer + baseline (~8 h): `score.py` (found accuracy, chunk, quote, value, valid JSON); score the untrained 4B on the test set.
+- [ ] 4. SFT with LoRA (~15 h): train the format and basic skill; compare with the baseline; read 20 outputs by hand.
+- [ ] 5. RL with GRPO (~25 h): start from the SFT model; debug on 1.7B, then 4B; read samples every 50 steps for hacks.
+- [ ] 6. Compare and publish (~10 h): table of untrained vs SFT vs SFT+RL vs the current API grader; push to Hugging Face; run with Ollama.
+
+### Later
+
+- Project 2: a planner model. Reward = the plan's queries find the gold chunk in the top results (export child chunks, embed with the same MiniLM model in Python on Kaggle).
+- Only after the user calls it robust: a `local` provider in `src/config/ai.js` for one-hop grading.
+- Dropped 22 Nov: training a resume parser for the office resume team (their data and permission; the user chose a personal project instead).
