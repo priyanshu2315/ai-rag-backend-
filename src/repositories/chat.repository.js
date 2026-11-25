@@ -858,6 +858,30 @@ export const listGlobalConversations = (userId) =>
     orderBy: { updatedAt: "desc" },
   });
 
+const conversationAdminSelect = {
+  ...conversationListSelect,
+  user: { select: { id: true, name: true, email: true } },
+  _count: { select: { messages: true } },
+};
+
+// Every user's global chats (admin "All" filter)
+export const listAllGlobalConversations = () =>
+  prisma.conversation.findMany({
+    where: { type: "GLOBAL" },
+    select: conversationAdminSelect,
+    orderBy: { updatedAt: "desc" },
+  });
+
+// Any chat by ID, for an admin opening another user's chat (read-only)
+export const getConversationById = (id) =>
+  prisma.conversation.findUnique({
+    where: { id },
+    include: {
+      messages: { orderBy: { createdAt: "asc" } },
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+
 export const createGlobalConversation = (userId, title) =>
   prisma.conversation.create({
     data: {

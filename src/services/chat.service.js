@@ -260,8 +260,20 @@ const cleanTitle = (title) => {
   return value;
 };
 
-export const listGlobalConversations = (userId) =>
-  chatRepository.listGlobalConversations(userId);
+// scope "mine" (default): the user's own chats; "all": every user's chats (admin only)
+export const listGlobalConversations = async (user, scope = "mine") => {
+  if (scope === "mine") return chatRepository.listGlobalConversations(user.id);
+  if (scope !== "all") throw httpError(400, "scope must be 'mine' or 'all'");
+  if (user.type !== "ADMIN") throw httpError(403, "Admin only");
+
+  const rows = await chatRepository.listAllGlobalConversations();
+  return rows.map(({ user: owner, _count, ...chat }) => ({
+    ...chat,
+    owner,
+    messageCount: _count.messages,
+    isMine: owner.id === user.id,
+  }));
+};
 
 export const createGlobalConversation = (userId, title) =>
   chatRepository.createGlobalConversation(
@@ -269,8 +281,12 @@ export const createGlobalConversation = (userId, title) =>
     title === undefined ? undefined : cleanTitle(title),
   );
 
+// Admins can open any chat (read-only for chats they do not own)
 export const getConversation = async (user, id) => {
-  const conversation = await chatRepository.getOwnedConversation(user.id, id);
+  const conversation =
+    user.type === "ADMIN"
+      ? await chatRepository.getConversationById(id)
+      : await chatRepository.getOwnedConversation(user.id, id);
   if (!conversation) throw httpError(404, "Conversation not found");
   if (
     conversation.documentId &&
@@ -278,7 +294,7 @@ export const getConversation = async (user, id) => {
   ) {
     throw httpError(404, "Conversation not found");
   }
-  return conversation;
+  return { ...conversation, isMine: conversation.userId === user.id };
 };
 
 export const renameConversation = async (userId, id, title) => {

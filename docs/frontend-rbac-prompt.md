@@ -291,6 +291,33 @@ Errors (`{ "error": "..." }`): `400 Title is required`, `400 Title is too long` 
 
 Existing global chats from before this change appear in `GET /api/chat/conversations`.
 
+### Admin chat filter: My / All (Implemented 25 November)
+
+`GET /api/chat/conversations` takes an optional `scope` query parameter:
+
+- `?scope=mine` (default, same as no parameter): the user's own global chats, unchanged shape `[{ id, title, createdAt, updatedAt }]`.
+- `?scope=all` (admin only): every user's global chats, most recently used first:
+
+```json
+[
+  {
+    "id": "uuid",
+    "title": "Who approved the budget increase?",
+    "createdAt": "...",
+    "updatedAt": "...",
+    "owner": { "id": "uuid", "name": "Cat", "email": "cat@example.com" },
+    "messageCount": 6,
+    "isMine": false
+  }
+]
+```
+
+Errors: `400 scope must be 'mine' or 'all'`, `403 Admin only` (a normal user asking for `all`).
+
+`GET /api/chat/conversations/:conversationId`: an admin can open **any** chat (global or document); a normal user still only their own. The response now has `isMine` (boolean), and for admins also `user: { id, name, email }` (the owner).
+
+A chat with `isMine: false` is **read-only**: the backend rejects asking (`404 Conversation not found.`), rename and delete for chats the admin does not own. Document chats are not in the `all` list.
+
 ## Web search approval: human in the loop (Implemented 14 November; Allow tested end to end, Skip not yet)
 
 Before the assistant searches the public web, it asks the user. The answer run **pauses**, the UI shows Allow / Skip, and a second request continues the same run. This works in both global chats and document chats.

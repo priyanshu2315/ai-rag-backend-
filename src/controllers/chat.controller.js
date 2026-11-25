@@ -160,7 +160,7 @@ export const clearConversation = async (req, res) => {
 };
 
 export const listConversations = handle((req) =>
-  chatService.listGlobalConversations(req.user.id),
+  chatService.listGlobalConversations(req.user, req.query.scope),
 );
 export const createConversation = handle(
   (req) => chatService.createGlobalConversation(req.user.id, req.body?.title),
